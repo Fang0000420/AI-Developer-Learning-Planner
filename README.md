@@ -1,4 +1,4 @@
-    # AI Developer Learning Planner
+# AI Developer Learning Planner
 
 面向程序员的 AI 学习与技术成长规划 Agent 系统。
 
@@ -56,7 +56,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 本地启动
 
-当前仓库处于 Day 01 初始化阶段，服务代码和基础依赖配置会在后续任务中逐步补齐。
+当前仓库处于 Day 02 后端初始化阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架。数据库连接、health 接口和首批 migration 会在 Day 02 后续任务中继续补齐。
 
 计划中的本地启动方式：
 
@@ -69,7 +69,7 @@ docker compose -f infra/docker-compose.yml up postgres redis
 
 # 3. 启动 Java 后端
 cd backend
-./mvnw spring-boot:run
+mvn spring-boot:run
 
 # 4. 启动 Python Agent 服务
 cd agent-service
