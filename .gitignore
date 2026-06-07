@@ -1,0 +1,31 @@
+# Local planning materials
+Plan/
+PROJECT_PLAN.md
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Backend
+backend/target/
+backend/build/
+
+# Python agent service
+agent-service/.venv/
+agent-service/__pycache__/
+agent-service/.pytest_cache/
+
+# Infrastructure runtime data
+infra/.data/
