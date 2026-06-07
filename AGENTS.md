@@ -5,9 +5,9 @@
 ## 当前阶段
 
 - 当前日期: 2026-06-07
-- 当前进度: Day 02 进行中 - 任务 2 已完成
+- 当前进度: Day 02 进行中 - 任务 3 已完成
 - 当前主题: Spring Boot 后端初始化
-- 下一阶段: Day 02 - 任务 3 创建首批数据库表
+- 下一阶段: Day 02 - 任务 4 做一次后端冒烟验证
 
 Day 01 的目标是把项目从想法落成可持续开发的 monorepo 结构，明确服务边界、端口、启动方式和第一版文档。目前基础骨架已经完成，并已上传到 GitHub；服务器也已经拉取代码并完成 Docker Compose 配置解析验证。
 
@@ -86,6 +86,11 @@ MVP 优先跑通以下闭环:
 - `application.yml` 已配置服务端口 `BACKEND_PORT` 默认 `8080`、PostgreSQL datasource、JPA `ddl-auto=validate`、Flyway 默认 migration 路径。
 - 已新增自定义 health 接口 `GET /api/health`，返回后端服务状态。
 - 已新增 health 接口 MVC 测试。
+- 任务 2 已在服务器验证通过，`GET /api/health` 返回 `{"status":"UP","service":"ai-developer-learning-planner-backend"}`。
+- 任务 3 创建首批数据库表已完成。
+- 已新增 Flyway migration `V1__create_users_and_goals.sql`，创建 `users` 和 `goals` 表，并为 `goals.user_id`、`goals.status` 添加索引。
+- 已新增 `User`、`Goal`、`GoalStatus` JPA 类型，以及 `UserRepository`、`GoalRepository`。
+- 已新增不依赖数据库的实体单元测试，覆盖用户字段和目标默认状态。
 
 ## 当前注意事项
 
@@ -123,9 +128,11 @@ docker compose -f infra/docker-compose.yml up -d postgres redis
 ### Day 02 - Spring Boot 后端初始化 - 进行中
 
 - 完成时间: 2026-06-07
-- 已完成任务: 任务 1 创建 Spring Boot 项目；任务 2 配置服务器开发环境。
+- 已完成任务: 任务 1 创建 Spring Boot 项目；任务 2 配置服务器开发环境；任务 3 创建首批数据库表。
 - 代码验收: `backend/` 已具备 Maven 项目结构、`pom.xml`、Spring Boot 启动类、`application.yml` 和测试骨架。
 - 服务器验收: 用户在服务器执行 `mvn test` 通过，结果 `Tests run: 1, Failures: 0, Errors: 0`，`BUILD SUCCESS`。
 - 任务 2 完成内容: 已配置 PostgreSQL datasource、JPA、Flyway、服务端口 `8080`，并新增 `GET /api/health`。
+- 任务 2 服务器验收: 后端成功启动，`curl http://localhost:8080/api/health` 返回 `UP`。
+- 任务 3 完成内容: 已创建 `users`、`goals` Flyway migration、JPA Entity、Repository 和实体单元测试。
 - 验证说明: 按用户要求，不在开发机做 Maven 依赖下载和测试运行，后续在服务器拉取后执行 `mvn test` 与 `mvn spring-boot:run`。
-- 遗留事项: 任务 3 创建 `users`、`goals` 首批表；任务 4 做后端冒烟验证。
+- 遗留事项: 任务 4 做后端冒烟验证，检查 `flyway_schema_history`、`users`、`goals` 是否存在。

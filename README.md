@@ -56,7 +56,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 本地启动
 
-当前仓库处于 Day 02 后端初始化阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置和 `/api/health` 接口。首批业务表 migration 会在 Day 02 后续任务中继续补齐。
+当前仓库处于 Day 02 后端初始化阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置、`/api/health` 接口，以及 `users`、`goals` 首批业务表 migration。
 
 计划中的本地启动方式：
 
