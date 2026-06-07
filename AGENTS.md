@@ -5,9 +5,9 @@
 ## 当前阶段
 
 - 当前日期: 2026-06-07
-- 当前进度: Day 02 进行中 - 任务 3 已完成
+- 当前进度: Day 02 已完成
 - 当前主题: Spring Boot 后端初始化
-- 下一阶段: Day 02 - 任务 4 做一次后端冒烟验证
+- 下一阶段: Day 03 - FastAPI Agent 服务初始化
 
 Day 01 的目标是把项目从想法落成可持续开发的 monorepo 结构，明确服务边界、端口、启动方式和第一版文档。目前基础骨架已经完成，并已上传到 GitHub；服务器也已经拉取代码并完成 Docker Compose 配置解析验证。
 
@@ -91,12 +91,18 @@ MVP 优先跑通以下闭环:
 - 已新增 Flyway migration `V1__create_users_and_goals.sql`，创建 `users` 和 `goals` 表，并为 `goals.user_id`、`goals.status` 添加索引。
 - 已新增 `User`、`Goal`、`GoalStatus` JPA 类型，以及 `UserRepository`、`GoalRepository`。
 - 已新增不依赖数据库的实体单元测试，覆盖用户字段和目标默认状态。
+- 任务 3 已在服务器验证通过，`flyway_schema_history` 中 version `1`、description `create users and goals`、success `t`。
+- 任务 4 后端冒烟验证已完成。
+- 服务器 `GET /api/health` 返回 `{"status":"UP","service":"ai-developer-learning-planner-backend"}`。
+- 服务器数据库检查确认 `flyway_schema_history`、`goals`、`users` 三张表存在。
 
 ## 当前注意事项
 
 - `Plan/` 和 `PROJECT_PLAN.md` 是本地计划材料，已被 `.gitignore` 排除，不要上传。
 - `.env.example` 可以提交；真实 `.env` 和任何密钥不能提交。
 - 所有任务默认在服务器 `/home/AI-Developer-Learning-Planner` 中执行。
+- 当前服务器使用本机 PostgreSQL 14，监听 `localhost:5432`，已创建数据库 `ai_planner` 和用户 `ai_planner`。
+- 当前服务器 Docker Hub 直连解析异常；如需 Docker 拉取 PostgreSQL，可临时使用 `docker.m.daocloud.io/library/postgres:16`，但注意本机 PostgreSQL 已占用宿主机 `5432`。
 - 服务器已安装 Docker，后续可用以下命令启动基础依赖:
 
 ```bash
@@ -125,14 +131,15 @@ docker compose -f infra/docker-compose.yml up -d postgres redis
 - 服务器验收: 代码已拉取，`git status` 干净，Docker Compose 配置解析通过。
 - 遗留事项: 进入 Day 02，初始化 Spring Boot 后端服务。
 
-### Day 02 - Spring Boot 后端初始化 - 进行中
+### Day 02 - Spring Boot 后端初始化 - 已完成
 
 - 完成时间: 2026-06-07
-- 已完成任务: 任务 1 创建 Spring Boot 项目；任务 2 配置服务器开发环境；任务 3 创建首批数据库表。
+- 已完成任务: 任务 1 创建 Spring Boot 项目；任务 2 配置服务器开发环境；任务 3 创建首批数据库表；任务 4 后端冒烟验证。
 - 代码验收: `backend/` 已具备 Maven 项目结构、`pom.xml`、Spring Boot 启动类、`application.yml` 和测试骨架。
 - 服务器验收: 用户在服务器执行 `mvn test` 通过，结果 `Tests run: 1, Failures: 0, Errors: 0`，`BUILD SUCCESS`。
 - 任务 2 完成内容: 已配置 PostgreSQL datasource、JPA、Flyway、服务端口 `8080`，并新增 `GET /api/health`。
 - 任务 2 服务器验收: 后端成功启动，`curl http://localhost:8080/api/health` 返回 `UP`。
 - 任务 3 完成内容: 已创建 `users`、`goals` Flyway migration、JPA Entity、Repository 和实体单元测试。
-- 验证说明: 按用户要求，不在开发机做 Maven 依赖下载和测试运行，后续在服务器拉取后执行 `mvn test` 与 `mvn spring-boot:run`。
-- 遗留事项: 任务 4 做后端冒烟验证，检查 `flyway_schema_history`、`users`、`goals` 是否存在。
+- 任务 3 服务器验收: `flyway_schema_history` 记录 version `1`，description `create users and goals`，success `t`；`flyway_schema_history`、`goals`、`users` 三张表均存在。
+- 任务 4 服务器验收: 后端 health 接口可访问，数据库表检查通过。
+- 遗留事项: Docker Hub 直连在服务器上存在 DNS/网络异常；当前后端验证改用服务器本机 PostgreSQL 14 完成。进入 Day 03，初始化 FastAPI Agent 服务。
