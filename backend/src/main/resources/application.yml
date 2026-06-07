@@ -1,3 +1,25 @@
 spring:
   application:
     name: ai-developer-learning-planner-backend
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:ai_planner}}
+    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:ai_planner}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:ai_planner_dev_password}}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${BACKEND_PORT:8080}

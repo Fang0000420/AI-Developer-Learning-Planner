@@ -56,7 +56,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 本地启动
 
-当前仓库处于 Day 02 后端初始化阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架。数据库连接、health 接口和首批 migration 会在 Day 02 后续任务中继续补齐。
+当前仓库处于 Day 02 后端初始化阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置和 `/api/health` 接口。首批业务表 migration 会在 Day 02 后续任务中继续补齐。
 
 计划中的本地启动方式：
 
@@ -71,11 +71,14 @@ docker compose -f infra/docker-compose.yml up postgres redis
 cd backend
 mvn spring-boot:run
 
-# 4. 启动 Python Agent 服务
+# 4. 验证后端健康检查
+curl http://localhost:8080/api/health
+
+# 5. 启动 Python Agent 服务
 cd agent-service
 uvicorn app.main:app --reload --port 8000
 
-# 5. 启动前端
+# 6. 启动前端
 cd frontend
 npm run dev
 ```
