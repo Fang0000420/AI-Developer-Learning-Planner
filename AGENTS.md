@@ -5,11 +5,11 @@
 ## 当前阶段
 
 - 当前日期: 2026-06-08
-- 当前进度: Day 04 进行中，任务 1 已完成
+- 当前进度: Day 04 进行中，任务 1 服务器验收完成，任务 2 本机完成
 - 当前主题: Next.js 前端初始化
-- 下一阶段: Day 04 任务 2 - 建立基础 UI 结构
+- 下一阶段: Day 04 任务 3 - 创建目标输入页面骨架
 
-Day 04 任务 1 已完成 `frontend/` Next.js 工程初始化，包含 Next.js 16、React 19、TypeScript、Tailwind CSS 4、ESLint、Prettier、基础首页和前端 README 启动说明。本机已验证 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 通过，并已用浏览器打开 `http://127.0.0.1:3000` 验证页面可访问。服务器 SSH 免密连接当前不可用，服务器 `/home/AI-Developer-Learning-Planner` 验收待有登录权限后执行。
+Day 04 任务 1 已完成 `frontend/` Next.js 工程初始化，并已在服务器 `http://localhost:3000` 通过 `curl -I` 验收，返回 `HTTP/1.1 200 OK`。任务 2 已完成基础工作台 UI，本机已验证 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 通过，并已用浏览器打开 `http://127.0.0.1:3000` 验证首页导航、工作台入口和控制台 error 状态。
 
 ## 运行环境约定
 
@@ -122,7 +122,15 @@ MVP 优先跑通以下闭环:
 - `frontend/README.md` 已补充服务器启动说明和前端脚本说明。
 - 本机验证通过: `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`。
 - 本机浏览器验证通过: `http://127.0.0.1:3000` 页面标题为 `AI Developer Learning Planner`，无浏览器控制台 error。
-- 服务器验证未执行: 当前 SSH 配置中的 `aliyun`、`gpu` 免密登录失败，`ff-virtual-machine`、`orange` 连接超时。
+- 服务器验证通过: 服务器执行 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`。
+- 任务 2 建立基础 UI 结构已完成。
+- 已创建应用级顶部导航，入口包括 `Dashboard`、`New Goal`、`Plans`、`Today`。
+- 首页已改为基础工作台页面，展示当前状态入口: 创建目标、查看计划、今日任务。
+- 首页包含 MVP Progress 和 Next Step 区域，第一屏直接进入工作台，不做营销式落地页。
+- 已新增 `lucide-react` 用于导航与入口图标。
+- 本机验证通过: `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`。
+- 本机浏览器验证通过: 首页可读取 `Dashboard`、`New Goal`、`View Plan`、`Today Tasks`、`MVP Progress`，控制台 error 数为 `0`。
+- 任务 2 服务器验证待执行: 需在服务器拉取/同步最新代码后重新执行前端构建与页面访问验收。
 
 ## 当前注意事项
 
@@ -132,7 +140,7 @@ MVP 优先跑通以下闭环:
 - 当前服务器使用本机 PostgreSQL 14，监听 `localhost:5432`，已创建数据库 `ai_planner` 和用户 `ai_planner`。
 - 当前服务器 Docker Hub 直连解析异常；如需 Docker 拉取 PostgreSQL，可临时使用 `docker.m.daocloud.io/library/postgres:16`，但注意本机 PostgreSQL 已占用宿主机 `5432`。
 - 当前服务器 Python 为 `3.10.12`，Agent 服务已按 Python `>=3.10` 配置。
-- Day 04 任务 1 使用 Next.js `16.2.7`，要求 Node.js `>=20.9.0`；服务器前端验收前需先确认或安装合适 Node 版本。
+- Day 04 任务 1 使用 Next.js `16.2.7`，要求 Node.js `>=20.9.0`；服务器已能启动并通过 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`。
 - 当前开发机可启动前端 `http://127.0.0.1:3000`，但项目约定的正式开发、启动、测试和验收仍应以服务器为准。
 - 当前服务器 `8000` 端口被占用；Agent 服务默认端口仍为 `8000`，验收时临时使用 `8001`。后续如需长期使用 `8001`，应同步调整 `.env.example`、README 和服务端口约定。
 - 服务器已安装 Docker，后续可用以下命令启动基础依赖:
@@ -178,7 +186,7 @@ docker compose -f infra/docker-compose.yml up -d postgres redis
 ### Day 04 - Next.js 前端初始化 - 进行中
 
 - 完成时间: 2026-06-08
-- 已完成任务: 任务 1 创建 Next.js 项目。
-- 完成摘要: `frontend/` 已初始化 Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 工程，补充 ESLint、Prettier、`typecheck`、格式化脚本、基础首页和前端 README 服务器启动说明。
-- 验收摘要: 本机 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过；本机浏览器打开 `http://127.0.0.1:3000` 验证页面可访问且控制台无 error。
-- 遗留事项: 服务器 SSH 免密连接不可用，服务器 `/home/AI-Developer-Learning-Planner` 侧安装依赖、启动和验收尚未执行；后续任务 2 继续建立基础 UI 结构。
+- 已完成任务: 任务 1 创建 Next.js 项目；任务 2 建立基础 UI 结构。
+- 完成摘要: `frontend/` 已初始化 Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 工程，补充 ESLint、Prettier、`typecheck`、格式化脚本、应用顶部导航、基础工作台首页和前端 README 服务器启动说明。
+- 验收摘要: 任务 1 服务器 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`；任务 2 本机 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过；本机浏览器打开 `http://127.0.0.1:3000` 验证首页入口可访问且控制台无 error。
+- 遗留事项: 任务 2 服务器侧需在同步最新代码后重新执行前端构建与页面访问验收；后续任务 3 创建 `/goals/new` 目标输入页面骨架。

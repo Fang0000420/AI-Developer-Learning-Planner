@@ -21,8 +21,3 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans-app);
 }
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
