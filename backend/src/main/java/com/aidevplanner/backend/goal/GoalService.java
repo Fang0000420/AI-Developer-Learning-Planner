@@ -1,0 +1,119 @@
+package com.aidevplanner.backend.goal;
+
+import com.aidevplanner.backend.common.ResourceNotFoundException;
+import com.aidevplanner.backend.user.User;
+import com.aidevplanner.backend.user.UserRepository;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Service
+public class GoalService {
+
+    private static final String DEFAULT_USERNAME = "demo-user";
+    private static final String DEFAULT_EMAIL = "demo@example.com";
+    private static final String DEFAULT_PASSWORD_HASH = "not-used";
+
+    private final GoalRepository goalRepository;
+    private final UserRepository userRepository;
+
+    public GoalService(GoalRepository goalRepository, UserRepository userRepository) {
+        this.goalRepository = goalRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Transactional
+    public GoalResponse createGoal(GoalCreateRequest request) {
+        User user = resolveUser(request.userId());
+        updateDailyAvailableHours(user, request.dailyAvailableHours());
+
+        Goal goal = new Goal(user, normalizeRequired(request.title()), request.durationDays());
+        goal.setDescription(normalizeOptional(request.description()));
+
+        return GoalResponse.from(goalRepository.save(goal));
+    }
+
+    @Transactional(readOnly = true)
+    public List<GoalResponse> listGoals(Long userId, GoalStatus status) {
+        List<Goal> goals;
+        if (userId != null && status != null) {
+            goals = goalRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status);
+        } else if (userId != null) {
+            goals = goalRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        } else if (status != null) {
+            goals = goalRepository.findByStatusOrderByCreatedAtDesc(status);
+        } else {
+            goals = goalRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+        }
+
+        return goals.stream()
+                .map(GoalResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public GoalResponse getGoal(Long goalId) {
+        return GoalResponse.from(findGoal(goalId));
+    }
+
+    @Transactional
+    public GoalResponse updateGoal(Long goalId, GoalUpdateRequest request) {
+        Goal goal = findGoal(goalId);
+        goal.setTitle(normalizeRequired(request.title()));
+        goal.setDescription(normalizeOptional(request.description()));
+        goal.setDurationDays(request.durationDays());
+        if (request.status() != null) {
+            goal.setStatus(request.status());
+        }
+        updateDailyAvailableHours(goal.getUser(), request.dailyAvailableHours());
+
+        return GoalResponse.from(goal);
+    }
+
+    @Transactional
+    public void deleteGoal(Long goalId) {
+        if (!goalRepository.existsById(goalId)) {
+            throw new ResourceNotFoundException("Goal", goalId);
+        }
+        goalRepository.deleteById(goalId);
+    }
+
+    private Goal findGoal(Long goalId) {
+        return goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+    }
+
+    private User resolveUser(Long userId) {
+        if (userId != null) {
+            return userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        }
+
+        return userRepository.findByUsername(DEFAULT_USERNAME)
+                .orElseGet(() -> userRepository.save(new User(
+                        DEFAULT_USERNAME,
+                        DEFAULT_EMAIL,
+                        DEFAULT_PASSWORD_HASH
+                )));
+    }
+
+    private void updateDailyAvailableHours(User user, BigDecimal dailyAvailableHours) {
+        if (dailyAvailableHours != null) {
+            user.setDailyAvailableHours(dailyAvailableHours);
+        }
+    }
+
+    private String normalizeRequired(String value) {
+        return value.trim();
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+}
