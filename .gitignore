@@ -26,6 +26,7 @@ backend/build/
 agent-service/.venv/
 agent-service/__pycache__/
 agent-service/.pytest_cache/
+agent-service/.ruff_cache/
 
 # Infrastructure runtime data
 infra/.data/
