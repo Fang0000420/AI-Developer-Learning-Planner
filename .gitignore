@@ -25,6 +25,9 @@ backend/build/
 # Python agent service
 agent-service/.venv/
 agent-service/__pycache__/
+agent-service/**/__pycache__/
+agent-service/*.egg-info/
+agent-service/**/*.py[cod]
 agent-service/.pytest_cache/
 agent-service/.ruff_cache/
 
