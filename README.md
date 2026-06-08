@@ -56,7 +56,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 本地启动
 
-当前仓库处于 Day 02 后端初始化阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置、`/api/health` 接口，以及 `users`、`goals` 首批业务表 migration。
+当前仓库处于 Day 03 FastAPI Agent 服务初始化阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置、`/api/health` 接口，以及 `users`、`goals` 首批业务表 migration。`agent-service/` 已具备 FastAPI 基础骨架和 `/health` 接口。
 
 计划中的本地启动方式：
 
@@ -76,7 +76,11 @@ curl http://localhost:8080/api/health
 
 # 5. 启动 Python Agent 服务
 cd agent-service
-uvicorn app.main:app --reload --port 8000
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 验证 Agent 服务健康检查
+curl http://localhost:8000/health
 
 # 6. 启动前端
 cd frontend

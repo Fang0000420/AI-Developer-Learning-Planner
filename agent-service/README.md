@@ -34,3 +34,17 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 pytest
 ruff check .
 ```
+
+## Server startup
+
+```bash
+cd /home/AI-Developer-Learning-Planner/agent-service
+source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Verify the health check:
+
+```bash
+curl http://localhost:8000/health
+```

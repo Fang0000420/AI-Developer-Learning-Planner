@@ -1,9 +1,7 @@
 from fastapi import FastAPI
 
 from app.api import api_router
-
-APP_NAME = "ai-developer-learning-planner-agent-service"
-APP_VERSION = "0.1.0"
+from app.config import APP_NAME, APP_VERSION
 
 
 def create_app() -> FastAPI:
