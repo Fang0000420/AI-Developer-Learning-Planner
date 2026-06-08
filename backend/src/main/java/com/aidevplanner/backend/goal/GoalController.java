@@ -1,7 +1,9 @@
 package com.aidevplanner.backend.goal;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/goals")
+@Validated
 public class GoalController {
 
     private final GoalService goalService;
@@ -35,27 +38,39 @@ public class GoalController {
 
     @GetMapping
     public List<GoalResponse> listGoals(
-            @RequestParam(required = false) Long userId,
+            @Positive(message = "User id must be positive.")
+            @RequestParam(required = false)
+            Long userId,
             @RequestParam(required = false) GoalStatus status
     ) {
         return goalService.listGoals(userId, status);
     }
 
     @GetMapping("/{goalId}")
-    public GoalResponse getGoal(@PathVariable Long goalId) {
+    public GoalResponse getGoal(
+            @Positive(message = "Goal id must be positive.")
+            @PathVariable
+            Long goalId
+    ) {
         return goalService.getGoal(goalId);
     }
 
     @PutMapping("/{goalId}")
     public GoalResponse updateGoal(
-            @PathVariable Long goalId,
+            @Positive(message = "Goal id must be positive.")
+            @PathVariable
+            Long goalId,
             @Valid @RequestBody GoalUpdateRequest request
     ) {
         return goalService.updateGoal(goalId, request);
     }
 
     @DeleteMapping("/{goalId}")
-    public ResponseEntity<Void> deleteGoal(@PathVariable Long goalId) {
+    public ResponseEntity<Void> deleteGoal(
+            @Positive(message = "Goal id must be positive.")
+            @PathVariable
+            Long goalId
+    ) {
         goalService.deleteGoal(goalId);
         return ResponseEntity.noContent().build();
     }

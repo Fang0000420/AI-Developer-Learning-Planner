@@ -1,12 +1,17 @@
 package com.aidevplanner.backend.common;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.LinkedHashMap;
@@ -30,14 +35,59 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    @ExceptionHandler({
-            HttpMessageNotReadableException.class,
-            MethodArgumentTypeMismatchException.class
-    })
-    ResponseEntity<ApiErrorResponse> handleBadRequest(Exception exception) {
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    ResponseEntity<ApiErrorResponse> handleHandlerMethodValidationError(
+            HandlerMethodValidationException exception
+    ) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        for (ParameterValidationResult result : exception.getParameterValidationResults()) {
+            String parameterName = result.getMethodParameter().getParameterName();
+            for (MessageSourceResolvable error : result.getResolvableErrors()) {
+                errors.putIfAbsent(parameterName, error.getDefaultMessage());
+            }
+        }
+
         ApiErrorResponse response = ApiErrorResponse.of(
                 "BAD_REQUEST",
-                "Request contains invalid values."
+                "Request validation failed.",
+                errors
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException exception) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        for (ConstraintViolation<?> violation : exception.getConstraintViolations()) {
+            String fieldName = extractLastPathSegment(violation.getPropertyPath().toString());
+            errors.putIfAbsent(fieldName, violation.getMessage());
+        }
+
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "BAD_REQUEST",
+                "Request validation failed.",
+                errors
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        String fieldName = exception.getName();
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "BAD_REQUEST",
+                "Request contains invalid values.",
+                Map.of(fieldName, "Invalid value for " + fieldName + ".")
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException exception) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "BAD_REQUEST",
+                "Request contains invalid values.",
+                Map.of("request", "Request body is malformed or contains invalid values.")
         );
         return ResponseEntity.badRequest().body(response);
     }
@@ -46,5 +96,13 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException exception) {
         ApiErrorResponse response = ApiErrorResponse.of("NOT_FOUND", exception.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    private String extractLastPathSegment(String propertyPath) {
+        int separatorIndex = propertyPath.lastIndexOf('.');
+        if (separatorIndex < 0 || separatorIndex == propertyPath.length() - 1) {
+            return propertyPath;
+        }
+        return propertyPath.substring(separatorIndex + 1);
     }
 }

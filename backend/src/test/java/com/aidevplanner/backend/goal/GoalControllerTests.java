@@ -132,8 +132,75 @@ class GoalControllerTests {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.errors.title").value("Title is required."))
-                .andExpect(jsonPath("$.errors.durationDays").value("Duration days must be at least 1."))
+                .andExpect(jsonPath("$.errors.durationDays").value("Duration days must be 14 or 21."))
                 .andExpect(jsonPath("$.errors.dailyAvailableHours").value("Daily available hours cannot exceed 12."));
+
+        verifyNoInteractions(goalService);
+    }
+
+    @Test
+    void rejectsUnsupportedDurationDays() throws Exception {
+        mockMvc.perform(post("/api/goals")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Build an AI Agent project",
+                                  "description": "Practice production AI Agent workflows.",
+                                  "durationDays": 30,
+                                  "dailyAvailableHours": 2.0
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errors.durationDays").value("Duration days must be 14 or 21."));
+
+        verifyNoInteractions(goalService);
+    }
+
+    @Test
+    void rejectsMissingDailyAvailableHours() throws Exception {
+        mockMvc.perform(post("/api/goals")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Build an AI Agent project",
+                                  "description": "Practice production AI Agent workflows.",
+                                  "durationDays": 21
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errors.dailyAvailableHours").value("Daily available hours is required."));
+
+        verifyNoInteractions(goalService);
+    }
+
+    @Test
+    void rejectsNegativeGoalId() throws Exception {
+        mockMvc.perform(get("/api/goals/{goalId}", -1L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errors.goalId").value("Goal id must be positive."));
+
+        verifyNoInteractions(goalService);
+    }
+
+    @Test
+    void rejectsNegativeUserIdFilter() throws Exception {
+        mockMvc.perform(get("/api/goals").param("userId", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errors.userId").value("User id must be positive."));
+
+        verifyNoInteractions(goalService);
+    }
+
+    @Test
+    void rejectsInvalidStatusValue() throws Exception {
+        mockMvc.perform(get("/api/goals").param("status", "UNKNOWN"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errors.status").value("Invalid value for status."));
 
         verifyNoInteractions(goalService);
     }

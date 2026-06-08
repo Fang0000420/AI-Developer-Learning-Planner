@@ -117,7 +117,7 @@ class GoalServiceTests {
                 "Build an AI Agent project",
                 null,
                 14,
-                null
+                new BigDecimal("2.0")
         ));
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
