@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ai-developer-learning-planner-agent-service"
 version = "0.1.0"
 description = "FastAPI agent service for AI Developer Learning Planner."
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi==0.136.3",
     "pydantic==2.13.4",
@@ -29,7 +29,7 @@ pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
