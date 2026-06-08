@@ -5,11 +5,11 @@
 ## 当前阶段
 
 - 当前日期: 2026-06-08
-- 当前进度: Day 04 进行中，任务 1 服务器验收完成，任务 2 本机完成
+- 当前进度: Day 04 进行中，任务 1、2 服务器验收完成，任务 3 本机完成
 - 当前主题: Next.js 前端初始化
-- 下一阶段: Day 04 任务 3 - 创建目标输入页面骨架
+- 下一阶段: Day 04 任务 4 - 调用后端 health API
 
-Day 04 任务 1 已完成 `frontend/` Next.js 工程初始化，并已在服务器 `http://localhost:3000` 通过 `curl -I` 验收，返回 `HTTP/1.1 200 OK`。任务 2 已完成基础工作台 UI，本机已验证 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 通过，并已用浏览器打开 `http://127.0.0.1:3000` 验证首页导航、工作台入口和控制台 error 状态。
+Day 04 任务 1 已完成 `frontend/` Next.js 工程初始化，并已在服务器 `http://localhost:3000` 通过 `curl -I` 验收，返回 `HTTP/1.1 200 OK`。任务 2 基础工作台 UI 已可从服务器公网 `http://47.99.120.38:3000` 访问。任务 3 已完成 `/goals/new` 目标输入页面骨架，本机已验证表单展示、Zod 校验和有效草稿提交。
 
 ## 运行环境约定
 
@@ -130,7 +130,14 @@ MVP 优先跑通以下闭环:
 - 已新增 `lucide-react` 用于导航与入口图标。
 - 本机验证通过: `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`。
 - 本机浏览器验证通过: 首页可读取 `Dashboard`、`New Goal`、`View Plan`、`Today Tasks`、`MVP Progress`，控制台 error 数为 `0`。
-- 任务 2 服务器验证待执行: 需在服务器拉取/同步最新代码后重新执行前端构建与页面访问验收。
+- 任务 2 服务器验证通过: 用户已从浏览器访问服务器公网 `http://47.99.120.38:3000` 并看到工作台页面。
+- 任务 3 创建目标输入页面骨架已完成。
+- 已新增 `/goals/new` 页面，包含技术背景、学习目标、求职目标、每日可用时间和计划周期字段。
+- 已新增 `react-hook-form`、`zod`、`@hookform/resolvers`，实现前端校验骨架。
+- 目标表单当前只做前端草稿校验，不提交业务数据、不调用后端。
+- 本机验证通过: `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`。
+- 本机浏览器验证通过: `/goals/new` 不再返回 404；空提交显示校验错误；有效数据提交后显示 `Draft passed frontend validation.`；控制台 error 数为 `0`。
+- 任务 3 服务器验证待执行: 需在服务器拉取/同步最新代码后重新执行 `npm ci`、构建和 `/goals/new` 页面访问验收。
 
 ## 当前注意事项
 
@@ -186,7 +193,7 @@ docker compose -f infra/docker-compose.yml up -d postgres redis
 ### Day 04 - Next.js 前端初始化 - 进行中
 
 - 完成时间: 2026-06-08
-- 已完成任务: 任务 1 创建 Next.js 项目；任务 2 建立基础 UI 结构。
-- 完成摘要: `frontend/` 已初始化 Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 工程，补充 ESLint、Prettier、`typecheck`、格式化脚本、应用顶部导航、基础工作台首页和前端 README 服务器启动说明。
-- 验收摘要: 任务 1 服务器 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`；任务 2 本机 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过；本机浏览器打开 `http://127.0.0.1:3000` 验证首页入口可访问且控制台无 error。
-- 遗留事项: 任务 2 服务器侧需在同步最新代码后重新执行前端构建与页面访问验收；后续任务 3 创建 `/goals/new` 目标输入页面骨架。
+- 已完成任务: 任务 1 创建 Next.js 项目；任务 2 建立基础 UI 结构；任务 3 创建目标输入页面骨架。
+- 完成摘要: `frontend/` 已初始化 Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 工程，补充 ESLint、Prettier、`typecheck`、格式化脚本、应用顶部导航、基础工作台首页、`/goals/new` 目标输入页和前端 README 服务器启动说明。
+- 验收摘要: 任务 1 服务器 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`；任务 2 用户已从服务器公网 `http://47.99.120.38:3000` 访问工作台页面；任务 3 本机 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过，本机浏览器验证 `/goals/new` 表单展示、校验和草稿提交正常。
+- 遗留事项: 任务 3 服务器侧需在同步最新代码后重新执行 `npm ci`、构建与 `/goals/new` 页面访问验收；后续任务 4 调用后端 health API。

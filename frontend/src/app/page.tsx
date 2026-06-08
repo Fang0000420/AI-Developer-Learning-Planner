@@ -14,8 +14,8 @@ import {
 const statusCards = [
   {
     label: "Active goal",
-    value: "Not created",
-    detail: "Goal form is planned for Day 04 task 3.",
+    value: "Draft ready",
+    detail: "Goal intake page is ready for frontend validation.",
     icon: Target,
   },
   {
@@ -196,15 +196,15 @@ export default function Home() {
           <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
             <h2 className="text-base font-semibold">Next Step</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Day 04 task 3 will add the goal input page and validation
-              skeleton.
+              Day 04 task 4 will connect the frontend workspace to the backend
+              health API.
             </p>
             <Link
               className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-200"
               href="/goals/new"
             >
               <Plus aria-hidden="true" className="size-4" />
-              Prepare Goal Form
+              Open Goal Form
             </Link>
           </section>
         </aside>
