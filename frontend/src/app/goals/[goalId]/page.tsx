@@ -7,13 +7,14 @@ import {
   Plus,
   Target,
 } from "lucide-react";
-import { fetchBackendGoal } from "@/lib/backend-goals";
+import { fetchBackendGoal, fetchBackendGoalProfile } from "@/lib/backend-goals";
 import {
   formatDailyHours,
   formatGoalDate,
   getGoalStatusClasses,
   getGoalStatusLabel,
 } from "@/lib/goals";
+import { ProfileAnalysisPanel } from "./profile-analysis-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,9 @@ type GoalDetailPageProps = {
 export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
   const { goalId } = await params;
   const { data: goal, error } = await fetchBackendGoal(goalId);
+  const { data: profile, error: profileError } = goal
+    ? await fetchBackendGoalProfile(goalId)
+    : { data: null, error: null };
 
   if (error || !goal) {
     return (
@@ -143,6 +147,12 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
               {goal.description || "No description recorded."}
             </p>
           </section>
+
+          <ProfileAnalysisPanel
+            goalId={goal.id}
+            initialError={profileError?.message ?? null}
+            initialProfile={profile}
+          />
         </div>
 
         <aside className="flex flex-col gap-6">

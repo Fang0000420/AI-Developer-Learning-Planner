@@ -23,3 +23,6 @@ spring:
 
 server:
   port: ${BACKEND_PORT:8080}
+
+agent-service:
+  base-url: ${AGENT_SERVICE_BASE_URL:http://localhost:8000}

@@ -1,5 +1,5 @@
 import { getBackendBaseUrl } from "./backend-url";
-import type { ApiErrorResponse, Goal } from "./goals";
+import type { ApiErrorResponse, Goal, SkillProfile } from "./goals";
 
 type BackendResult<T> =
   | {
@@ -94,6 +94,50 @@ export async function fetchBackendGoal(
       error instanceof Error
         ? error.message
         : "Backend goal detail request failed.";
+
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendGoalProfile(
+  goalId: string,
+): Promise<BackendResult<SkillProfile | null>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/goals/${goalId}/profile`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    if (response.status === 204) {
+      return {
+        data: null,
+        error: null,
+      };
+    }
+
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(payload, "Backend profile request failed."),
+      };
+    }
+
+    return {
+      data: payload as SkillProfile,
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Backend profile request failed.";
 
     return {
       data: null,

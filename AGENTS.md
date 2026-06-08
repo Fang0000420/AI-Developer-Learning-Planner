@@ -5,11 +5,12 @@
 ## 当前阶段
 
 - 当前日期: 2026-06-08
-- 当前进度: Day 04 已完成
-- 当前主题: Next.js 前端初始化
-- 下一阶段: Day 05 - 目标管理模块
+- 当前进度: Day 06 已完成
+- 当前主题: Profile Analyzer
+- 下一阶段: Day 07 - Goal Decomposer
+- Day 06 模型决策: 能力画像优先使用 DeepSeek，目标模型暂定 `deepseek-v4-pro`；未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；服务器暂不部署 Clash 或其他代理方案。
 
-Day 04 已完成 Next.js 前端初始化、基础工作台 UI、`/goals/new` 目标输入页面骨架和前后端 health 联调。服务器已验证前端公网页面可访问，`/goals/new` 可打开，首页 `Backend Status` 显示 `Online`，服务名为 `ai-developer-learning-planner-backend`，后端地址为 `http://localhost:8080`。
+Day 06 已完成 Profile Analyzer 闭环：Agent 服务新增结构化 prompt、DeepSeek/OpenAI-compatible 调用路径和 mock fallback；后端新增 `skill_profiles`、`agent_runs` 持久化、Agent 调用客户端和目标画像分析接口；前端目标详情页新增能力画像区域，可生成并展示 `currentSkills`、`strengths`、`weaknesses`、`recommendedDirection`。前端通过 Next.js 同源 API Route `/api/goals/[goalId]/profile` 和 `/api/goals/[goalId]/profile/analyze` 请求后端，避免公网浏览器直接请求自身 `localhost:8080`。
 
 ## 运行环境约定
 
@@ -146,6 +147,49 @@ MVP 优先跑通以下闭环:
 - 本机 API 验证通过: 后端未启动时 `GET /api/backend-health` 返回 `{"online":false,"status":"DOWN"}`，页面显示 `Offline` 且控制台 error 数为 `0`。
 - 任务 4 服务器验证通过: 用户已从服务器公网首页看到 `Backend Status` 显示 `Online`，服务名为 `ai-developer-learning-planner-backend`，后端地址为 `http://localhost:8080`。
 
+## Day 05 已完成内容
+
+- 任务 1 实现后端 goals CRUD 已完成。
+- 后端已新增 `GoalCreateRequest`、`GoalUpdateRequest`、`GoalResponse` DTO。
+- 后端已新增 `GoalService` 和 `GoalController`，暴露 `POST /api/goals`、`GET /api/goals`、`GET /api/goals/{goalId}`、`PUT /api/goals/{goalId}`、`DELETE /api/goals/{goalId}`。
+- MVP 当前未接入登录；创建目标时 `userId` 可选，未传时自动使用或创建 `demo-user`，便于前端联调。
+- 任务 2 补充校验和错误响应已完成。
+- 后端已新增统一错误响应 `ApiErrorResponse`、`GlobalExceptionHandler` 和 `ResourceNotFoundException`。
+- `durationDays` 当前只允许 `14` 或 `21`；`dailyAvailableHours` 创建/更新时必填，范围为 `0.5` 到 `12.0`，最多 1 位小数。
+- `goalId`、`userId` 参数已增加正数校验；非法 body、非法 enum、非法 path/query 参数返回统一 400；不存在目标返回统一 404。
+- 任务 3 实现前端目标页面已完成。
+- `/goals/new` 表单现在会提交到后端目标 API，成功后跳转到 `/goals/[goalId]`。
+- 已新增 `/goals` 目标列表页和 `/goals/[goalId]` 目标详情页。
+- 已新增 Next.js 同源 API Route `/api/goals` 和 `/api/goals/[goalId]`，由前端服务器请求 Spring Boot 后端，避免公网浏览器直接访问自身 `localhost:8080`。
+- 首页和顶部导航已新增目标管理入口 `Goals` / `Goal Library`。
+- 任务 4 前后端联调代码路径已完成。
+- 本机自动化验证通过: 后端 `mvn test` 结果 `Tests run: 21, Failures: 0, Errors: 0, Skipped: 0`；前端 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过。
+- 本机浏览器验证使用临时 8080 stub 完成: `/goals/new` 可创建 21 天、每天 2 小时目标，创建后跳转详情页；`/goals` 可查询目标列表；`/goals/[goalId]` 可展示目标详情；浏览器 console error 数为 `0`。临时 stub 已关闭。
+- 正式验收仍应在服务器 `/home/AI-Developer-Learning-Planner` 中使用真实 Spring Boot 后端和服务器 PostgreSQL 执行。
+
+## Day 06 已完成内容
+
+- 任务 1 完成 Profile Analyzer prompt 和 schema 已完成。
+- Agent 服务已新增 `PROFILE_ANALYZER_PROMPT`，要求只输出 JSON，字段固定为 `currentSkills`、`strengths`、`weaknesses`、`recommendedDirection`。
+- `ProfileAnalyzeRequest` / `ProfileAnalyzeResponse` 继续由 Pydantic 校验，接口仍为 `POST /agent/profile/analyze`。
+- 任务 2 实现 Agent 服务真实分析逻辑已完成。
+- Agent 服务已接入 DeepSeek/OpenAI-compatible `/chat/completions` 调用路径，配置项包括 `DEEPSEEK_API_KEY`、`DEEPSEEK_API_BASE_URL`、`PROFILE_ANALYZER_MODEL`、`PROFILE_ANALYZER_TIMEOUT_SECONDS`。
+- 未配置 `DEEPSEEK_API_KEY` 时保留服务端 mock fallback，保证服务器开发和无密钥验收可继续。
+- 模型响应会提取 JSON object 并用 Pydantic 校验；模型调用失败或结构非法时返回 502。
+- 任务 3 后端集成并持久化结果已完成。
+- 已新增 Flyway migration `V2__create_skill_profiles_and_agent_runs.sql`，创建 `skill_profiles` 和 `agent_runs` 表，并添加目标、用户、agentName、status 相关索引。
+- 已新增 `SkillProfile`、`SkillProfileRepository`、`AgentRun`、`AgentRunRepository`、`AgentRunStatus`、`ProfileAnalysisService`、`ProfileAnalyzerClient` 和 `HttpProfileAnalyzerClient`。
+- 后端新增 `GET /api/goals/{goalId}/profile` 读取最新能力画像；新增 `POST /api/goals/{goalId}/profile/analyze` 调用 Agent 服务、保存 `skill_profiles`，并记录一次 `agent_runs`。
+- Agent 调用成功会保存 `agent_runs.status=SUCCESS`、`inputJson`、`outputJson`、`latencyMs`；调用失败会保存 `agent_runs.status=FAILED`、`inputJson`、`errorMessage`、`latencyMs` 并返回统一 502。
+- `GoalCreateRequest` 已新增 `technicalBackground`，前端创建目标时会把技术背景写入 `users.background`，画像分析优先使用该字段。
+- 任务 4 前端展示能力画像已完成。
+- 目标详情页 `/goals/[goalId]` 已新增 `Skill Profile` 区域，支持未生成、生成中、成功、失败状态。
+- 前端已新增 Next.js 同源 API Route `/api/goals/[goalId]/profile` 和 `/api/goals/[goalId]/profile/analyze`，由前端服务器请求 Spring Boot 后端。
+- 能力画像区域展示 `currentSkills`、`strengths`、`weaknesses`、`recommendedDirection`，支持重新生成。
+- 本机自动化验证通过: 后端使用 Java 17 执行 `mvn test` 通过，`Tests run: 28, Failures: 0, Errors: 0, Skipped: 0`；前端 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过；Agent 服务本机执行 `python -m compileall app` 通过。
+- 本机 Agent `pytest` 未执行通过，原因是开发机 Python 3.13 环境未安装 FastAPI 依赖且未配置项目虚拟环境；服务器仍应按项目约定在 `/home/AI-Developer-Learning-Planner/agent-service` 使用 Python 3.10 环境执行 `pytest` 和 `ruff check .`。
+- 正式验收仍应在服务器 `/home/AI-Developer-Learning-Planner` 中使用真实 Spring Boot 后端、Agent 服务和服务器 PostgreSQL 执行。
+
 ## 当前注意事项
 
 - `Plan/` 和 `PROJECT_PLAN.md` 是本地计划材料，已被 `.gitignore` 排除，不要上传。
@@ -157,8 +201,14 @@ MVP 优先跑通以下闭环:
 - Day 04 任务 1 使用 Next.js `16.2.7`，要求 Node.js `>=20.9.0`；服务器已能启动并通过 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`。
 - 服务器公网访问 `next dev` 时，浏览器控制台可能出现 `/_next/webpack-hmr` WebSocket 连接失败。这是开发模式热更新通道问题，不代表页面业务错误；公网验收建议使用 `npm run build && npm run start:server`。
 - 前端后端 health 联调通过 Next.js 同源路由 `/api/backend-health` 完成；服务器前端进程读取 `NEXT_PUBLIC_BACKEND_API_BASE_URL`，默认后端地址为 `http://localhost:8080`。
+- 前端目标管理联调通过 Next.js 同源路由 `/api/goals` 和 `/api/goals/[goalId]` 完成；服务器前端进程仍读取 `NEXT_PUBLIC_BACKEND_API_BASE_URL`，默认后端地址为 `http://localhost:8080`。
+- 前端能力画像联调通过 Next.js 同源路由 `/api/goals/[goalId]/profile` 和 `/api/goals/[goalId]/profile/analyze` 完成；服务器前端进程仍读取 `NEXT_PUBLIC_BACKEND_API_BASE_URL`，默认后端地址为 `http://localhost:8080`。
+- 后端调用 Agent 服务读取 `AGENT_SERVICE_BASE_URL`，默认 `http://localhost:8000`；若服务器继续临时使用 `8001` 验收 Agent 服务，启动后端时需要同步设置 `AGENT_SERVICE_BASE_URL=http://localhost:8001`。
+- Day 05 服务器真实联调建议先启动 Spring Boot 后端并确认 `GET /api/health`、`POST /api/goals`、`GET /api/goals`、`GET /api/goals/{goalId}` 正常，再启动前端生产服务访问公网 `http://47.99.120.38:3000/goals/new`。
+- Day 06 服务器真实联调建议在启动 Agent 服务后确认 `POST /agent/profile/analyze` 正常，再启动 Spring Boot 后端并确认 `POST /api/goals/{goalId}/profile/analyze` 会写入 `skill_profiles` 和 `agent_runs`；最后访问公网目标详情页生成并查看能力画像。
 - 当前开发机可启动前端 `http://127.0.0.1:3000`，但项目约定的正式开发、启动、测试和验收仍应以服务器为准。
 - 当前服务器 `8000` 端口被占用；Agent 服务默认端口仍为 `8000`，验收时临时使用 `8001`。后续如需长期使用 `8001`，应同步调整 `.env.example`、README 和服务端口约定。
+- 大模型调用策略: 后续不在服务器上部署 Clash/代理绕行 OpenAI；Day 06 起优先接入 DeepSeek，模型暂定 `deepseek-v4-pro`。`agent-service` 已保留 mock fallback；`.env.example` 已新增 `DEEPSEEK_API_KEY`、`DEEPSEEK_API_BASE_URL`、`PROFILE_ANALYZER_MODEL`、`PROFILE_ANALYZER_TIMEOUT_SECONDS`。未配置 `DEEPSEEK_API_KEY` 时不会请求外部模型。
 - 服务器已安装 Docker，后续可用以下命令启动基础依赖:
 
 ```bash
@@ -206,3 +256,21 @@ docker compose -f infra/docker-compose.yml up -d postgres redis
 - 完成摘要: `frontend/` 已初始化 Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 工程，补充 ESLint、Prettier、`typecheck`、格式化脚本、应用顶部导航、基础工作台首页、`/goals/new` 目标输入页、`/api/backend-health` 后端 health 代理和前端 README 服务器启动说明。
 - 验收摘要: 任务 1 服务器 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`；任务 2 用户已从服务器公网 `http://47.99.120.38:3000` 访问工作台页面；任务 3 用户已从服务器公网访问 `http://47.99.120.38:3000/goals/new` 并看到目标输入页面；任务 4 用户已在首页看到 `Backend Status` 显示 `Online`，服务名为 `ai-developer-learning-planner-backend`；本机 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过。
 - 遗留事项: 公网验收建议使用 `npm run build && npm run start:server`，避免 `next dev` 的 `/_next/webpack-hmr` WebSocket 开发态报错；Day 05 进入目标管理模块。
+
+### Day 05 - 目标管理模块 - 已完成
+
+- 完成时间: 2026-06-08
+- 已完成任务: 任务 1 实现后端 goals CRUD；任务 2 补充校验和错误响应；任务 3 实现前端目标页面；任务 4 做前后端联调。
+- 完成摘要: 后端已实现 goals CRUD API、DTO、Service、Controller、统一 400/404 错误响应和基础测试；前端已实现 `/goals/new` 提交到后端、`/goals` 目标列表、`/goals/[goalId]` 目标详情，以及 `/api/goals`、`/api/goals/[goalId]` 同源代理。
+- 验收摘要: 本机后端 `mvn test` 通过，`Tests run: 21, Failures: 0, Errors: 0, Skipped: 0`；本机前端 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过；本机浏览器用临时 8080 stub 验证创建 21 天、每天 2 小时目标、跳转详情页、刷新列表查询目标均通过，console error 数为 `0`。
+- 服务器验收建议: 在服务器 `/home/AI-Developer-Learning-Planner` 启动真实后端和前端生产服务后，访问公网 `http://47.99.120.38:3000/goals/new` 创建测试目标，再确认 `/goals` 和 `/goals/{goalId}` 能读取数据库真实数据。
+- 遗留事项: MVP 当前未接入登录，创建目标未传 `userId` 时使用 `demo-user`；Day 06 进入 Profile Analyzer，把目标详情页与能力画像分析流程衔接起来。
+
+### Day 06 - Profile Analyzer - 已完成
+
+- 完成时间: 2026-06-08
+- 已完成任务: 任务 1 完成 Profile Analyzer prompt 和 schema；任务 2 实现 Agent 服务真实分析逻辑；任务 3 后端集成并持久化结果；任务 4 前端展示能力画像。
+- 完成摘要: Agent 服务已新增 JSON-only prompt、DeepSeek/OpenAI-compatible 调用路径、Pydantic 输出校验和 mock fallback；后端已新增 `skill_profiles`、`agent_runs` migration、JPA Entity/Repository、Agent client、画像分析 Service/Controller 和统一 502 错误响应；前端已在目标详情页新增能力画像生成与展示面板，并通过同源 API Route 代理到后端。
+- 验收摘要: 本机后端使用 Java 17 执行 `mvn test` 通过，`Tests run: 28, Failures: 0, Errors: 0, Skipped: 0`；本机前端 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过；本机 Agent 服务 `python -m compileall app` 通过。
+- 服务器验收建议: 在服务器 `/home/AI-Developer-Learning-Planner` 启动 Agent 服务、Spring Boot 后端和前端生产服务后，创建目标并在 `/goals/{goalId}` 点击生成能力画像；确认页面展示画像，数据库 `skill_profiles` 有结构化结果，`agent_runs` 有本次 `Profile Analyzer` 调用记录。
+- 遗留事项: 本机未运行 Agent `pytest`/`ruff`，原因是当前 Python 3.13 环境未安装 FastAPI/ruff 依赖；正式验收仍以服务器 Python 3.10 环境为准。若服务器 Agent 继续使用 `8001`，后端启动时需设置 `AGENT_SERVICE_BASE_URL=http://localhost:8001`。

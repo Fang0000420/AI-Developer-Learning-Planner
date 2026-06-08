@@ -29,6 +29,7 @@ public class GoalService {
     public GoalResponse createGoal(GoalCreateRequest request) {
         User user = resolveUser(request.userId());
         updateDailyAvailableHours(user, request.dailyAvailableHours());
+        updateBackground(user, request.technicalBackground());
 
         Goal goal = new Goal(user, normalizeRequired(request.title()), request.durationDays());
         goal.setDescription(normalizeOptional(request.description()));
@@ -103,6 +104,13 @@ public class GoalService {
     private void updateDailyAvailableHours(User user, BigDecimal dailyAvailableHours) {
         if (dailyAvailableHours != null) {
             user.setDailyAvailableHours(dailyAvailableHours);
+        }
+    }
+
+    private void updateBackground(User user, String background) {
+        String normalizedBackground = normalizeOptional(background);
+        if (normalizedBackground != null) {
+            user.setBackground(normalizedBackground);
         }
     }
 

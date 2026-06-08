@@ -46,6 +46,7 @@ class GoalServiceTests {
 
         GoalResponse response = goalService.createGoal(new GoalCreateRequest(
                 null,
+                "Backend developer with Java and PostgreSQL experience.",
                 "  Build an AI Agent project  ",
                 "  Practice production workflows.  ",
                 21,
@@ -58,6 +59,7 @@ class GoalServiceTests {
         assertThat(response.description()).isEqualTo("Practice production workflows.");
         assertThat(response.dailyAvailableHours()).isEqualByComparingTo("2.0");
         assertThat(user.getDailyAvailableHours()).isEqualByComparingTo("2.0");
+        assertThat(user.getBackground()).isEqualTo("Backend developer with Java and PostgreSQL experience.");
     }
 
     @Test
@@ -113,6 +115,7 @@ class GoalServiceTests {
         when(goalRepository.save(any(Goal.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         goalService.createGoal(new GoalCreateRequest(
+                null,
                 null,
                 "Build an AI Agent project",
                 null,

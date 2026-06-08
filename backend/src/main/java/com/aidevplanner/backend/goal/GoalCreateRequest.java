@@ -15,6 +15,9 @@ public record GoalCreateRequest(
         @Positive(message = "User id must be positive.")
         Long userId,
 
+        @Size(max = 3000, message = "Technical background cannot exceed 3000 characters.")
+        String technicalBackground,
+
         @NotBlank(message = "Title is required.")
         @Size(max = 255, message = "Title cannot exceed 255 characters.")
         String title,

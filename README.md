@@ -27,7 +27,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | 前端              | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, React Hook Form, Zod, TanStack Query                                                   |
 | Java 后端         | Spring Boot, Spring Web, Spring Security, Spring Data JPA, Hibernate, Flyway, Springdoc OpenAPI, MapStruct, Lombok, JUnit 5, Testcontainers |
-| Python Agent 服务 | FastAPI, Pydantic, LangGraph, OpenAI Agents SDK, LangChain, Celery, SQLAlchemy, Pytest, Ruff                                                |
+| Python Agent 服务 | FastAPI, Pydantic, DeepSeek/OpenAI-compatible API, Pytest, Ruff                                                                                 |
 | 数据库            | PostgreSQL                                                                                                                                  |
 | 缓存与异步队列    | Redis                                                                                                                                       |
 | 基础设施          | Docker Compose, GitHub Actions                                                                                                              |
@@ -56,7 +56,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 本地启动
 
-当前仓库处于 Day 03 FastAPI Agent 服务初始化阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置、`/api/health` 接口，以及 `users`、`goals` 首批业务表 migration。`agent-service/` 已具备 FastAPI 基础骨架和 `/health` 接口。
+当前仓库处于 Day 06 Profile Analyzer 阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置、`/api/health`、goals CRUD、能力画像分析接口，以及 `users`、`goals`、`skill_profiles`、`agent_runs` migration。`agent-service/` 已具备 FastAPI 基础骨架、`/health` 和 `/agent/profile/analyze` 接口，未配置 `DEEPSEEK_API_KEY` 时使用 mock fallback。
 
 计划中的本地启动方式：
 

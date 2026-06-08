@@ -52,11 +52,9 @@ function FieldError({ message }: { message?: string }) {
 function composeGoalPayload(values: GoalFormValues): GoalCreatePayload {
   return {
     dailyAvailableHours: values.dailyAvailableHours,
-    description: [
-      `Technical background: ${values.technicalBackground.trim()}`,
-      `Job target: ${values.jobTarget.trim()}`,
-    ].join("\n\n"),
+    description: [`Job target: ${values.jobTarget.trim()}`].join("\n\n"),
     durationDays: Number(values.planCycleDays),
+    technicalBackground: values.technicalBackground.trim(),
     title: values.learningGoal.trim(),
   };
 }

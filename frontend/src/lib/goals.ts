@@ -12,6 +12,18 @@ export type Goal = {
   updatedAt: string | null;
 };
 
+export type SkillProfile = {
+  id: number;
+  userId: number;
+  goalId: number;
+  currentSkills: string[];
+  strengths: string[];
+  weaknesses: string[];
+  recommendedDirection: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type ApiErrorResponse = {
   status?: string;
   message?: string;
@@ -20,6 +32,7 @@ export type ApiErrorResponse = {
 };
 
 export type GoalCreatePayload = {
+  technicalBackground: string;
   title: string;
   description: string;
   durationDays: number;

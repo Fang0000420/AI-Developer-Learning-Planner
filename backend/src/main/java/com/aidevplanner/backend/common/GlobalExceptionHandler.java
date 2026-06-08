@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.common;
 
+import com.aidevplanner.backend.agent.AgentServiceException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.context.MessageSourceResolvable;
@@ -96,6 +97,16 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException exception) {
         ApiErrorResponse response = ApiErrorResponse.of("NOT_FOUND", exception.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(AgentServiceException.class)
+    ResponseEntity<ApiErrorResponse> handleAgentServiceError(AgentServiceException exception) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "BAD_GATEWAY",
+                exception.getMessage(),
+                Map.of("agentService", exception.getMessage())
+        );
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
     }
 
     private String extractLastPathSegment(String propertyPath) {

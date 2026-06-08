@@ -25,6 +25,10 @@
 | `BACKEND_BASE_URL` | 后端服务地址 |
 | `AGENT_SERVICE_PORT` | Agent 服务本地端口 |
 | `AGENT_SERVICE_BASE_URL` | 后端调用 Agent 服务的地址 |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key；未配置时 Agent 服务使用 mock fallback |
+| `DEEPSEEK_API_BASE_URL` | DeepSeek/OpenAI-compatible API Base URL |
+| `PROFILE_ANALYZER_MODEL` | Profile Analyzer 使用的模型名，当前暂定 `deepseek-v4-pro` |
+| `PROFILE_ANALYZER_TIMEOUT_SECONDS` | Profile Analyzer 模型请求超时时间 |
 | `POSTGRES_HOST` | PostgreSQL 主机 |
 | `POSTGRES_PORT` | PostgreSQL 端口 |
 | `POSTGRES_DB` | PostgreSQL 数据库名 |
@@ -37,7 +41,7 @@
 | `REDIS_HOST` | Redis 主机 |
 | `REDIS_PORT` | Redis 端口 |
 | `REDIS_URL` | Redis 连接串 |
-| `OPENAI_API_KEY` | OpenAI API Key 占位变量 |
+| `OPENAI_API_KEY` | OpenAI API Key 占位变量，当前 Profile Analyzer 不依赖该变量 |
 
 ## 服务边界
 
@@ -58,7 +62,7 @@ flowchart LR
     B -->|"Read / Write"| DB["PostgreSQL<br/>:5432"]
     B -->|"Cache / Queue"| R["Redis<br/>:6379"]
     B -->|"Agent request"| A["Agent Service<br/>FastAPI :8000"]
-    A -->|"Model call"| O["OpenAI API"]
+    A -->|"Model call or mock fallback"| O["DeepSeek API"]
     A -->|"Task state / queue"| R
     A -->|"Structured result"| B
     B -->|"Plan / review result"| F
@@ -68,9 +72,9 @@ flowchart LR
 ## 主要业务链路
 
 1. 用户在前端填写背景、技能、目标、每日可用时间和计划周期。
-2. 前端调用后端创建目标和计划生成请求。
+2. 前端调用后端创建目标，并通过同源 API Route 触发目标画像分析。
 3. 后端保存请求记录，并调用 Agent Service 执行能力画像、目标拆解、技能差距分析和计划生成。
-4. Agent Service 返回结构化结果，后端持久化到 PostgreSQL。
+4. Agent Service 返回结构化结果，后端持久化到 PostgreSQL；Day 06 已落地 `skill_profiles` 和 `agent_runs`。
 5. 前端从后端读取学习计划和每日任务。
 6. 用户每天提交完成情况，后端记录进度。
 7. 后端调用 Agent Service 复盘进度，并根据结果调整后续任务。
