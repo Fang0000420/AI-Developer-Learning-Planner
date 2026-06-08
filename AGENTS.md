@@ -4,12 +4,12 @@
 
 ## 当前阶段
 
-- 当前日期: 2026-06-07
-- 当前进度: Day 02 已完成
-- 当前主题: Spring Boot 后端初始化
-- 下一阶段: Day 03 - FastAPI Agent 服务初始化
+- 当前日期: 2026-06-08
+- 当前进度: Day 04 进行中，任务 1 已完成
+- 当前主题: Next.js 前端初始化
+- 下一阶段: Day 04 任务 2 - 建立基础 UI 结构
 
-Day 01 的目标是把项目从想法落成可持续开发的 monorepo 结构，明确服务边界、端口、启动方式和第一版文档。目前基础骨架已经完成，并已上传到 GitHub；服务器也已经拉取代码并完成 Docker Compose 配置解析验证。
+Day 04 任务 1 已完成 `frontend/` Next.js 工程初始化，包含 Next.js 16、React 19、TypeScript、Tailwind CSS 4、ESLint、Prettier、基础首页和前端 README 启动说明。本机已验证 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 通过，并已用浏览器打开 `http://127.0.0.1:3000` 验证页面可访问。服务器 SSH 免密连接当前不可用，服务器 `/home/AI-Developer-Learning-Planner` 验收待有登录权限后执行。
 
 ## 运行环境约定
 
@@ -38,6 +38,8 @@ MVP 优先跑通以下闭环:
 ├── README.md
 ├── .env.example
 ├── frontend/
+│   ├── package.json
+│   └── src/
 ├── backend/
 │   ├── pom.xml
 │   └── src/
@@ -96,6 +98,32 @@ MVP 优先跑通以下闭环:
 - 服务器 `GET /api/health` 返回 `{"status":"UP","service":"ai-developer-learning-planner-backend"}`。
 - 服务器数据库检查确认 `flyway_schema_history`、`goals`、`users` 三张表存在。
 
+## Day 03 已完成内容
+
+- `agent-service/` 已初始化为 Python + FastAPI 工程，包含 `app/main.py`、`app/api/`、`app/schemas/`、`app/services/`、`tests/` 和 `pyproject.toml`。
+- Agent 服务依赖已固定版本: FastAPI `0.136.3`、Pydantic `2.13.4`、Uvicorn `0.49.0`、HTTPX `0.28.1`、Pytest `9.0.3`、Ruff `0.15.16`。
+- `pyproject.toml` 已声明 Python `>=3.10`，匹配服务器 Python `3.10.12`；Ruff target 为 `py310`。
+- 已实现 `GET /health`，返回服务名、状态和版本号。
+- 已定义 `ProfileAnalyzeRequest` 和 `ProfileAnalyzeResponse`，并实现 `POST /agent/profile/analyze` 固定结构化假数据接口。
+- 已新增基础测试 `tests/test_health.py` 和 `tests/test_profile.py`。
+- 本地验证 `pytest` 结果 `2 passed, 1 warning`，`ruff check .` 通过；warning 来自 FastAPI/Starlette TestClient 上游 deprecation。
+- 服务器使用 `8001` 临时端口验证通过:
+  - `curl http://localhost:8001/health` 返回 `{"service":"ai-developer-learning-planner-agent-service","status":"UP","version":"0.1.0"}`。
+  - `POST /agent/profile/analyze` 返回 `currentSkills`、`strengths`、`weaknesses`、`recommendedDirection` 四个字段。
+
+## Day 04 进行中内容
+
+- 任务 1 创建 Next.js 项目已完成。
+- `frontend/` 已初始化为 Next.js + React + TypeScript 工程，使用 App Router 和 `src/` 目录结构。
+- 前端依赖版本: Next.js `16.2.7`、React `19.2.4`、React DOM `19.2.4`、Tailwind CSS `4.3.0`、ESLint `9`、Prettier `3.8.3`。
+- Next.js `16.2.7` 要求 Node.js `>=20.9.0`；后续服务器验收前需确认服务器 Node 版本。
+- 已配置 Tailwind CSS 4、PostCSS、ESLint flat config、TypeScript strict、Prettier、`format` 与 `format:check` 脚本。
+- 已移除脚手架默认营销页面和 Google 字体构建期依赖，创建项目化基础首页。
+- `frontend/README.md` 已补充服务器启动说明和前端脚本说明。
+- 本机验证通过: `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`。
+- 本机浏览器验证通过: `http://127.0.0.1:3000` 页面标题为 `AI Developer Learning Planner`，无浏览器控制台 error。
+- 服务器验证未执行: 当前 SSH 配置中的 `aliyun`、`gpu` 免密登录失败，`ff-virtual-machine`、`orange` 连接超时。
+
 ## 当前注意事项
 
 - `Plan/` 和 `PROJECT_PLAN.md` 是本地计划材料，已被 `.gitignore` 排除，不要上传。
@@ -103,6 +131,10 @@ MVP 优先跑通以下闭环:
 - 所有任务默认在服务器 `/home/AI-Developer-Learning-Planner` 中执行。
 - 当前服务器使用本机 PostgreSQL 14，监听 `localhost:5432`，已创建数据库 `ai_planner` 和用户 `ai_planner`。
 - 当前服务器 Docker Hub 直连解析异常；如需 Docker 拉取 PostgreSQL，可临时使用 `docker.m.daocloud.io/library/postgres:16`，但注意本机 PostgreSQL 已占用宿主机 `5432`。
+- 当前服务器 Python 为 `3.10.12`，Agent 服务已按 Python `>=3.10` 配置。
+- Day 04 任务 1 使用 Next.js `16.2.7`，要求 Node.js `>=20.9.0`；服务器前端验收前需先确认或安装合适 Node 版本。
+- 当前开发机可启动前端 `http://127.0.0.1:3000`，但项目约定的正式开发、启动、测试和验收仍应以服务器为准。
+- 当前服务器 `8000` 端口被占用；Agent 服务默认端口仍为 `8000`，验收时临时使用 `8001`。后续如需长期使用 `8001`，应同步调整 `.env.example`、README 和服务端口约定。
 - 服务器已安装 Docker，后续可用以下命令启动基础依赖:
 
 ```bash
@@ -126,20 +158,27 @@ docker compose -f infra/docker-compose.yml up -d postgres redis
 ### Day 01 - 项目初始化 - 已完成
 
 - 完成时间: 2026-06-07
-- 基础验收: monorepo 结构、README、Docker Compose、`.env.example`、架构文档均已创建。
-- GitHub 验收: 项目已上传，`Plan/` 和 `PROJECT_PLAN.md` 未上传。
-- 服务器验收: 代码已拉取，`git status` 干净，Docker Compose 配置解析通过。
-- 遗留事项: 进入 Day 02，初始化 Spring Boot 后端服务。
+- 完成摘要: 建立 monorepo 结构、README、`.env.example`、`infra/docker-compose.yml`、`docs/architecture.md` 和 GitHub 仓库。
+- 验收摘要: 服务器已拉取代码，Docker Compose 配置解析通过；`Plan/` 和 `PROJECT_PLAN.md` 已被 `.gitignore` 排除。
 
 ### Day 02 - Spring Boot 后端初始化 - 已完成
 
 - 完成时间: 2026-06-07
-- 已完成任务: 任务 1 创建 Spring Boot 项目；任务 2 配置服务器开发环境；任务 3 创建首批数据库表；任务 4 后端冒烟验证。
-- 代码验收: `backend/` 已具备 Maven 项目结构、`pom.xml`、Spring Boot 启动类、`application.yml` 和测试骨架。
-- 服务器验收: 用户在服务器执行 `mvn test` 通过，结果 `Tests run: 1, Failures: 0, Errors: 0`，`BUILD SUCCESS`。
-- 任务 2 完成内容: 已配置 PostgreSQL datasource、JPA、Flyway、服务端口 `8080`，并新增 `GET /api/health`。
-- 任务 2 服务器验收: 后端成功启动，`curl http://localhost:8080/api/health` 返回 `UP`。
-- 任务 3 完成内容: 已创建 `users`、`goals` Flyway migration、JPA Entity、Repository 和实体单元测试。
-- 任务 3 服务器验收: `flyway_schema_history` 记录 version `1`，description `create users and goals`，success `t`；`flyway_schema_history`、`goals`、`users` 三张表均存在。
-- 任务 4 服务器验收: 后端 health 接口可访问，数据库表检查通过。
-- 遗留事项: Docker Hub 直连在服务器上存在 DNS/网络异常；当前后端验证改用服务器本机 PostgreSQL 14 完成。进入 Day 03，初始化 FastAPI Agent 服务。
+- 完成摘要: `backend/` 已初始化 Maven + Spring Boot 3.4.2 + Java 17 工程，完成 PostgreSQL/JPA/Flyway 配置、`GET /api/health`、`users`/`goals` migration、JPA Entity/Repository 和基础测试。
+- 验收摘要: 服务器 `mvn test` 通过；后端 health 接口返回 `UP`；数据库确认 `flyway_schema_history`、`goals`、`users` 存在。
+- 遗留事项: Docker Hub 直连存在 DNS/网络异常；Day 02 验证使用服务器本机 PostgreSQL 14 完成。
+
+### Day 03 - FastAPI Agent 服务初始化 - 已完成
+
+- 完成时间: 2026-06-08
+- 完成摘要: `agent-service/` 已初始化 FastAPI 工程，完成依赖固定、`GET /health`、`POST /agent/profile/analyze` 假数据接口、Pydantic schema、service 分层和基础 pytest/ruff 配置。
+- 验收摘要: 服务器使用 `8001` 临时端口验证 `/health` 和 `/agent/profile/analyze` 均通过；服务器测试通过，`pytest` 和 `ruff check .` 均可执行。
+- 遗留事项: 默认 Agent 端口仍为 `8000`，但服务器当前 `8000` 被占用；后续 Day 04 前端对接时需确认实际 Agent 服务端口。
+
+### Day 04 - Next.js 前端初始化 - 进行中
+
+- 完成时间: 2026-06-08
+- 已完成任务: 任务 1 创建 Next.js 项目。
+- 完成摘要: `frontend/` 已初始化 Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 工程，补充 ESLint、Prettier、`typecheck`、格式化脚本、基础首页和前端 README 服务器启动说明。
+- 验收摘要: 本机 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过；本机浏览器打开 `http://127.0.0.1:3000` 验证页面可访问且控制台无 error。
+- 遗留事项: 服务器 SSH 免密连接不可用，服务器 `/home/AI-Developer-Learning-Planner` 侧安装依赖、启动和验收尚未执行；后续任务 2 继续建立基础 UI 结构。
