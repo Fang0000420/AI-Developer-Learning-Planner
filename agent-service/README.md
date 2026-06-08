@@ -48,3 +48,11 @@ Verify the health check:
 ```bash
 curl http://localhost:8000/health
 ```
+
+Verify the profile analyzer stub:
+
+```bash
+curl -X POST http://localhost:8000/agent/profile/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"background":"Backend developer","goal":"Build AI agent apps","dailyAvailableHours":2}'
+```
