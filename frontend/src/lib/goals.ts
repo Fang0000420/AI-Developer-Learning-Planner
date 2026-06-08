@@ -24,6 +24,19 @@ export type SkillProfile = {
   updatedAt: string | null;
 };
 
+export type SubGoal = {
+  title: string;
+  description: string;
+  priority: "high" | "medium" | "low";
+};
+
+export type GoalDecomposition = {
+  runId: number;
+  goalId: number;
+  subGoals: SubGoal[];
+  createdAt: string | null;
+};
+
 export type ApiErrorResponse = {
   status?: string;
   message?: string;
@@ -81,4 +94,14 @@ export function formatDailyHours(value: number | null) {
   }
 
   return `${value} hours`;
+}
+
+export function getPriorityClasses(priority: SubGoal["priority"]) {
+  const classes: Record<SubGoal["priority"], string> = {
+    high: "bg-rose-50 text-rose-700 ring-rose-200",
+    low: "bg-slate-100 text-slate-600 ring-slate-200",
+    medium: "bg-amber-50 text-amber-700 ring-amber-200",
+  };
+
+  return classes[priority];
 }

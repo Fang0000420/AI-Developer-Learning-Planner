@@ -7,13 +7,18 @@ import {
   Plus,
   Target,
 } from "lucide-react";
-import { fetchBackendGoal, fetchBackendGoalProfile } from "@/lib/backend-goals";
+import {
+  fetchBackendGoal,
+  fetchBackendGoalDecomposition,
+  fetchBackendGoalProfile,
+} from "@/lib/backend-goals";
 import {
   formatDailyHours,
   formatGoalDate,
   getGoalStatusClasses,
   getGoalStatusLabel,
 } from "@/lib/goals";
+import { GoalDecompositionPanel } from "./goal-decomposition-panel";
 import { ProfileAnalysisPanel } from "./profile-analysis-panel";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +34,9 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
   const { data: goal, error } = await fetchBackendGoal(goalId);
   const { data: profile, error: profileError } = goal
     ? await fetchBackendGoalProfile(goalId)
+    : { data: null, error: null };
+  const { data: decomposition, error: decompositionError } = goal
+    ? await fetchBackendGoalDecomposition(goalId)
     : { data: null, error: null };
 
   if (error || !goal) {
@@ -152,6 +160,12 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
             goalId={goal.id}
             initialError={profileError?.message ?? null}
             initialProfile={profile}
+          />
+
+          <GoalDecompositionPanel
+            goalId={goal.id}
+            initialDecomposition={decomposition}
+            initialError={decompositionError?.message ?? null}
           />
         </div>
 

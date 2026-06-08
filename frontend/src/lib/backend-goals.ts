@@ -1,5 +1,10 @@
 import { getBackendBaseUrl } from "./backend-url";
-import type { ApiErrorResponse, Goal, SkillProfile } from "./goals";
+import type {
+  ApiErrorResponse,
+  Goal,
+  GoalDecomposition,
+  SkillProfile,
+} from "./goals";
 
 type BackendResult<T> =
   | {
@@ -138,6 +143,50 @@ export async function fetchBackendGoalProfile(
       error instanceof Error
         ? error.message
         : "Backend profile request failed.";
+
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendGoalDecomposition(
+  goalId: string,
+): Promise<BackendResult<GoalDecomposition | null>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/goals/${goalId}/decomposition`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    if (response.status === 204) {
+      return {
+        data: null,
+        error: null,
+      };
+    }
+
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(payload, "Backend decomposition request failed."),
+      };
+    }
+
+    return {
+      data: payload as GoalDecomposition,
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Backend decomposition request failed.";
 
     return {
       data: null,
