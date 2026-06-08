@@ -56,7 +56,16 @@ Frontend API variables are defined from the repository root `.env.example`.
 
 ```bash
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_BACKEND_API_BASE_URL=http://localhost:8080
 ```
 
-Day 04 task 1 only initializes the frontend project skeleton. Backend health
-integration is planned for a later Day 04 task.
+The dashboard calls `/api/backend-health`, a same-origin Next.js API route that
+checks the Spring Boot backend at `GET /api/health`. This keeps public browser
+traffic on the frontend origin while the Next.js server talks to the backend.
+
+Before backend health verification on the server, make sure the Spring Boot app
+is running and this command returns `UP`:
+
+```bash
+curl http://localhost:8080/api/health
+```

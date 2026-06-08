@@ -5,11 +5,11 @@
 ## 当前阶段
 
 - 当前日期: 2026-06-08
-- 当前进度: Day 04 进行中，任务 1、2 服务器验收完成，任务 3 本机完成
+- 当前进度: Day 04 进行中，任务 1、2 服务器验收完成，任务 3、4 本机完成
 - 当前主题: Next.js 前端初始化
-- 下一阶段: Day 04 任务 4 - 调用后端 health API
+- 下一阶段: Day 04 收尾 - 服务器完整验收
 
-Day 04 任务 1 已完成 `frontend/` Next.js 工程初始化，并已在服务器 `http://localhost:3000` 通过 `curl -I` 验收，返回 `HTTP/1.1 200 OK`。任务 2 基础工作台 UI 已可从服务器公网 `http://47.99.120.38:3000` 访问。任务 3 已完成 `/goals/new` 目标输入页面骨架，本机已验证表单展示、Zod 校验和有效草稿提交。
+Day 04 任务 1 已完成 `frontend/` Next.js 工程初始化，并已在服务器 `http://localhost:3000` 通过 `curl -I` 验收，返回 `HTTP/1.1 200 OK`。任务 2 基础工作台 UI 已可从服务器公网 `http://47.99.120.38:3000` 访问。任务 3 已完成 `/goals/new` 目标输入页面骨架，本机已验证表单展示、Zod 校验和有效草稿提交。任务 4 已完成前端后端 health 联调骨架，首页通过同源 `/api/backend-health` 代理访问 Spring Boot `GET /api/health`。
 
 ## 运行环境约定
 
@@ -138,6 +138,13 @@ MVP 优先跑通以下闭环:
 - 本机验证通过: `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`。
 - 本机浏览器验证通过: `/goals/new` 不再返回 404；空提交显示校验错误；有效数据提交后显示 `Draft passed frontend validation.`；控制台 error 数为 `0`。
 - 任务 3 服务器验证待执行: 需在服务器拉取/同步最新代码后重新执行 `npm ci`、构建和 `/goals/new` 页面访问验收。
+- 任务 4 调用后端 health API 已完成。
+- `.env.example` 已新增 `NEXT_PUBLIC_BACKEND_API_BASE_URL=http://localhost:8080`，保留原 `NEXT_PUBLIC_API_BASE_URL` 兼容旧约定。
+- 已新增 Next.js API Route `GET /api/backend-health`，由前端服务器请求 Spring Boot `GET /api/health`，避免公网浏览器直接请求自身 `localhost:8080` 和 CORS 问题。
+- 首页已新增 `Backend Status` 卡片，展示后端在线/离线、后端地址、服务名、最近检查时间，并支持手动刷新。
+- 本机验证通过: `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`。
+- 本机 API 验证通过: 后端未启动时 `GET /api/backend-health` 返回 `{"online":false,"status":"DOWN"}`，页面显示 `Offline` 且控制台 error 数为 `0`。
+- 任务 4 服务器验证待执行: 服务器需先确认后端 `curl http://localhost:8080/api/health` 返回 `UP`，再启动前端并访问首页确认 `Backend Status` 显示 `Online`。
 
 ## 当前注意事项
 
@@ -149,6 +156,7 @@ MVP 优先跑通以下闭环:
 - 当前服务器 Python 为 `3.10.12`，Agent 服务已按 Python `>=3.10` 配置。
 - Day 04 任务 1 使用 Next.js `16.2.7`，要求 Node.js `>=20.9.0`；服务器已能启动并通过 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`。
 - 服务器公网访问 `next dev` 时，浏览器控制台可能出现 `/_next/webpack-hmr` WebSocket 连接失败。这是开发模式热更新通道问题，不代表页面业务错误；公网验收建议使用 `npm run build && npm run start:server`。
+- 前端后端 health 联调通过 Next.js 同源路由 `/api/backend-health` 完成；服务器前端进程读取 `NEXT_PUBLIC_BACKEND_API_BASE_URL`，默认后端地址为 `http://localhost:8080`。
 - 当前开发机可启动前端 `http://127.0.0.1:3000`，但项目约定的正式开发、启动、测试和验收仍应以服务器为准。
 - 当前服务器 `8000` 端口被占用；Agent 服务默认端口仍为 `8000`，验收时临时使用 `8001`。后续如需长期使用 `8001`，应同步调整 `.env.example`、README 和服务端口约定。
 - 服务器已安装 Docker，后续可用以下命令启动基础依赖:
@@ -194,7 +202,7 @@ docker compose -f infra/docker-compose.yml up -d postgres redis
 ### Day 04 - Next.js 前端初始化 - 进行中
 
 - 完成时间: 2026-06-08
-- 已完成任务: 任务 1 创建 Next.js 项目；任务 2 建立基础 UI 结构；任务 3 创建目标输入页面骨架。
-- 完成摘要: `frontend/` 已初始化 Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 工程，补充 ESLint、Prettier、`typecheck`、格式化脚本、应用顶部导航、基础工作台首页、`/goals/new` 目标输入页和前端 README 服务器启动说明。
-- 验收摘要: 任务 1 服务器 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`；任务 2 用户已从服务器公网 `http://47.99.120.38:3000` 访问工作台页面；任务 3 本机 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过，本机浏览器验证 `/goals/new` 表单展示、校验和草稿提交正常。
-- 遗留事项: 任务 3 服务器侧需在同步最新代码后重新执行 `npm ci`、构建与 `/goals/new` 页面访问验收；后续任务 4 调用后端 health API。
+- 已完成任务: 任务 1 创建 Next.js 项目；任务 2 建立基础 UI 结构；任务 3 创建目标输入页面骨架；任务 4 调用后端 health API。
+- 完成摘要: `frontend/` 已初始化 Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 工程，补充 ESLint、Prettier、`typecheck`、格式化脚本、应用顶部导航、基础工作台首页、`/goals/new` 目标输入页、`/api/backend-health` 后端 health 代理和前端 README 服务器启动说明。
+- 验收摘要: 任务 1 服务器 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`；任务 2 用户已从服务器公网 `http://47.99.120.38:3000` 访问工作台页面；任务 3 本机验证 `/goals/new` 表单展示、校验和草稿提交正常；任务 4 本机验证后端未启动时 `/api/backend-health` 返回 `DOWN`，首页显示 `Offline` 且控制台无 error；本机 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过。
+- 遗留事项: Day 04 任务 3、4 服务器侧需在同步最新代码后重新执行 `npm ci`、构建、`/goals/new` 页面访问和后端 health 在线状态验收。

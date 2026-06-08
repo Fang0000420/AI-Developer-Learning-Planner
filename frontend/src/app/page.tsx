@@ -10,6 +10,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import { BackendHealthCard } from "./backend-health-card";
 
 const statusCards = [
   {
@@ -166,6 +167,8 @@ export default function Home() {
         </div>
 
         <aside className="flex flex-col gap-6">
+          <BackendHealthCard />
+
           <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-slate-950">
@@ -196,8 +199,8 @@ export default function Home() {
           <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
             <h2 className="text-base font-semibold">Next Step</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Day 04 task 4 will connect the frontend workspace to the backend
-              health API.
+              Backend health is now available from the workspace status panel.
+              Day 05 will continue with goal management.
             </p>
             <Link
               className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-200"
