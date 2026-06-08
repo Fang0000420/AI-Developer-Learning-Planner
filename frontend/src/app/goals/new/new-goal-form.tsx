@@ -3,22 +3,27 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarDays, Clock3, RotateCcw, Save, Target } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import type { ApiErrorResponse, Goal, GoalCreatePayload } from "@/lib/goals";
 
 const goalFormSchema = z.object({
   technicalBackground: z
     .string()
     .trim()
-    .min(10, "Describe your background in at least 10 characters."),
+    .min(10, "Describe your background in at least 10 characters.")
+    .max(3000, "Technical background cannot exceed 3000 characters."),
   learningGoal: z
     .string()
     .trim()
-    .min(10, "Describe your learning goal in at least 10 characters."),
+    .min(10, "Describe your learning goal in at least 10 characters.")
+    .max(255, "Learning goal cannot exceed 255 characters."),
   jobTarget: z
     .string()
     .trim()
-    .min(2, "Enter a target role or career direction."),
+    .min(2, "Enter a target role or career direction.")
+    .max(120, "Job target cannot exceed 120 characters."),
   dailyAvailableHours: z
     .number()
     .min(0.5, "Daily time must be at least 0.5 hours.")
@@ -29,11 +34,11 @@ const goalFormSchema = z.object({
 type GoalFormValues = z.infer<typeof goalFormSchema>;
 
 const defaultValues: GoalFormValues = {
-  technicalBackground: "",
-  learningGoal: "",
-  jobTarget: "",
   dailyAvailableHours: 2,
+  jobTarget: "",
+  learningGoal: "",
   planCycleDays: "14",
+  technicalBackground: "",
 };
 
 function FieldError({ message }: { message?: string }) {
@@ -44,17 +49,39 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-2 text-sm font-medium text-rose-600">{message}</p>;
 }
 
+function composeGoalPayload(values: GoalFormValues): GoalCreatePayload {
+  return {
+    dailyAvailableHours: values.dailyAvailableHours,
+    description: [
+      `Technical background: ${values.technicalBackground.trim()}`,
+      `Job target: ${values.jobTarget.trim()}`,
+    ].join("\n\n"),
+    durationDays: Number(values.planCycleDays),
+    title: values.learningGoal.trim(),
+  };
+}
+
+function getErrorMessage(error: ApiErrorResponse) {
+  if (error.errors) {
+    const firstFieldError = Object.values(error.errors)[0];
+    if (firstFieldError) {
+      return firstFieldError;
+    }
+  }
+
+  return error.message || "Goal creation failed.";
+}
+
 export function NewGoalForm() {
-  const [submittedDraft, setSubmittedDraft] = useState<GoalFormValues | null>(
-    null,
-  );
+  const router = useRouter();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
+    control,
     formState: { errors, isSubmitting },
     handleSubmit,
     register,
     reset,
-    control,
   } = useForm<GoalFormValues>({
     defaultValues,
     resolver: zodResolver(goalFormSchema),
@@ -64,29 +91,48 @@ export function NewGoalForm() {
 
   const summaryItems = [
     {
+      icon: Clock3,
       label: "Daily time",
       value: `${watchedValues.dailyAvailableHours || 0} hours`,
-      icon: Clock3,
     },
     {
+      icon: CalendarDays,
       label: "Plan cycle",
       value: `${watchedValues.planCycleDays || defaultValues.planCycleDays} days`,
-      icon: CalendarDays,
     },
     {
+      icon: Target,
       label: "Target",
       value: watchedValues.jobTarget || "Not set",
-      icon: Target,
     },
   ];
 
   function handleReset() {
-    setSubmittedDraft(null);
+    setSubmitError(null);
     reset(defaultValues);
   }
 
-  function onSubmit(values: GoalFormValues) {
-    setSubmittedDraft(values);
+  async function onSubmit(values: GoalFormValues) {
+    setSubmitError(null);
+
+    const response = await fetch("/api/goals", {
+      body: JSON.stringify(composeGoalPayload(values)),
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+
+    const payload = (await response.json()) as Goal | ApiErrorResponse;
+
+    if (!response.ok) {
+      setSubmitError(getErrorMessage(payload as ApiErrorResponse));
+      return;
+    }
+
+    const goal = payload as Goal;
+    router.push(`/goals/${goal.id}`);
+    router.refresh();
   }
 
   return (
@@ -201,7 +247,7 @@ export function NewGoalForm() {
             type="submit"
           >
             <Save aria-hidden="true" className="size-4" />
-            Save Draft
+            {isSubmitting ? "Creating..." : "Create Goal"}
           </button>
         </div>
       </form>
@@ -235,20 +281,18 @@ export function NewGoalForm() {
         </section>
 
         <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
-          <h2 className="text-base font-semibold">Draft Status</h2>
-          {submittedDraft ? (
+          <h2 className="text-base font-semibold">Create Status</h2>
+          {submitError ? (
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
-              <p className="font-medium text-emerald-300">
-                Draft passed frontend validation.
+              <p className="font-medium text-rose-300">
+                Unable to create goal.
               </p>
-              <p>
-                {submittedDraft.jobTarget} · {submittedDraft.planCycleDays} days
-                · {submittedDraft.dailyAvailableHours} hours/day
-              </p>
+              <p>{submitError}</p>
             </div>
           ) : (
             <p className="mt-4 text-sm leading-6 text-slate-300">
-              No validated draft yet.
+              Valid submissions are saved to the backend and opened from the
+              goal detail page.
             </p>
           )}
         </section>

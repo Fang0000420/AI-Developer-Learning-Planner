@@ -31,7 +31,7 @@ export default function NewGoalPage() {
           <div className="rounded-md border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Status</p>
             <p className="mt-1 text-sm font-semibold text-slate-950">
-              Frontend draft only
+              Saves to backend
             </p>
           </div>
         </div>

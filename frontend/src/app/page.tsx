@@ -15,8 +15,8 @@ import { BackendHealthCard } from "./backend-health-card";
 const statusCards = [
   {
     label: "Active goal",
-    value: "Draft ready",
-    detail: "Goal intake page is ready for frontend validation.",
+    value: "Backend saved",
+    detail: "Goal creation now persists through the Spring Boot API.",
     icon: Target,
   },
   {
@@ -40,6 +40,12 @@ const quickActions = [
       "Capture background, target role, time budget, and plan cycle.",
     href: "/goals/new",
     icon: Plus,
+  },
+  {
+    title: "Goal Library",
+    description: "Browse saved goals and open backend-backed goal details.",
+    href: "/goals",
+    icon: Target,
   },
   {
     title: "View Plan",
@@ -72,7 +78,7 @@ export default function Home() {
               <div className="max-w-3xl">
                 <p className="inline-flex h-8 items-center gap-2 rounded-md bg-emerald-50 px-3 text-sm font-medium text-emerald-700">
                   <Sparkles aria-hidden="true" className="size-4" />
-                  Day 04 workspace
+                  Day 05 workspace
                 </p>
                 <h1 className="mt-4 text-3xl font-semibold text-slate-950">
                   Build an adaptive AI learning plan
@@ -134,7 +140,7 @@ export default function Home() {
               <span className="text-sm text-slate-500">MVP flow</span>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {quickActions.map((action) => {
                 const Icon = action.icon;
 
@@ -200,7 +206,7 @@ export default function Home() {
             <h2 className="text-base font-semibold">Next Step</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
               Backend health is now available from the workspace status panel.
-              Day 05 will continue with goal management.
+              Day 05 now continues from saved goals into planning views.
             </p>
             <Link
               className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-200"

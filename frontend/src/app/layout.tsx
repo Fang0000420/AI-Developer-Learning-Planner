@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck, LayoutDashboard, ListChecks, Plus } from "lucide-react";
+import {
+  CalendarCheck,
+  LayoutDashboard,
+  ListChecks,
+  Plus,
+  Target,
+} from "lucide-react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,6 +21,7 @@ export default function RootLayout({
 }>) {
   const navigationItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/goals", label: "Goals", icon: Target },
     { href: "/goals/new", label: "New Goal", icon: Plus },
     { href: "/plans", label: "Plans", icon: ListChecks },
     { href: "/tasks/today", label: "Today", icon: CalendarCheck },

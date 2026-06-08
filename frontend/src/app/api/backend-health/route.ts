@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getBackendBaseUrl } from "@/lib/backend-url";
 
 export const dynamic = "force-dynamic";
 
@@ -6,15 +7,6 @@ type BackendHealthResponse = {
   service?: string;
   status?: string;
 };
-
-function getBackendBaseUrl() {
-  return (
-    process.env.NEXT_PUBLIC_BACKEND_API_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    process.env.BACKEND_BASE_URL ||
-    "http://localhost:8080"
-  ).replace(/\/$/, "");
-}
 
 export async function GET() {
   const backendBaseUrl = getBackendBaseUrl();

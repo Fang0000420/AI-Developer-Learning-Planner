@@ -1,0 +1,71 @@
+export type GoalStatus = "ACTIVE" | "COMPLETED" | "PAUSED" | "CANCELLED";
+
+export type Goal = {
+  id: number;
+  userId: number;
+  title: string;
+  description: string | null;
+  durationDays: number;
+  status: GoalStatus;
+  dailyAvailableHours: number | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type ApiErrorResponse = {
+  status?: string;
+  message?: string;
+  errors?: Record<string, string>;
+  timestamp?: string;
+};
+
+export type GoalCreatePayload = {
+  title: string;
+  description: string;
+  durationDays: number;
+  dailyAvailableHours: number;
+};
+
+export function getGoalStatusLabel(status: GoalStatus) {
+  const labels: Record<GoalStatus, string> = {
+    ACTIVE: "Active",
+    CANCELLED: "Cancelled",
+    COMPLETED: "Completed",
+    PAUSED: "Paused",
+  };
+
+  return labels[status];
+}
+
+export function getGoalStatusClasses(status: GoalStatus) {
+  const classes: Record<GoalStatus, string> = {
+    ACTIVE: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    CANCELLED: "bg-rose-50 text-rose-700 ring-rose-200",
+    COMPLETED: "bg-sky-50 text-sky-700 ring-sky-200",
+    PAUSED: "bg-amber-50 text-amber-700 ring-amber-200",
+  };
+
+  return classes[status];
+}
+
+export function formatGoalDate(value: string | null) {
+  if (!value) {
+    return "Not recorded";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+export function formatDailyHours(value: number | null) {
+  if (value === null) {
+    return "Not set";
+  }
+
+  return `${value} hours`;
+}
