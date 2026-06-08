@@ -148,6 +148,7 @@ MVP 优先跑通以下闭环:
 - 当前服务器 Docker Hub 直连解析异常；如需 Docker 拉取 PostgreSQL，可临时使用 `docker.m.daocloud.io/library/postgres:16`，但注意本机 PostgreSQL 已占用宿主机 `5432`。
 - 当前服务器 Python 为 `3.10.12`，Agent 服务已按 Python `>=3.10` 配置。
 - Day 04 任务 1 使用 Next.js `16.2.7`，要求 Node.js `>=20.9.0`；服务器已能启动并通过 `curl -I http://localhost:3000` 返回 `HTTP/1.1 200 OK`。
+- 服务器公网访问 `next dev` 时，浏览器控制台可能出现 `/_next/webpack-hmr` WebSocket 连接失败。这是开发模式热更新通道问题，不代表页面业务错误；公网验收建议使用 `npm run build && npm run start:server`。
 - 当前开发机可启动前端 `http://127.0.0.1:3000`，但项目约定的正式开发、启动、测试和验收仍应以服务器为准。
 - 当前服务器 `8000` 端口被占用；Agent 服务默认端口仍为 `8000`，验收时临时使用 `8001`。后续如需长期使用 `8001`，应同步调整 `.env.example`、README 和服务端口约定。
 - 服务器已安装 Docker，后续可用以下命令启动基础依赖:
