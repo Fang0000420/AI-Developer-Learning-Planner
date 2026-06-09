@@ -8,6 +8,7 @@ public record LearningPlanSummaryResponse(
         Long userId,
         String planTitle,
         Integer durationDays,
+        LearningPlanStatus status,
         Integer dayCount,
         Integer taskCount,
         Integer totalEstimatedMinutes,

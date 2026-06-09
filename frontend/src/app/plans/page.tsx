@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { fetchBackendPlans } from "@/lib/backend-plans";
 import { formatGoalDate, formatMinutes } from "@/lib/goals";
+import { PlanRowActions } from "./plan-row-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -83,72 +84,90 @@ export default async function PlansPage() {
         ) : (
           <section className="grid gap-4">
             {plans.map((plan) => (
-              <Link
+              <article
                 className="group rounded-md border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50"
-                href={`/plans/${plan.id}`}
                 key={plan.id}
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex h-7 items-center rounded-md bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 group-hover:bg-white">
-                        Ready
-                      </span>
-                      <span className="text-sm text-slate-500">
-                        Plan #{plan.id}
-                      </span>
-                      <span className="text-sm text-slate-500">
-                        Goal #{plan.goalId}
-                      </span>
-                    </div>
-                    <h2 className="mt-3 text-lg font-semibold text-slate-950">
-                      {plan.planTitle}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {plan.dayCount} saved days with {plan.taskCount} tasks.
-                    </p>
-                  </div>
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <Link
+                    className="min-w-0 flex-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    href={`/plans/${plan.id}`}
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold ring-1 ${
+                              plan.status === "PAUSED"
+                                ? "bg-amber-50 text-amber-700 ring-amber-200"
+                                : "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                            } group-hover:bg-white`}
+                          >
+                            {plan.status === "PAUSED" ? "Paused" : "Active"}
+                          </span>
+                          <span className="text-sm text-slate-500">
+                            Plan #{plan.id}
+                          </span>
+                          <span className="text-sm text-slate-500">
+                            Goal #{plan.goalId}
+                          </span>
+                        </div>
+                        <h2 className="mt-3 text-lg font-semibold text-slate-950">
+                          {plan.planTitle}
+                        </h2>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          {plan.dayCount} saved days with {plan.taskCount}{" "}
+                          tasks.
+                        </p>
+                      </div>
 
-                  <div className="grid shrink-0 gap-3 sm:grid-cols-4 lg:w-[560px]">
-                    <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                        <CalendarDays aria-hidden="true" className="size-4" />
-                        Cycle
+                      <div className="grid shrink-0 gap-3 sm:grid-cols-4 lg:w-[560px]">
+                        <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <CalendarDays
+                              aria-hidden="true"
+                              className="size-4"
+                            />
+                            Cycle
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-slate-950">
+                            {plan.durationDays} days
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <ListChecks aria-hidden="true" className="size-4" />
+                            Tasks
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-slate-950">
+                            {plan.taskCount}
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <Clock3 aria-hidden="true" className="size-4" />
+                            Time
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-slate-950">
+                            {formatMinutes(plan.totalEstimatedMinutes)}
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <ArrowRight aria-hidden="true" className="size-4" />
+                            Created
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-slate-950">
+                            {formatGoalDate(plan.createdAt)}
+                          </p>
+                        </div>
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-950">
-                        {plan.durationDays} days
-                      </p>
                     </div>
-                    <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                        <ListChecks aria-hidden="true" className="size-4" />
-                        Tasks
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-950">
-                        {plan.taskCount}
-                      </p>
-                    </div>
-                    <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                        <Clock3 aria-hidden="true" className="size-4" />
-                        Time
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-950">
-                        {formatMinutes(plan.totalEstimatedMinutes)}
-                      </p>
-                    </div>
-                    <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                        <ArrowRight aria-hidden="true" className="size-4" />
-                        Created
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-950">
-                        {formatGoalDate(plan.createdAt)}
-                      </p>
-                    </div>
-                  </div>
+                  </Link>
+
+                  <PlanRowActions plan={plan} />
                 </div>
-              </Link>
+              </article>
             ))}
           </section>
         )}

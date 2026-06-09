@@ -50,3 +50,36 @@ export async function GET(request: Request) {
     return backendUnavailableResponse(error);
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const planId = getPlanId(request);
+    const response = await fetch(`${getBackendBaseUrl()}/api/plans/${planId}`, {
+      body: await request.text(),
+      cache: "no-store",
+      headers: {
+        "content-type":
+          request.headers.get("content-type") ?? "application/json",
+      },
+      method: "PUT",
+    });
+
+    return proxyJsonResponse(response);
+  } catch (error) {
+    return backendUnavailableResponse(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const planId = getPlanId(request);
+    const response = await fetch(`${getBackendBaseUrl()}/api/plans/${planId}`, {
+      cache: "no-store",
+      method: "DELETE",
+    });
+
+    return proxyJsonResponse(response);
+  } catch (error) {
+    return backendUnavailableResponse(error);
+  }
+}

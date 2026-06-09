@@ -13,8 +13,10 @@ import java.util.List;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,6 +55,7 @@ class LearningPlanControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(30))
                 .andExpect(jsonPath("$[0].goalId").value(10))
+                .andExpect(jsonPath("$[0].status").value("ACTIVE"))
                 .andExpect(jsonPath("$[0].taskCount").value(2));
 
         verify(learningPlanService).listPlans();
@@ -68,6 +71,33 @@ class LearningPlanControllerTests {
                 .andExpect(jsonPath("$.days[0].totalEstimatedMinutes").value(90));
 
         verify(learningPlanService).getPlan(30L);
+    }
+
+    @Test
+    void updatesPlanStatus() throws Exception {
+        when(learningPlanService.updatePlanStatus(
+                30L,
+                new LearningPlanUpdateRequest(LearningPlanStatus.PAUSED)
+        )).thenReturn(pausedPlanResponse());
+
+        mockMvc.perform(put("/api/plans/{planId}", 30L)
+                        .contentType("application/json")
+                        .content("{\"status\":\"PAUSED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAUSED"));
+
+        verify(learningPlanService).updatePlanStatus(
+                30L,
+                new LearningPlanUpdateRequest(LearningPlanStatus.PAUSED)
+        );
+    }
+
+    @Test
+    void deletesPlan() throws Exception {
+        mockMvc.perform(delete("/api/plans/{planId}", 30L))
+                .andExpect(status().isNoContent());
+
+        verify(learningPlanService).deletePlan(30L);
     }
 
     @Test
@@ -112,6 +142,7 @@ class LearningPlanControllerTests {
                 90L,
                 "21-Day AI Planner MVP Plan",
                 21,
+                LearningPlanStatus.ACTIVE,
                 List.of(
                         new PlanDayResponse(
                                 1,
@@ -150,6 +181,21 @@ class LearningPlanControllerTests {
         );
     }
 
+    private LearningPlanResponse pausedPlanResponse() {
+        return new LearningPlanResponse(
+                30L,
+                10L,
+                1L,
+                90L,
+                "21-Day AI Planner MVP Plan",
+                21,
+                LearningPlanStatus.PAUSED,
+                List.of(),
+                TIMESTAMP,
+                TIMESTAMP
+        );
+    }
+
     private LearningPlanSummaryResponse planSummaryResponse() {
         return new LearningPlanSummaryResponse(
                 30L,
@@ -157,6 +203,7 @@ class LearningPlanControllerTests {
                 1L,
                 "21-Day AI Planner MVP Plan",
                 21,
+                LearningPlanStatus.ACTIVE,
                 1,
                 2,
                 90,

@@ -14,6 +14,7 @@ import {
   getGoalStatusClasses,
   getGoalStatusLabel,
 } from "@/lib/goals";
+import { GoalRowActions } from "./goal-row-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -86,62 +87,73 @@ export default async function GoalsPage() {
         ) : (
           <section className="grid gap-4">
             {goals.map((goal) => (
-              <Link
+              <article
                 className="group rounded-md border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-teal-300 hover:bg-teal-50"
-                href={`/goals/${goal.id}`}
                 key={goal.id}
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold ring-1 ${getGoalStatusClasses(goal.status)}`}
-                      >
-                        {getGoalStatusLabel(goal.status)}
-                      </span>
-                      <span className="text-sm text-slate-500">
-                        Goal #{goal.id}
-                      </span>
-                    </div>
-                    <h2 className="mt-3 text-lg font-semibold text-slate-950">
-                      {goal.title}
-                    </h2>
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
-                      {goal.description || "No description recorded."}
-                    </p>
-                  </div>
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <Link
+                    className="min-w-0 flex-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                    href={`/goals/${goal.id}`}
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold ring-1 ${getGoalStatusClasses(goal.status)}`}
+                          >
+                            {getGoalStatusLabel(goal.status)}
+                          </span>
+                          <span className="text-sm text-slate-500">
+                            Goal #{goal.id}
+                          </span>
+                        </div>
+                        <h2 className="mt-3 text-lg font-semibold text-slate-950">
+                          {goal.title}
+                        </h2>
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+                          {goal.description || "No description recorded."}
+                        </p>
+                      </div>
 
-                  <div className="grid shrink-0 gap-3 sm:grid-cols-3 lg:w-[420px]">
-                    <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                        <CalendarDays aria-hidden="true" className="size-4" />
-                        Cycle
+                      <div className="grid shrink-0 gap-3 sm:grid-cols-3 lg:w-[420px]">
+                        <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <CalendarDays
+                              aria-hidden="true"
+                              className="size-4"
+                            />
+                            Cycle
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-slate-950">
+                            {goal.durationDays} days
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <Clock3 aria-hidden="true" className="size-4" />
+                            Daily
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-slate-950">
+                            {formatDailyHours(goal.dailyAvailableHours)}
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <ArrowRight aria-hidden="true" className="size-4" />
+                            Updated
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-slate-950">
+                            {formatGoalDate(goal.updatedAt)}
+                          </p>
+                        </div>
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-950">
-                        {goal.durationDays} days
-                      </p>
                     </div>
-                    <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                        <Clock3 aria-hidden="true" className="size-4" />
-                        Daily
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-950">
-                        {formatDailyHours(goal.dailyAvailableHours)}
-                      </p>
-                    </div>
-                    <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                        <ArrowRight aria-hidden="true" className="size-4" />
-                        Updated
-                      </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-950">
-                        {formatGoalDate(goal.updatedAt)}
-                      </p>
-                    </div>
-                  </div>
+                  </Link>
+
+                  <GoalRowActions goal={goal} />
                 </div>
-              </Link>
+              </article>
             ))}
           </section>
         )}

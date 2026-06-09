@@ -1,4 +1,5 @@
 export type GoalStatus = "ACTIVE" | "COMPLETED" | "PAUSED" | "CANCELLED";
+export type LearningPlanStatus = "ACTIVE" | "PAUSED";
 
 export type Goal = {
   id: number;
@@ -96,6 +97,7 @@ export type LearningPlan = {
   sourceAgentRunId: number | null;
   planTitle: string;
   durationDays: number;
+  status: LearningPlanStatus;
   days: PlanDay[];
   createdAt: string | null;
   updatedAt: string | null;
@@ -107,6 +109,7 @@ export type LearningPlanSummary = {
   userId: number;
   planTitle: string;
   durationDays: number;
+  status: LearningPlanStatus;
   dayCount: number;
   taskCount: number;
   totalEstimatedMinutes: number;

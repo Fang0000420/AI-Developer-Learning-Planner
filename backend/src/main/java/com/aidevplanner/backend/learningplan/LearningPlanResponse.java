@@ -10,6 +10,7 @@ public record LearningPlanResponse(
         Long sourceAgentRunId,
         String planTitle,
         Integer durationDays,
+        LearningPlanStatus status,
         List<PlanDayResponse> days,
         LocalDateTime createdAt,
         LocalDateTime updatedAt

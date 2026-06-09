@@ -215,9 +215,37 @@ class LearningPlanServiceTests {
         assertThat(response).hasSize(1);
         assertThat(response.get(0).id()).isEqualTo(30L);
         assertThat(response.get(0).goalId()).isEqualTo(10L);
+        assertThat(response.get(0).status()).isEqualTo(LearningPlanStatus.ACTIVE);
         assertThat(response.get(0).dayCount()).isEqualTo(2);
         assertThat(response.get(0).taskCount()).isEqualTo(3);
         assertThat(response.get(0).totalEstimatedMinutes()).isEqualTo(180);
+    }
+
+    @Test
+    void updatesPlanStatus() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
+        when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
+                .thenReturn(tasks(plan, goal));
+
+        LearningPlanResponse response =
+                learningPlanService.updatePlanStatus(
+                        30L,
+                        new LearningPlanUpdateRequest(LearningPlanStatus.PAUSED)
+                );
+
+        assertThat(response.status()).isEqualTo(LearningPlanStatus.PAUSED);
+        assertThat(plan.getStatus()).isEqualTo(LearningPlanStatus.PAUSED);
+    }
+
+    @Test
+    void deletesPlan() {
+        when(learningPlanRepository.existsById(30L)).thenReturn(true);
+
+        learningPlanService.deletePlan(30L);
+
+        verify(learningPlanRepository).deleteById(30L);
     }
 
     private AgentRun goalDecompositionRun(Goal goal) {

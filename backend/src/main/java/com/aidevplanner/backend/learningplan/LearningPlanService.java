@@ -78,6 +78,23 @@ public class LearningPlanService {
         return toResponse(plan, tasks);
     }
 
+    @Transactional
+    public LearningPlanResponse updatePlanStatus(Long planId, LearningPlanUpdateRequest request) {
+        LearningPlan plan = learningPlanRepository.findById(planId)
+                .orElseThrow(() -> new ResourceNotFoundException("Learning plan", planId));
+        plan.setStatus(request.status());
+        List<DailyTask> tasks = dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(planId);
+        return toResponse(plan, tasks);
+    }
+
+    @Transactional
+    public void deletePlan(Long planId) {
+        if (!learningPlanRepository.existsById(planId)) {
+            throw new ResourceNotFoundException("Learning plan", planId);
+        }
+        learningPlanRepository.deleteById(planId);
+    }
+
     @Transactional(noRollbackFor = AgentServiceException.class)
     public LearningPlanResponse generatePlan(Long goalId) {
         Goal goal = goalRepository.findById(goalId)
@@ -393,6 +410,7 @@ public class LearningPlanService {
                 sourceAgentRunId,
                 plan.getPlanTitle(),
                 plan.getDurationDays(),
+                plan.getStatus(),
                 days,
                 plan.getCreatedAt(),
                 plan.getUpdatedAt()
@@ -416,6 +434,7 @@ public class LearningPlanService {
                 userId,
                 plan.getPlanTitle(),
                 plan.getDurationDays(),
+                plan.getStatus(),
                 dayCount,
                 tasks.size(),
                 totalEstimatedMinutes,
