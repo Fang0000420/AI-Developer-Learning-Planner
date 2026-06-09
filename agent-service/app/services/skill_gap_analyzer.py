@@ -95,7 +95,9 @@ def analyze_skill_gap_with_model(
 
     body = response.json()
     content = body["choices"][0]["message"]["content"]
-    return SkillGapAnalyzeResponse.model_validate(_load_json_object(content))
+    parsed = _load_json_object(content)
+    normalized = _normalize_model_output(parsed, request)
+    return SkillGapAnalyzeResponse.model_validate(normalized)
 
 
 def analyze_skill_gap_with_mock(
@@ -152,11 +154,166 @@ def _load_json_object(content: str) -> dict[str, object]:
         parsed = json.loads(content)
     except json.JSONDecodeError:
         match = re.search(r"\{.*\}", content, re.DOTALL)
-        if not match:
-            raise
-        parsed = json.loads(match.group(0))
+        if match:
+            parsed = json.loads(match.group(0))
+        else:
+            array_match = re.search(r"\[.*\]", content, re.DOTALL)
+            if not array_match:
+                raise
+            parsed = json.loads(array_match.group(0))
+
+    if isinstance(parsed, list):
+        return {"skillGaps": parsed}
 
     if not isinstance(parsed, dict):
         raise ValueError("Skill gap analyzer response must be a JSON object.")
 
     return parsed
+
+
+def _normalize_model_output(
+    parsed: dict[str, object],
+    request: SkillGapAnalyzeRequest,
+) -> dict[str, list[dict[str, str]]]:
+    raw_skill_gaps = parsed.get("skillGaps") or parsed.get("skills") or parsed.get("gaps")
+    normalized: list[dict[str, str]] = []
+
+    if isinstance(raw_skill_gaps, list):
+        for item in raw_skill_gaps:
+            if not isinstance(item, dict):
+                continue
+
+            skill = _first_string(item, "skill", "name", "capability", "技能")
+            if not skill:
+                continue
+
+            normalized.append(
+                {
+                    "skill": skill,
+                    "currentLevel": _first_string(
+                        item,
+                        "currentLevel",
+                        "current_level",
+                        "current",
+                        "当前水平",
+                    )
+                    or "beginner",
+                    "targetLevel": _first_string(
+                        item,
+                        "targetLevel",
+                        "target_level",
+                        "target",
+                        "目标水平",
+                    )
+                    or "intermediate",
+                    "priority": _normalize_priority(
+                        _first_string(item, "priority", "urgency", "优先级")
+                    ),
+                    "reason": _first_string(item, "reason", "rationale", "why", "原因")
+                    or f"This skill is needed for the goal: {request.mainGoal}.",
+                }
+            )
+
+    for fallback in _fallback_skill_gaps(request):
+        if len(normalized) >= 4:
+            break
+        if not any(item["skill"].lower() == fallback["skill"].lower() for item in normalized):
+            normalized.append(fallback)
+
+    return {"skillGaps": normalized}
+
+
+def _fallback_skill_gaps(request: SkillGapAnalyzeRequest) -> list[dict[str, str]]:
+    gaps: list[dict[str, str]] = []
+
+    for weakness in request.weaknesses:
+        if weakness:
+            gaps.append(
+                {
+                    "skill": weakness,
+                    "currentLevel": "beginner",
+                    "targetLevel": "intermediate",
+                    "priority": "high",
+                    "reason": "This weakness directly limits progress toward the saved goal.",
+                }
+            )
+
+    for sub_goal in request.subGoals:
+        gaps.append(
+            {
+                "skill": sub_goal.title,
+                "currentLevel": "basic",
+                "targetLevel": "intermediate",
+                "priority": _normalize_priority(sub_goal.priority),
+                "reason": sub_goal.description,
+            }
+        )
+
+    gaps.extend(
+        [
+            {
+                "skill": "Goal-specific foundation",
+                "currentLevel": "beginner",
+                "targetLevel": "intermediate",
+                "priority": "high",
+                "reason": (
+                    "The learner needs enough foundation to make progress on: "
+                    f"{request.mainGoal}."
+                ),
+            },
+            {
+                "skill": "Structured practice routine",
+                "currentLevel": "basic",
+                "targetLevel": "intermediate",
+                "priority": "medium",
+                "reason": "A stable practice routine turns the goal into repeatable daily work.",
+            },
+            {
+                "skill": "Feedback and evaluation",
+                "currentLevel": "beginner",
+                "targetLevel": "intermediate",
+                "priority": "medium",
+                "reason": "Progress needs regular checks so the plan can be adjusted.",
+            },
+            {
+                "skill": "Applied output practice",
+                "currentLevel": "basic",
+                "targetLevel": "intermediate",
+                "priority": "low",
+                "reason": "The learner needs concrete outputs that prove the skill is improving.",
+            },
+        ]
+    )
+
+    return gaps
+
+
+def _first_string(values: dict[object, object], *keys: str) -> str:
+    for key in keys:
+        value = values.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _normalize_priority(priority: str) -> str:
+    normalized = priority.strip().lower()
+    aliases = {
+        "h": "high",
+        "high": "high",
+        "critical": "high",
+        "urgent": "high",
+        "高": "high",
+        "高优先级": "high",
+        "m": "medium",
+        "medium": "medium",
+        "moderate": "medium",
+        "中": "medium",
+        "中优先级": "medium",
+        "l": "low",
+        "low": "low",
+        "minor": "low",
+        "低": "low",
+        "低优先级": "low",
+    }
+    return aliases.get(normalized, "medium")
