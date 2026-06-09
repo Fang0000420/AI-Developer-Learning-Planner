@@ -1,5 +1,9 @@
 import { getBackendBaseUrl } from "./backend-url";
-import type { ApiErrorResponse, LearningPlan } from "./goals";
+import type {
+  ApiErrorResponse,
+  LearningPlan,
+  LearningPlanSummary,
+} from "./goals";
 
 type BackendResult<T> =
   | {
@@ -63,6 +67,37 @@ export async function fetchBackendPlan(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Backend plan request failed.";
+
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendPlans(): Promise<
+  BackendResult<LearningPlanSummary[]>
+> {
+  try {
+    const response = await fetch(`${getBackendBaseUrl()}/api/plans`, {
+      cache: "no-store",
+    });
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(payload, "Backend plans request failed."),
+      };
+    }
+
+    return {
+      data: Array.isArray(payload) ? (payload as LearningPlanSummary[]) : [],
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Backend plans request failed.";
 
     return {
       data: null,

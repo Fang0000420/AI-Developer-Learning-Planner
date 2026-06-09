@@ -101,6 +101,19 @@ export type LearningPlan = {
   updatedAt: string | null;
 };
 
+export type LearningPlanSummary = {
+  id: number;
+  goalId: number;
+  userId: number;
+  planTitle: string;
+  durationDays: number;
+  dayCount: number;
+  taskCount: number;
+  totalEstimatedMinutes: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type ApiErrorResponse = {
   status?: string;
   message?: string;

@@ -46,6 +46,19 @@ class LearningPlanControllerTests {
     }
 
     @Test
+    void listsPlans() throws Exception {
+        when(learningPlanService.listPlans()).thenReturn(List.of(planSummaryResponse()));
+
+        mockMvc.perform(get("/api/plans"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(30))
+                .andExpect(jsonPath("$[0].goalId").value(10))
+                .andExpect(jsonPath("$[0].taskCount").value(2));
+
+        verify(learningPlanService).listPlans();
+    }
+
+    @Test
     void returnsPlanDetail() throws Exception {
         when(learningPlanService.getPlan(30L)).thenReturn(planResponse());
 
@@ -132,6 +145,21 @@ class LearningPlanControllerTests {
                                 )
                         )
                 ),
+                TIMESTAMP,
+                TIMESTAMP
+        );
+    }
+
+    private LearningPlanSummaryResponse planSummaryResponse() {
+        return new LearningPlanSummaryResponse(
+                30L,
+                10L,
+                1L,
+                "21-Day AI Planner MVP Plan",
+                21,
+                1,
+                2,
+                90,
                 TIMESTAMP,
                 TIMESTAMP
         );

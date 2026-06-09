@@ -202,6 +202,24 @@ class LearningPlanServiceTests {
         assertThat(response.days().get(1).tasks()).hasSize(1);
     }
 
+    @Test
+    void listsPlanSummaries() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        when(learningPlanRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(plan));
+        when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
+                .thenReturn(tasks(plan, goal));
+
+        List<LearningPlanSummaryResponse> response = learningPlanService.listPlans();
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).id()).isEqualTo(30L);
+        assertThat(response.get(0).goalId()).isEqualTo(10L);
+        assertThat(response.get(0).dayCount()).isEqualTo(2);
+        assertThat(response.get(0).taskCount()).isEqualTo(3);
+        assertThat(response.get(0).totalEstimatedMinutes()).isEqualTo(180);
+    }
+
     private AgentRun goalDecompositionRun(Goal goal) {
         return new AgentRun(
                 goal.getUser(),

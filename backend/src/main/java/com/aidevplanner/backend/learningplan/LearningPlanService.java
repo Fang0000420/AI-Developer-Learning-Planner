@@ -61,6 +61,16 @@ public class LearningPlanService {
     }
 
     @Transactional(readOnly = true)
+    public List<LearningPlanSummaryResponse> listPlans() {
+        return learningPlanRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(plan -> toSummaryResponse(
+                        plan,
+                        dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(plan.getId())
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public LearningPlanResponse getPlan(Long planId) {
         LearningPlan plan = learningPlanRepository.findById(planId)
                 .orElseThrow(() -> new ResourceNotFoundException("Learning plan", planId));
@@ -384,6 +394,31 @@ public class LearningPlanService {
                 plan.getPlanTitle(),
                 plan.getDurationDays(),
                 days,
+                plan.getCreatedAt(),
+                plan.getUpdatedAt()
+        );
+    }
+
+    private LearningPlanSummaryResponse toSummaryResponse(LearningPlan plan, List<DailyTask> tasks) {
+        int dayCount = (int) tasks.stream()
+                .map(DailyTask::getDayIndex)
+                .distinct()
+                .count();
+        int totalEstimatedMinutes = tasks.stream()
+                .mapToInt(DailyTask::getEstimatedMinutes)
+                .sum();
+        Long goalId = plan.getGoal() == null ? null : plan.getGoal().getId();
+        Long userId = plan.getUser() == null ? null : plan.getUser().getId();
+
+        return new LearningPlanSummaryResponse(
+                plan.getId(),
+                goalId,
+                userId,
+                plan.getPlanTitle(),
+                plan.getDurationDays(),
+                dayCount,
+                tasks.size(),
+                totalEstimatedMinutes,
                 plan.getCreatedAt(),
                 plan.getUpdatedAt()
         );
