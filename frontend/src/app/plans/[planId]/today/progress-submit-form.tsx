@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import {
   Activity,
+  ArrowRight,
   CheckCircle2,
   ClipboardCheck,
   Lightbulb,
@@ -60,6 +61,7 @@ function normalizeReview(
       ? review.completedTasks
       : [],
     impact: review.impact,
+    planAdjustment: review.planAdjustment,
     suggestion: review.suggestion,
     unfinishedTasks: Array.isArray(review.unfinishedTasks)
       ? review.unfinishedTasks
@@ -301,6 +303,63 @@ export function ProgressSubmitForm({
                     <p className="mt-1 leading-6 text-slate-700">
                       {latestReview.blockers.join(", ")}
                     </p>
+                  </div>
+                ) : null}
+                {latestReview.planAdjustment ? (
+                  <div className="mt-4 rounded-md border border-sky-200 bg-sky-50 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-sky-900">
+                      <ArrowRight aria-hidden="true" className="size-4" />
+                      Tomorrow adjustment
+                    </div>
+                    {latestReview.planAdjustment.reason ? (
+                      <p className="mt-2 text-sm leading-6 text-sky-800">
+                        {latestReview.planAdjustment.reason}
+                      </p>
+                    ) : null}
+                    {latestReview.planAdjustment.movedTasks &&
+                    latestReview.planAdjustment.movedTasks.length > 0 ? (
+                      <div className="mt-3 text-sm">
+                        <div className="font-medium text-sky-900">
+                          Moved tasks
+                        </div>
+                        <ul className="mt-2 space-y-1 text-sky-800">
+                          {latestReview.planAdjustment.movedTasks.map(
+                            (task) => (
+                              <li key={`${task.taskId}-${task.title}`}>
+                                {task.title}: Day {task.fromDayIndex} to Day{" "}
+                                {task.toDayIndex}
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {latestReview.planAdjustment.splitTasks &&
+                    latestReview.planAdjustment.splitTasks.length > 0 ? (
+                      <div className="mt-3 text-sm">
+                        <div className="font-medium text-sky-900">
+                          Split tasks
+                        </div>
+                        <ul className="mt-2 space-y-2 text-sky-800">
+                          {latestReview.planAdjustment.splitTasks.map(
+                            (task) => (
+                              <li
+                                key={`${task.sourceTaskId}-${task.sourceTitle}`}
+                              >
+                                <div>{task.sourceTitle}</div>
+                                {task.parts.length > 0 ? (
+                                  <div className="mt-1 text-sky-700">
+                                    {task.parts
+                                      .map((part) => part.title)
+                                      .join(", ")}
+                                  </div>
+                                ) : null}
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

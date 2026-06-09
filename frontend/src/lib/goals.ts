@@ -123,7 +123,43 @@ export type ProgressReviewResult = {
   unfinishedTasks?: string[];
   blockers?: string[];
   impact?: ProgressImpact;
+  planAdjustment?: PlanAdjustmentResult;
   suggestion?: string;
+};
+
+export type PlanAdjustmentTask = {
+  id?: number | null;
+  dayIndex?: number | null;
+  taskOrder?: number | null;
+  title: string;
+  description?: string;
+  estimatedMinutes?: number;
+  type?: string;
+  deliverable?: string;
+  priority?: Priority;
+  status?: DailyTaskStatus;
+};
+
+export type PlanMovedTask = {
+  taskId?: number | null;
+  title: string;
+  fromDayIndex: number;
+  toDayIndex: number;
+  reason: string;
+};
+
+export type PlanSplitTask = {
+  sourceTaskId?: number | null;
+  sourceTitle: string;
+  parts: PlanAdjustmentTask[];
+  reason: string;
+};
+
+export type PlanAdjustmentResult = {
+  nextDayTasks?: PlanAdjustmentTask[];
+  movedTasks?: PlanMovedTask[];
+  splitTasks?: PlanSplitTask[];
+  reason?: string;
 };
 
 export type ProgressLog = {

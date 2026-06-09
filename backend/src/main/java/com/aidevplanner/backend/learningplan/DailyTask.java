@@ -141,12 +141,24 @@ public class DailyTask {
         return dayIndex;
     }
 
+    public void setDayIndex(Integer dayIndex) {
+        this.dayIndex = dayIndex;
+    }
+
     public Integer getTaskOrder() {
         return taskOrder;
     }
 
+    public void setTaskOrder(Integer taskOrder) {
+        this.taskOrder = taskOrder;
+    }
+
     public String getDayTheme() {
         return dayTheme;
+    }
+
+    public void setDayTheme(String dayTheme) {
+        this.dayTheme = dayTheme;
     }
 
     public String getTitle() {

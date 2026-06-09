@@ -132,6 +132,10 @@ public class LearningPlan {
         return planJson;
     }
 
+    public void setPlanJson(Map<String, Object> planJson) {
+        this.planJson = planJson;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }

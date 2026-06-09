@@ -3,7 +3,7 @@ from pytest import MonkeyPatch
 
 from app.main import app
 from app.schemas.plan import PlanGenerateRequest, PlanGenerateResponse
-from app.services import plan_generator
+from app.services import plan_adjuster, plan_generator
 
 client = TestClient(app)
 
@@ -135,3 +135,106 @@ def test_plan_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) -> None
     assert response.durationDays == 21
     assert len(response.days) == 21
     assert response.days[0].tasks
+
+
+def test_plan_adjust_moves_unfinished_task_to_next_day(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(plan_adjuster, "DEEPSEEK_API_KEY", "")
+
+    response = client.post(
+        "/agent/plan/adjust",
+        json={
+            "planId": 30,
+            "currentDayIndex": 1,
+            "currentPlan": [],
+            "todayTasks": [
+                {
+                    "id": 1,
+                    "dayIndex": 1,
+                    "taskOrder": 1,
+                    "title": "Create progress form",
+                    "description": "Build frontend submit form.",
+                    "estimatedMinutes": 60,
+                    "type": "build",
+                    "deliverable": "Progress form",
+                    "priority": "high",
+                    "status": "PENDING",
+                }
+            ],
+            "progressReview": {
+                "completedTasks": [],
+                "unfinishedTasks": ["Create progress form"],
+                "blockers": ["Need UI polish"],
+                "impact": "medium",
+                "suggestion": "Finish unfinished work first.",
+            },
+            "unfinishedTasks": [
+                {
+                    "id": 1,
+                    "dayIndex": 1,
+                    "taskOrder": 1,
+                    "title": "Create progress form",
+                    "description": "Build frontend submit form.",
+                    "estimatedMinutes": 60,
+                    "type": "build",
+                    "deliverable": "Progress form",
+                    "priority": "high",
+                    "status": "PENDING",
+                }
+            ],
+            "nextDayTasks": [],
+        },
+    )
+
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["movedTasks"][0]["taskId"] == 1
+    assert body["movedTasks"][0]["toDayIndex"] == 2
+    assert body["nextDayTasks"][0]["title"] == "Carry over: Create progress form"
+    assert body["reason"]
+
+
+def test_plan_adjust_splits_large_unfinished_task(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(plan_adjuster, "DEEPSEEK_API_KEY", "")
+
+    response = client.post(
+        "/agent/plan/adjust",
+        json={
+            "planId": 30,
+            "currentDayIndex": 2,
+            "todayTasks": [
+                {
+                    "id": 2,
+                    "title": "Implement planner adjustment workflow",
+                    "description": "Connect the agent and backend flow.",
+                    "estimatedMinutes": 120,
+                    "type": "build",
+                    "deliverable": "Plan adjuster workflow",
+                    "priority": "high",
+                }
+            ],
+            "progressReview": {
+                "impact": "major",
+                "suggestion": "Reduce tomorrow scope.",
+            },
+            "unfinishedTasks": [
+                {
+                    "id": 2,
+                    "title": "Implement planner adjustment workflow",
+                    "description": "Connect the agent and backend flow.",
+                    "estimatedMinutes": 120,
+                    "type": "build",
+                    "deliverable": "Plan adjuster workflow",
+                    "priority": "high",
+                }
+            ],
+            "nextDayTasks": [],
+        },
+    )
+
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["splitTasks"][0]["sourceTaskId"] == 2
+    assert len(body["splitTasks"][0]["parts"]) == 2
+    assert sum(part["estimatedMinutes"] for part in body["splitTasks"][0]["parts"]) == 120

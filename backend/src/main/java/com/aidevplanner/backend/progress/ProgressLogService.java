@@ -10,26 +10,40 @@ import com.aidevplanner.backend.learningplan.DailyTaskRepository;
 import com.aidevplanner.backend.learningplan.DailyTaskStatus;
 import com.aidevplanner.backend.learningplan.LearningPlan;
 import com.aidevplanner.backend.learningplan.LearningPlanRepository;
+import com.aidevplanner.backend.learningplan.PlanAdjustAgentRequest;
+import com.aidevplanner.backend.learningplan.PlanAdjustAgentResponse;
+import com.aidevplanner.backend.learningplan.PlanAdjustDayPayload;
+import com.aidevplanner.backend.learningplan.PlanAdjustReviewPayload;
+import com.aidevplanner.backend.learningplan.PlanAdjustTaskPayload;
+import com.aidevplanner.backend.learningplan.PlanAdjusterClient;
+import com.aidevplanner.backend.learningplan.PlanMovedTaskResponse;
+import com.aidevplanner.backend.learningplan.PlanSplitTaskResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class ProgressLogService {
 
     static final String AGENT_NAME = "Progress Reviewer";
+    static final String PLAN_ADJUSTER_AGENT_NAME = "Plan Adjuster";
 
     private final AgentRunRepository agentRunRepository;
     private final DailyTaskRepository dailyTaskRepository;
     private final LearningPlanRepository learningPlanRepository;
     private final ObjectMapper objectMapper;
+    private final PlanAdjusterClient planAdjusterClient;
     private final ProgressLogRepository progressLogRepository;
     private final ProgressReviewerClient progressReviewerClient;
 
@@ -38,6 +52,7 @@ public class ProgressLogService {
             DailyTaskRepository dailyTaskRepository,
             LearningPlanRepository learningPlanRepository,
             ObjectMapper objectMapper,
+            PlanAdjusterClient planAdjusterClient,
             ProgressLogRepository progressLogRepository,
             ProgressReviewerClient progressReviewerClient
     ) {
@@ -45,6 +60,7 @@ public class ProgressLogService {
         this.dailyTaskRepository = dailyTaskRepository;
         this.learningPlanRepository = learningPlanRepository;
         this.objectMapper = objectMapper;
+        this.planAdjusterClient = planAdjusterClient;
         this.progressLogRepository = progressLogRepository;
         this.progressReviewerClient = progressReviewerClient;
     }
@@ -61,6 +77,8 @@ public class ProgressLogService {
         if (dayTasks.isEmpty()) {
             throw new ResourceNotFoundException("Learning plan day", request.dayIndex().longValue());
         }
+        List<DailyTask> allPlanTasks =
+                dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(request.planId());
 
         List<Long> completedTaskIds = normalizeIds(request.completedTaskIds());
         List<Long> unfinishedTaskIds = normalizeIds(request.unfinishedTaskIds()).stream()
@@ -111,6 +129,58 @@ public class ProgressLogService {
             throw exception;
         }
 
+        Integer targetDayIndex = nextDayIndex(plan, request.dayIndex());
+        PlanAdjustAgentRequest adjustRequest = buildAdjustRequest(
+                plan,
+                request.dayIndex(),
+                targetDayIndex,
+                allPlanTasks,
+                dayTasks,
+                reviewResponse,
+                unfinishedTaskIds
+        );
+        String adjustInputJson = writeJson(adjustRequest);
+        long adjustStartedAt = System.nanoTime();
+        PlanAdjustAgentResponse adjustResponse;
+
+        try {
+            adjustResponse = normalizeAdjustResponse(planAdjusterClient.adjust(adjustRequest));
+            applyPlanAdjustment(
+                    plan,
+                    targetDayIndex,
+                    dayTasks,
+                    allPlanTasks,
+                    unfinishedTaskIds,
+                    adjustResponse
+            );
+            appendAdjustmentHistory(plan, request.dayIndex(), targetDayIndex, adjustResponse);
+            String adjustOutputJson = writeJson(adjustResponse);
+            agentRunRepository.save(new AgentRun(
+                    plan.getUser(),
+                    plan.getGoal(),
+                    PLAN_ADJUSTER_AGENT_NAME,
+                    adjustInputJson,
+                    adjustOutputJson,
+                    AgentRunStatus.SUCCESS,
+                    elapsedMs(adjustStartedAt),
+                    null
+            ));
+        } catch (AgentServiceException exception) {
+            agentRunRepository.save(new AgentRun(
+                    plan.getUser(),
+                    plan.getGoal(),
+                    PLAN_ADJUSTER_AGENT_NAME,
+                    adjustInputJson,
+                    null,
+                    AgentRunStatus.FAILED,
+                    elapsedMs(adjustStartedAt),
+                    exception.getMessage()
+            ));
+            throw exception;
+        }
+
+        Map<String, Object> reviewResultJson = toReviewResultJson(reviewResponse);
+        reviewResultJson.put("planAdjustment", toPlanAdjustmentJson(adjustResponse));
         ProgressLog savedLog = progressLogRepository.save(new ProgressLog(
                 plan,
                 plan.getUser(),
@@ -120,7 +190,7 @@ public class ProgressLogService {
                 completedTaskIds,
                 unfinishedTaskIds,
                 blockers,
-                toReviewResultJson(reviewResponse)
+                reviewResultJson
         ));
 
         return toResponse(savedLog);
@@ -177,6 +247,70 @@ public class ProgressLogService {
         );
     }
 
+    private PlanAdjustAgentRequest buildAdjustRequest(
+            LearningPlan plan,
+            Integer currentDayIndex,
+            Integer targetDayIndex,
+            List<DailyTask> allPlanTasks,
+            List<DailyTask> todayTasks,
+            ProgressReviewAgentResponse reviewResponse,
+            List<Long> unfinishedTaskIds
+    ) {
+        return new PlanAdjustAgentRequest(
+                plan.getId(),
+                currentDayIndex,
+                toAdjustDays(allPlanTasks),
+                todayTasks.stream().map(this::toAdjustTask).toList(),
+                new PlanAdjustReviewPayload(
+                        cleanList(reviewResponse.completedTasks()),
+                        cleanList(reviewResponse.unfinishedTasks()),
+                        cleanList(reviewResponse.blockers()),
+                        normalizeImpact(reviewResponse.impact()),
+                        firstPresent(reviewResponse.suggestion(), "Review the unfinished work first.")
+                ),
+                todayTasks.stream()
+                        .filter(task -> unfinishedTaskIds.contains(task.getId()))
+                        .map(this::toAdjustTask)
+                        .toList(),
+                allPlanTasks.stream()
+                        .filter(task -> targetDayIndex.equals(task.getDayIndex()))
+                        .map(this::toAdjustTask)
+                        .toList()
+        );
+    }
+
+    private List<PlanAdjustDayPayload> toAdjustDays(List<DailyTask> tasks) {
+        Map<Integer, List<DailyTask>> byDay = tasks.stream()
+                .collect(Collectors.groupingBy(
+                        DailyTask::getDayIndex,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        return byDay.entrySet().stream()
+                .map(entry -> new PlanAdjustDayPayload(
+                        entry.getKey(),
+                        entry.getValue().isEmpty() ? "" : entry.getValue().get(0).getDayTheme(),
+                        entry.getValue().stream().map(this::toAdjustTask).toList()
+                ))
+                .toList();
+    }
+
+    private PlanAdjustTaskPayload toAdjustTask(DailyTask task) {
+        return new PlanAdjustTaskPayload(
+                task.getId(),
+                task.getDayIndex(),
+                task.getTaskOrder(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getEstimatedMinutes(),
+                task.getType(),
+                task.getDeliverable(),
+                task.getPriority(),
+                task.getStatus()
+        );
+    }
+
     private ProgressReviewAgentResponse normalizeReviewResponse(ProgressReviewAgentResponse response) {
         return new ProgressReviewAgentResponse(
                 cleanList(response.completedTasks()),
@@ -185,6 +319,120 @@ public class ProgressLogService {
                 normalizeImpact(response.impact()),
                 firstPresent(response.suggestion(), "Review today's blockers and keep tomorrow focused.")
         );
+    }
+
+    private PlanAdjustAgentResponse normalizeAdjustResponse(PlanAdjustAgentResponse response) {
+        if (response == null) {
+            return new PlanAdjustAgentResponse(
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    "No plan adjustment was returned."
+            );
+        }
+
+        return new PlanAdjustAgentResponse(
+                response.nextDayTasks() == null ? List.of() : response.nextDayTasks(),
+                response.movedTasks() == null ? List.of() : response.movedTasks().stream()
+                        .map(task -> new PlanMovedTaskResponse(
+                                task.taskId(),
+                                firstPresent(task.title(), "Moved task"),
+                                positiveOrDefault(task.fromDayIndex(), 1),
+                                positiveOrDefault(task.toDayIndex(), 1),
+                                firstPresent(task.reason(), "The task was moved because it was unfinished.")
+                        ))
+                        .toList(),
+                response.splitTasks() == null ? List.of() : response.splitTasks().stream()
+                        .map(task -> new PlanSplitTaskResponse(
+                                task.sourceTaskId(),
+                                firstPresent(task.sourceTitle(), "Split task"),
+                                task.parts() == null ? List.of() : task.parts(),
+                                firstPresent(task.reason(), "The task was split into smaller next-day parts.")
+                        ))
+                        .toList(),
+                firstPresent(response.reason(), "Tomorrow's plan was adjusted based on today's progress.")
+        );
+    }
+
+    private void applyPlanAdjustment(
+            LearningPlan plan,
+            Integer targetDayIndex,
+            List<DailyTask> dayTasks,
+            List<DailyTask> allPlanTasks,
+            List<Long> unfinishedTaskIds,
+            PlanAdjustAgentResponse adjustResponse
+    ) {
+        if (unfinishedTaskIds.isEmpty()) {
+            return;
+        }
+
+        Set<Long> splitSourceIds = adjustResponse.splitTasks().stream()
+                .map(PlanSplitTaskResponse::sourceTaskId)
+                .filter(id -> id != null && unfinishedTaskIds.contains(id))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        List<DailyTask> newTasks = new ArrayList<>();
+        int nextOrder = nextTaskOrder(allPlanTasks, newTasks, targetDayIndex);
+        String targetTheme = targetDayTheme(allPlanTasks, targetDayIndex);
+
+        for (PlanSplitTaskResponse splitTask : adjustResponse.splitTasks()) {
+            if (splitTask.sourceTaskId() == null || !unfinishedTaskIds.contains(splitTask.sourceTaskId())) {
+                continue;
+            }
+            DailyTask sourceTask = findTask(dayTasks, splitTask.sourceTaskId());
+            if (sourceTask == null) {
+                continue;
+            }
+            sourceTask.setStatus(DailyTaskStatus.SKIPPED);
+            for (PlanAdjustTaskPayload part : splitTask.parts()) {
+                String title = firstPresent(part.title(), sourceTask.getTitle() + " - part");
+                if (hasTaskWithTitle(allPlanTasks, newTasks, targetDayIndex, title)) {
+                    continue;
+                }
+                newTasks.add(new DailyTask(
+                        plan,
+                        plan.getUser(),
+                        plan.getGoal(),
+                        targetDayIndex,
+                        nextOrder++,
+                        targetTheme,
+                        title,
+                        firstPresent(part.description(), sourceTask.getDescription()),
+                        positiveOrDefault(part.estimatedMinutes(), Math.max(15, sourceTask.getEstimatedMinutes() / 2)),
+                        firstPresent(part.type(), sourceTask.getType()),
+                        firstPresent(part.deliverable(), sourceTask.getDeliverable()),
+                        normalizePriority(part.priority())
+                ));
+            }
+        }
+
+        for (DailyTask task : dayTasks) {
+            if (!unfinishedTaskIds.contains(task.getId()) || splitSourceIds.contains(task.getId())) {
+                continue;
+            }
+            task.setStatus(DailyTaskStatus.SKIPPED);
+            String title = "Carry over: " + task.getTitle();
+            if (hasTaskWithTitle(allPlanTasks, newTasks, targetDayIndex, title)) {
+                continue;
+            }
+            newTasks.add(new DailyTask(
+                    plan,
+                    plan.getUser(),
+                    plan.getGoal(),
+                    targetDayIndex,
+                    nextOrder++,
+                    targetTheme,
+                    title,
+                    task.getDescription(),
+                    task.getEstimatedMinutes(),
+                    task.getType(),
+                    task.getDeliverable(),
+                    task.getPriority()
+            ));
+        }
+
+        if (!newTasks.isEmpty()) {
+            dailyTaskRepository.saveAll(newTasks);
+        }
     }
 
     private void syncTaskStatuses(
@@ -240,8 +488,49 @@ public class ProgressLogService {
     }
 
     private Map<String, Object> toReviewResultJson(ProgressReviewAgentResponse response) {
-        return objectMapper.convertValue(response, new TypeReference<>() {
-        });
+        return new LinkedHashMap<>(objectMapper.convertValue(response, new TypeReference<Map<String, Object>>() {
+        }));
+    }
+
+    private Map<String, Object> toPlanAdjustmentJson(PlanAdjustAgentResponse response) {
+        return new LinkedHashMap<>(objectMapper.convertValue(response, new TypeReference<Map<String, Object>>() {
+        }));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void appendAdjustmentHistory(
+            LearningPlan plan,
+            Integer currentDayIndex,
+            Integer targetDayIndex,
+            PlanAdjustAgentResponse adjustResponse
+    ) {
+        Map<String, Object> planJson = plan.getPlanJson() == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(plan.getPlanJson());
+        Object existingHistory = planJson.get("adjustmentHistory");
+        List<Object> history = existingHistory instanceof List<?>
+                ? new ArrayList<>((List<Object>) existingHistory)
+                : new ArrayList<>();
+
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("currentDayIndex", currentDayIndex);
+        entry.put("targetDayIndex", targetDayIndex);
+        entry.put("reason", adjustResponse.reason());
+        entry.put("movedTasks", objectMapper.convertValue(
+                adjustResponse.movedTasks(),
+                new TypeReference<List<Map<String, Object>>>() {
+                }
+        ));
+        entry.put("splitTasks", objectMapper.convertValue(
+                adjustResponse.splitTasks(),
+                new TypeReference<List<Map<String, Object>>>() {
+                }
+        ));
+        entry.put("createdAt", LocalDateTime.now().toString());
+        history.add(entry);
+
+        planJson.put("adjustmentHistory", history);
+        plan.setPlanJson(planJson);
     }
 
     private ProgressLogResponse toResponse(ProgressLog log) {
@@ -272,6 +561,54 @@ public class ProgressLogService {
                 .toList();
     }
 
+    private Integer nextDayIndex(LearningPlan plan, Integer dayIndex) {
+        Integer durationDays = plan.getDurationDays() == null ? dayIndex + 1 : plan.getDurationDays();
+        return dayIndex < durationDays ? dayIndex + 1 : durationDays;
+    }
+
+    private int nextTaskOrder(
+            List<DailyTask> allPlanTasks,
+            List<DailyTask> newTasks,
+            Integer targetDayIndex
+    ) {
+        int existingMax = allPlanTasks.stream()
+                .filter(task -> targetDayIndex.equals(task.getDayIndex()))
+                .mapToInt(DailyTask::getTaskOrder)
+                .max()
+                .orElse(0);
+        return existingMax + newTasks.size() + 1;
+    }
+
+    private String targetDayTheme(List<DailyTask> allPlanTasks, Integer targetDayIndex) {
+        return allPlanTasks.stream()
+                .filter(task -> targetDayIndex.equals(task.getDayIndex()))
+                .map(DailyTask::getDayTheme)
+                .filter(value -> value != null && !value.isBlank())
+                .findFirst()
+                .orElse("Adjusted Day " + targetDayIndex);
+    }
+
+    private DailyTask findTask(List<DailyTask> tasks, Long taskId) {
+        return tasks.stream()
+                .filter(task -> task.getId().equals(taskId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean hasTaskWithTitle(
+            List<DailyTask> allPlanTasks,
+            List<DailyTask> newTasks,
+            Integer targetDayIndex,
+            String title
+    ) {
+        return allPlanTasks.stream()
+                .anyMatch(task -> targetDayIndex.equals(task.getDayIndex())
+                        && task.getTitle().equalsIgnoreCase(title))
+                || newTasks.stream()
+                .anyMatch(task -> targetDayIndex.equals(task.getDayIndex())
+                        && task.getTitle().equalsIgnoreCase(title));
+    }
+
     private String normalizeImpact(String value) {
         String normalized = value == null ? "" : value.trim().toLowerCase();
         if (normalized.equals("none") || normalized.equals("minor")
@@ -288,6 +625,21 @@ public class ProgressLogService {
             }
         }
         return "";
+    }
+
+    private Integer positiveOrDefault(Integer value, Integer defaultValue) {
+        return value == null || value <= 0 ? defaultValue : value;
+    }
+
+    private String normalizePriority(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase();
+        if (normalized.equals("high") || normalized.equals("urgent") || normalized.equals("critical")) {
+            return "high";
+        }
+        if (normalized.equals("low") || normalized.equals("optional")) {
+            return "low";
+        }
+        return "medium";
     }
 
     private String writeJson(Object value) {

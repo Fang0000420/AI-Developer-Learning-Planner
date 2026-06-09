@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.schemas.goal import SubGoal
@@ -66,3 +68,67 @@ class PlanGenerateResponse(BaseModel):
         if len(self.days) != self.durationDays:
             raise ValueError("days length must match durationDays.")
         return self
+
+
+class PlanAdjustTask(BaseModel):
+    id: int | None = Field(default=None, gt=0)
+    dayIndex: int | None = Field(default=None, gt=0)
+    taskOrder: int | None = Field(default=None, gt=0)
+    title: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    estimatedMinutes: int = Field(gt=0)
+    type: str = Field(min_length=1)
+    deliverable: str = Field(min_length=1)
+    priority: str = Field(min_length=1)
+    status: str | None = None
+
+    @field_validator("priority")
+    @classmethod
+    def normalize_adjust_priority(cls, value: str) -> str:
+        return PlanTask.normalize_priority(value)
+
+
+class PlanAdjustDay(BaseModel):
+    dayIndex: int = Field(gt=0)
+    theme: str = Field(min_length=1)
+    tasks: list[PlanAdjustTask] = Field(default_factory=list)
+
+
+class PlanAdjustReview(BaseModel):
+    completedTasks: list[str] = Field(default_factory=list)
+    unfinishedTasks: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    impact: Literal["none", "minor", "medium", "major"]
+    suggestion: str = Field(min_length=1)
+
+
+class PlanAdjustRequest(BaseModel):
+    planId: int = Field(gt=0)
+    currentDayIndex: int = Field(gt=0)
+    currentPlan: list[PlanAdjustDay] = Field(default_factory=list)
+    todayTasks: list[PlanAdjustTask] = Field(min_length=1)
+    progressReview: PlanAdjustReview
+    unfinishedTasks: list[PlanAdjustTask] = Field(default_factory=list)
+    nextDayTasks: list[PlanAdjustTask] = Field(default_factory=list)
+
+
+class PlanMovedTask(BaseModel):
+    taskId: int | None = Field(default=None, gt=0)
+    title: str = Field(min_length=1)
+    fromDayIndex: int = Field(gt=0)
+    toDayIndex: int = Field(gt=0)
+    reason: str = Field(min_length=1)
+
+
+class PlanSplitTask(BaseModel):
+    sourceTaskId: int | None = Field(default=None, gt=0)
+    sourceTitle: str = Field(min_length=1)
+    parts: list[PlanAdjustTask] = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class PlanAdjustResponse(BaseModel):
+    nextDayTasks: list[PlanAdjustTask] = Field(default_factory=list)
+    movedTasks: list[PlanMovedTask] = Field(default_factory=list)
+    splitTasks: list[PlanSplitTask] = Field(default_factory=list)
+    reason: str = Field(min_length=1)

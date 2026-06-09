@@ -10,6 +10,11 @@ import com.aidevplanner.backend.learningplan.DailyTaskRepository;
 import com.aidevplanner.backend.learningplan.DailyTaskStatus;
 import com.aidevplanner.backend.learningplan.LearningPlan;
 import com.aidevplanner.backend.learningplan.LearningPlanRepository;
+import com.aidevplanner.backend.learningplan.PlanAdjustAgentRequest;
+import com.aidevplanner.backend.learningplan.PlanAdjustAgentResponse;
+import com.aidevplanner.backend.learningplan.PlanAdjustTaskPayload;
+import com.aidevplanner.backend.learningplan.PlanAdjusterClient;
+import com.aidevplanner.backend.learningplan.PlanMovedTaskResponse;
 import com.aidevplanner.backend.user.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +34,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +54,9 @@ class ProgressLogServiceTests {
     private ProgressLogRepository progressLogRepository;
 
     @Mock
+    private PlanAdjusterClient planAdjusterClient;
+
+    @Mock
     private ProgressReviewerClient progressReviewerClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -61,6 +70,7 @@ class ProgressLogServiceTests {
                 dailyTaskRepository,
                 learningPlanRepository,
                 objectMapper,
+                planAdjusterClient,
                 progressLogRepository,
                 progressReviewerClient
         );
@@ -74,6 +84,8 @@ class ProgressLogServiceTests {
         when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
         when(dailyTaskRepository.findByPlanIdAndDayIndexOrderByTaskOrderAsc(30L, 1))
                 .thenReturn(tasks);
+        when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
+                .thenReturn(tasks);
         when(progressReviewerClient.review(any(ProgressReviewAgentRequest.class)))
                 .thenReturn(new ProgressReviewAgentResponse(
                         List.of("Create progress table"),
@@ -81,6 +93,30 @@ class ProgressLogServiceTests {
                         List.of("Need server verification"),
                         "minor",
                         "Finish the UI polish before adding new scope."
+                ));
+        when(planAdjusterClient.adjust(any(PlanAdjustAgentRequest.class)))
+                .thenReturn(new PlanAdjustAgentResponse(
+                        List.of(new PlanAdjustTaskPayload(
+                                null,
+                                2,
+                                null,
+                                "Carry over: Create progress form",
+                                "Build frontend submit form.",
+                                60,
+                                "build",
+                                "Progress form",
+                                "high",
+                                DailyTaskStatus.PENDING
+                        )),
+                        List.of(new PlanMovedTaskResponse(
+                                2L,
+                                "Create progress form",
+                                1,
+                                2,
+                                "The task was unfinished."
+                        )),
+                        List.of(),
+                        "Tomorrow's plan was adjusted to carry over unfinished work."
                 ));
         when(progressLogRepository.save(any(ProgressLog.class)))
                 .thenAnswer(invocation -> {
@@ -109,21 +145,28 @@ class ProgressLogServiceTests {
         assertThat(response.reviewResultJson())
                 .containsEntry("impact", "minor")
                 .containsEntry("suggestion", "Finish the UI polish before adding new scope.");
+        assertThat(response.reviewResultJson()).containsKey("planAdjustment");
         assertThat(tasks.get(0).getStatus()).isEqualTo(DailyTaskStatus.DONE);
-        assertThat(tasks.get(1).getStatus()).isEqualTo(DailyTaskStatus.PENDING);
+        assertThat(tasks.get(1).getStatus()).isEqualTo(DailyTaskStatus.SKIPPED);
 
         ArgumentCaptor<ProgressLog> logCaptor = ArgumentCaptor.forClass(ProgressLog.class);
         verify(progressLogRepository).save(logCaptor.capture());
         assertThat(logCaptor.getValue().getUserFeedback())
                 .isEqualTo("Finished the API and still need more UI polish.");
         assertThat(logCaptor.getValue().getReviewResultJson()).containsEntry("impact", "minor");
+        assertThat(plan.getPlanJson()).containsKey("adjustmentHistory");
 
         ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
-        verify(agentRunRepository).save(runCaptor.capture());
-        assertThat(runCaptor.getValue().getAgentName()).isEqualTo("Progress Reviewer");
-        assertThat(runCaptor.getValue().getStatus()).isEqualTo(AgentRunStatus.SUCCESS);
-        assertThat(runCaptor.getValue().getInputJson()).contains("\"dayIndex\":1");
-        assertThat(runCaptor.getValue().getOutputJson()).contains("\"impact\":\"minor\"");
+        verify(agentRunRepository, times(2)).save(runCaptor.capture());
+        List<AgentRun> savedRuns = runCaptor.getAllValues();
+        assertThat(savedRuns).extracting(AgentRun::getAgentName)
+                .containsExactly("Progress Reviewer", "Plan Adjuster");
+        assertThat(savedRuns).extracting(AgentRun::getStatus)
+                .containsExactly(AgentRunStatus.SUCCESS, AgentRunStatus.SUCCESS);
+        assertThat(savedRuns.get(0).getInputJson()).contains("\"dayIndex\":1");
+        assertThat(savedRuns.get(0).getOutputJson()).contains("\"impact\":\"minor\"");
+        assertThat(savedRuns.get(1).getInputJson()).contains("\"currentDayIndex\":1");
+        assertThat(savedRuns.get(1).getOutputJson()).contains("\"movedTasks\"");
     }
 
     @Test
