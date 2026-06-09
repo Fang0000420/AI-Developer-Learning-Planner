@@ -11,8 +11,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getApiErrorMessage, pollJob, postJson } from "@/lib/client-jobs";
 import type {
   ApiErrorResponse,
+  AsyncJob,
   LearningPlan,
   ProjectRecommendation,
 } from "@/lib/goals";
@@ -24,17 +26,6 @@ type ProjectRecommendationPanelProps = {
   initialRecommendation: ProjectRecommendation | null;
 };
 
-function getErrorMessage(error: ApiErrorResponse) {
-  if (error.errors) {
-    const firstError = Object.values(error.errors)[0];
-    if (firstError) {
-      return firstError;
-    }
-  }
-
-  return error.message || "Project recommendation failed.";
-}
-
 export function ProjectRecommendationPanel({
   goalId,
   initialError = null,
@@ -42,6 +33,7 @@ export function ProjectRecommendationPanel({
 }: ProjectRecommendationPanelProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(initialError);
+  const [planJobStatus, setPlanJobStatus] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -64,7 +56,12 @@ export function ProjectRecommendationPanel({
         | ApiErrorResponse;
 
       if (!response.ok) {
-        setError(getErrorMessage(payload as ApiErrorResponse));
+        setError(
+          getApiErrorMessage(
+            payload as ApiErrorResponse,
+            "Project recommendation failed.",
+          ),
+        );
         return;
       }
 
@@ -83,26 +80,18 @@ export function ProjectRecommendationPanel({
 
   async function handleGeneratePlan() {
     setPlanError(null);
+    setPlanJobStatus("Starting");
     setIsGeneratingPlan(true);
 
     try {
-      const response = await fetch("/api/plans/generate", {
-        body: JSON.stringify({ goalId }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
+      const job = await postJson<AsyncJob<LearningPlan>>(
+        "/api/jobs/plan-generation",
+        { goalId },
+      );
+      setPlanJobStatus(job.status);
+      const plan = await pollJob<LearningPlan>(job.jobId, (currentJob) => {
+        setPlanJobStatus(currentJob.status);
       });
-      const payload = (await response.json()) as
-        | LearningPlan
-        | ApiErrorResponse;
-
-      if (!response.ok) {
-        setPlanError(getErrorMessage(payload as ApiErrorResponse));
-        return;
-      }
-
-      const plan = payload as LearningPlan;
       router.push(`/plans/${plan.id}`);
     } catch (requestError) {
       setPlanError(
@@ -111,6 +100,7 @@ export function ProjectRecommendationPanel({
           : "Learning plan generation failed.",
       );
     } finally {
+      setPlanJobStatus(null);
       setIsGeneratingPlan(false);
     }
   }
@@ -267,7 +257,9 @@ export function ProjectRecommendationPanel({
             ) : (
               <Rocket aria-hidden="true" className="size-4" />
             )}
-            {isGeneratingPlan ? "Generating Plan" : "Generate Learning Plan"}
+            {isGeneratingPlan
+              ? `Generating Plan${planJobStatus ? `: ${planJobStatus}` : ""}`
+              : "Generate Learning Plan"}
           </button>
 
           {planError ? (

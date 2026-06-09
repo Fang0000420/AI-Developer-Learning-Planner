@@ -13,8 +13,10 @@ import {
   XCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getApiErrorMessage, pollJob, postJson } from "@/lib/client-jobs";
 import type {
   ApiErrorResponse,
+  AsyncJob,
   PlanTask,
   ProgressImpact,
   ProgressLog,
@@ -32,17 +34,6 @@ type ProgressSubmitFormProps = {
   planId: number;
   tasks: PlanTask[];
 };
-
-function getErrorMessage(error: ApiErrorResponse) {
-  if (error.errors) {
-    const firstError = Object.values(error.errors)[0];
-    if (firstError) {
-      return firstError;
-    }
-  }
-
-  return error.message || "Progress submission failed.";
-}
 
 function taskTitleMap(tasks: PlanTask[]) {
   return new Map(tasks.map((task) => [task.id, task.title]));
@@ -92,6 +83,7 @@ export function ProgressSubmitForm({
   );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
 
   function toggleCompleted(taskId: number) {
     setCompletedTaskIds((current) =>
@@ -114,11 +106,13 @@ export function ProgressSubmitForm({
   async function submitProgress(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setJobStatus("Starting");
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/progress", {
-        body: JSON.stringify({
+      const job = await postJson<AsyncJob<ProgressLog>>(
+        "/api/jobs/progress-submission",
+        {
           blockers: blockers
             .split("\n")
             .map((blocker) => blocker.trim())
@@ -128,19 +122,12 @@ export function ProgressSubmitForm({
           planId,
           unfinishedTaskIds,
           userFeedback,
-        }),
-        headers: {
-          "Content-Type": "application/json",
         },
-        method: "POST",
+      );
+      setJobStatus(job.status);
+      await pollJob<ProgressLog>(job.jobId, (currentJob) => {
+        setJobStatus(currentJob.status);
       });
-      const payload = (await response.json()) as ProgressLog | ApiErrorResponse;
-
-      if (!response.ok) {
-        setError(getErrorMessage(payload as ApiErrorResponse));
-        return;
-      }
-
       router.refresh();
     } catch (requestError) {
       setError(
@@ -149,6 +136,7 @@ export function ProgressSubmitForm({
           : "Progress submission failed.",
       );
     } finally {
+      setJobStatus(null);
       setIsSubmitting(false);
     }
   }
@@ -367,7 +355,20 @@ export function ProgressSubmitForm({
           </div>
         ) : null}
 
-        {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+        {isSubmitting && jobStatus ? (
+          <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm font-medium text-sky-800">
+            Async job status: {jobStatus}
+          </div>
+        ) : null}
+
+        {error ? (
+          <p className="text-sm text-rose-700">
+            {getApiErrorMessage(
+              { message: error } as ApiErrorResponse,
+              "Progress submission failed.",
+            )}
+          </p>
+        ) : null}
 
         <div className="flex justify-end">
           <button
@@ -383,7 +384,7 @@ export function ProgressSubmitForm({
             ) : (
               <ClipboardCheck aria-hidden="true" className="size-4" />
             )}
-            Submit
+            {isSubmitting ? "Submitting" : "Submit"}
           </button>
         </div>
       </form>

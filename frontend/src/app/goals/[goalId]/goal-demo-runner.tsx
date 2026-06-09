@@ -8,7 +8,8 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { ApiErrorResponse, LearningPlan } from "@/lib/goals";
+import { pollJob, postJson } from "@/lib/client-jobs";
+import type { AsyncJob, LearningPlan } from "@/lib/goals";
 
 type GoalDemoRunnerProps = {
   goalId: number;
@@ -26,32 +27,6 @@ type DemoStep = {
   label: string;
   ready: boolean;
 };
-
-function getErrorMessage(error: ApiErrorResponse) {
-  if (error.errors) {
-    const firstError = Object.values(error.errors)[0];
-    if (firstError) {
-      return firstError;
-    }
-  }
-
-  return error.message || "Demo flow failed.";
-}
-
-async function postJson<T>(endpoint: string, body?: object) {
-  const response = await fetch(endpoint, {
-    body: body ? JSON.stringify(body) : undefined,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    method: "POST",
-  });
-  const payload = (await response.json()) as T | ApiErrorResponse;
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(payload as ApiErrorResponse));
-  }
-
-  return payload as T;
-}
 
 export function GoalDemoRunner({
   goalId,
@@ -103,9 +78,11 @@ export function GoalDemoRunner({
   );
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [planStatus, setPlanStatus] = useState<StepStatus>("pending");
 
   async function runDemoFlow() {
     setError(null);
+    setPlanStatus("pending");
     setIsRunning(true);
 
     try {
@@ -120,9 +97,15 @@ export function GoalDemoRunner({
         setStatuses((current) => ({ ...current, [step.key]: "ready" }));
       }
 
-      const plan = await postJson<LearningPlan>("/api/plans/generate", {
-        goalId,
+      setPlanStatus("running");
+      const job = await postJson<AsyncJob<LearningPlan>>(
+        "/api/jobs/plan-generation",
+        { goalId },
+      );
+      const plan = await pollJob<LearningPlan>(job.jobId, (currentJob) => {
+        setPlanStatus(currentJob.status === "SUCCEEDED" ? "ready" : "running");
       });
+      setPlanStatus("ready");
       router.push(`/plans/${plan.id}`);
       router.refresh();
     } catch (requestError) {
@@ -139,6 +122,7 @@ export function GoalDemoRunner({
           ? { ...current, [runningStep[0]]: "failed" }
           : current;
       });
+      setPlanStatus((current) => (current === "running" ? "failed" : current));
     } finally {
       setIsRunning(false);
     }
@@ -192,6 +176,30 @@ export function GoalDemoRunner({
             </div>
           );
         })}
+        <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2">
+          <span className="text-sm font-medium text-slate-700">
+            Plan generation
+          </span>
+          <span className="flex items-center gap-1 text-xs font-semibold capitalize text-slate-500">
+            {planStatus === "running" ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-3.5 animate-spin"
+              />
+            ) : planStatus === "ready" ? (
+              <CheckCircle2
+                aria-hidden="true"
+                className="size-3.5 text-emerald-600"
+              />
+            ) : planStatus === "failed" ? (
+              <AlertCircle
+                aria-hidden="true"
+                className="size-3.5 text-rose-600"
+              />
+            ) : null}
+            {planStatus}
+          </span>
+        </div>
       </div>
 
       {error ? (

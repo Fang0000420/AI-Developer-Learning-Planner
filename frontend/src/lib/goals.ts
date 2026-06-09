@@ -177,6 +177,19 @@ export type ProgressLog = {
   updatedAt: string | null;
 };
 
+export type AsyncJobStatus = "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
+export type AsyncJobType = "PLAN_GENERATION" | "PROGRESS_SUBMISSION";
+
+export type AsyncJob<T> = {
+  jobId: string;
+  jobType: AsyncJobType;
+  status: AsyncJobStatus;
+  result: T | null;
+  errorMessage: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type ApiErrorResponse = {
   status?: string;
   message?: string;
