@@ -67,6 +67,40 @@ export type ProjectRecommendation = {
   createdAt: string | null;
 };
 
+export type DailyTaskStatus = "PENDING" | "COMPLETED" | "SKIPPED";
+
+export type PlanTask = {
+  id: number;
+  dayIndex: number;
+  taskOrder: number;
+  title: string;
+  description: string;
+  estimatedMinutes: number;
+  type: string;
+  deliverable: string;
+  priority: Priority;
+  status: DailyTaskStatus;
+};
+
+export type PlanDay = {
+  dayIndex: number;
+  theme: string;
+  totalEstimatedMinutes: number;
+  tasks: PlanTask[];
+};
+
+export type LearningPlan = {
+  id: number;
+  goalId: number;
+  userId: number;
+  sourceAgentRunId: number | null;
+  planTitle: string;
+  durationDays: number;
+  days: PlanDay[];
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type ApiErrorResponse = {
   status?: string;
   message?: string;
@@ -124,6 +158,20 @@ export function formatDailyHours(value: number | null) {
   }
 
   return `${value} hours`;
+}
+
+export function formatMinutes(value: number) {
+  if (value < 60) {
+    return `${value} min`;
+  }
+
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
+  if (minutes === 0) {
+    return `${hours} hr`;
+  }
+
+  return `${hours} hr ${minutes} min`;
 }
 
 export function getPriorityClasses(priority: Priority) {

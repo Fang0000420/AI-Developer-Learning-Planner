@@ -11,7 +11,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { ApiErrorResponse, ProjectRecommendation } from "@/lib/goals";
+import type {
+  ApiErrorResponse,
+  LearningPlan,
+  ProjectRecommendation,
+} from "@/lib/goals";
 import { formatDailyHours } from "@/lib/goals";
 
 type ProjectRecommendationPanelProps = {
@@ -38,6 +42,8 @@ export function ProjectRecommendationPanel({
 }: ProjectRecommendationPanelProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(initialError);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [recommendation, setRecommendation] =
     useState<ProjectRecommendation | null>(initialRecommendation);
@@ -72,6 +78,40 @@ export function ProjectRecommendationPanel({
       );
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  async function handleGeneratePlan() {
+    setPlanError(null);
+    setIsGeneratingPlan(true);
+
+    try {
+      const response = await fetch("/api/plans/generate", {
+        body: JSON.stringify({ goalId }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const payload = (await response.json()) as
+        | LearningPlan
+        | ApiErrorResponse;
+
+      if (!response.ok) {
+        setPlanError(getErrorMessage(payload as ApiErrorResponse));
+        return;
+      }
+
+      const plan = payload as LearningPlan;
+      router.push(`/plans/${plan.id}`);
+    } catch (requestError) {
+      setPlanError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Learning plan generation failed.",
+      );
+    } finally {
+      setIsGeneratingPlan(false);
     }
   }
 
@@ -214,13 +254,32 @@ export function ProjectRecommendationPanel({
           </div>
 
           <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-200 px-4 text-sm font-semibold text-slate-500"
-            disabled
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            disabled={isGeneratingPlan}
+            onClick={handleGeneratePlan}
             type="button"
           >
-            <Rocket aria-hidden="true" className="size-4" />
-            Generate Learning Plan
+            {isGeneratingPlan ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
+            ) : (
+              <Rocket aria-hidden="true" className="size-4" />
+            )}
+            {isGeneratingPlan ? "Generating Plan" : "Generate Learning Plan"}
           </button>
+
+          {planError ? (
+            <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
+              <p className="text-sm font-semibold text-rose-950">
+                Unable to generate a learning plan.
+              </p>
+              <p className="mt-2 text-sm leading-6 text-rose-700">
+                {planError}
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
