@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
+  CalendarCheck,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -103,6 +105,13 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
                 analysis, and project recommendation saved for this goal.
               </p>
             </div>
+            <Link
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800"
+              href={`/plans/${plan.id}/today`}
+            >
+              <CalendarCheck aria-hidden="true" className="size-4" />
+              Today Tasks
+            </Link>
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -145,6 +154,13 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
                     </h2>
                   </div>
                   <div className="flex flex-wrap gap-2 text-sm font-medium text-slate-600">
+                    <Link
+                      className="inline-flex h-8 items-center gap-2 rounded-md bg-slate-950 px-3 text-white transition-colors hover:bg-slate-800"
+                      href={`/plans/${plan.id}/today?dayIndex=${day.dayIndex}`}
+                    >
+                      Open
+                      <ArrowRight aria-hidden="true" className="size-4" />
+                    </Link>
                     <span className="inline-flex h-8 items-center rounded-md bg-slate-100 px-3">
                       {day.tasks.length} tasks
                     </span>
@@ -235,10 +251,10 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
             </section>
 
             <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
-              <h2 className="text-base font-semibold">Next MVP Step</h2>
+              <h2 className="text-base font-semibold">Daily Work</h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Day 11 can use these saved daily tasks to power the task list
-                and current-day work view.
+                Open a day from this plan to update task status and keep the
+                saved daily task records current.
               </p>
             </section>
           </aside>

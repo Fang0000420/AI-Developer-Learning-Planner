@@ -203,6 +203,71 @@ class LearningPlanServiceTests {
     }
 
     @Test
+    void listsTasksForPlan() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        when(learningPlanRepository.existsById(30L)).thenReturn(true);
+        when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
+                .thenReturn(tasks(plan, goal));
+
+        List<PlanTaskResponse> response = learningPlanService.listTasks(30L);
+
+        assertThat(response).hasSize(3);
+        assertThat(response.get(0).title()).isEqualTo("Review architecture");
+        assertThat(response.get(0).status()).isEqualTo(DailyTaskStatus.PENDING);
+    }
+
+    @Test
+    void returnsTasksForRequestedDay() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        when(learningPlanRepository.existsById(30L)).thenReturn(true);
+        when(dailyTaskRepository.findByPlanIdAndDayIndexOrderByTaskOrderAsc(30L, 2))
+                .thenReturn(List.of(tasks(plan, goal).get(2)));
+
+        PlanDayResponse response = learningPlanService.getDayTasks(30L, 2);
+
+        assertThat(response.dayIndex()).isEqualTo(2);
+        assertThat(response.theme()).isEqualTo("Agent integration");
+        assertThat(response.tasks()).hasSize(1);
+    }
+
+    @Test
+    void updatesTaskStatusWhenTaskBelongsToPlan() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        DailyTask task = tasks(plan, goal).get(0);
+        when(learningPlanRepository.existsById(30L)).thenReturn(true);
+        when(dailyTaskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        PlanTaskResponse response = learningPlanService.updateTaskStatus(
+                30L,
+                1L,
+                new DailyTaskStatusUpdateRequest(DailyTaskStatus.DONE)
+        );
+
+        assertThat(response.status()).isEqualTo(DailyTaskStatus.DONE);
+        assertThat(task.getStatus()).isEqualTo(DailyTaskStatus.DONE);
+    }
+
+    @Test
+    void rejectsTaskStatusUpdateForDifferentPlan() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        DailyTask task = tasks(plan, goal).get(0);
+        when(learningPlanRepository.existsById(99L)).thenReturn(true);
+        when(dailyTaskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        assertThatThrownBy(() -> learningPlanService.updateTaskStatus(
+                99L,
+                1L,
+                new DailyTaskStatusUpdateRequest(DailyTaskStatus.DONE)
+        ))
+                .isInstanceOf(com.aidevplanner.backend.common.ResourceNotFoundException.class)
+                .hasMessage("Daily task in learning plan 1 was not found.");
+    }
+
+    @Test
     void listsPlanSummaries() {
         Goal goal = goal();
         LearningPlan plan = learningPlan(goal);

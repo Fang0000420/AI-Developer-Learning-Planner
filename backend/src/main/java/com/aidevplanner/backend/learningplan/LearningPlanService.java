@@ -78,6 +78,24 @@ public class LearningPlanService {
         return toResponse(plan, tasks);
     }
 
+    @Transactional(readOnly = true)
+    public List<PlanTaskResponse> listTasks(Long planId) {
+        ensurePlanExists(planId);
+        return dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(planId).stream()
+                .map(this::toTaskResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PlanDayResponse getDayTasks(Long planId, Integer dayIndex) {
+        ensurePlanExists(planId);
+        List<DailyTask> tasks = dailyTaskRepository.findByPlanIdAndDayIndexOrderByTaskOrderAsc(planId, dayIndex);
+        if (tasks.isEmpty()) {
+            throw new ResourceNotFoundException("Learning plan day", dayIndex.longValue());
+        }
+        return toDayResponse(dayIndex, tasks);
+    }
+
     @Transactional
     public LearningPlanResponse updatePlanStatus(Long planId, LearningPlanUpdateRequest request) {
         LearningPlan plan = learningPlanRepository.findById(planId)
@@ -88,11 +106,33 @@ public class LearningPlanService {
     }
 
     @Transactional
+    public PlanTaskResponse updateTaskStatus(
+            Long planId,
+            Long taskId,
+            DailyTaskStatusUpdateRequest request
+    ) {
+        ensurePlanExists(planId);
+        DailyTask task = dailyTaskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Daily task", taskId));
+        if (!task.getPlan().getId().equals(planId)) {
+            throw new ResourceNotFoundException("Daily task in learning plan", taskId);
+        }
+        task.setStatus(request.status());
+        return toTaskResponse(task);
+    }
+
+    @Transactional
     public void deletePlan(Long planId) {
         if (!learningPlanRepository.existsById(planId)) {
             throw new ResourceNotFoundException("Learning plan", planId);
         }
         learningPlanRepository.deleteById(planId);
+    }
+
+    private void ensurePlanExists(Long planId) {
+        if (!learningPlanRepository.existsById(planId)) {
+            throw new ResourceNotFoundException("Learning plan", planId);
+        }
     }
 
     @Transactional(noRollbackFor = AgentServiceException.class)

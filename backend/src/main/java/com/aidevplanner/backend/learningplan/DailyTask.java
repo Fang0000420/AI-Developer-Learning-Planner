@@ -177,6 +177,10 @@ public class DailyTask {
         return status;
     }
 
+    public void setStatus(DailyTaskStatus status) {
+        this.status = status;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }

@@ -68,7 +68,7 @@ export type ProjectRecommendation = {
   createdAt: string | null;
 };
 
-export type DailyTaskStatus = "PENDING" | "COMPLETED" | "SKIPPED";
+export type DailyTaskStatus = "PENDING" | "IN_PROGRESS" | "DONE" | "SKIPPED";
 
 export type PlanTask = {
   id: number;
@@ -198,4 +198,26 @@ export function getPriorityClasses(priority: Priority) {
   };
 
   return classes[priority];
+}
+
+export function getDailyTaskStatusLabel(status: DailyTaskStatus) {
+  const labels: Record<DailyTaskStatus, string> = {
+    DONE: "Done",
+    IN_PROGRESS: "In progress",
+    PENDING: "Pending",
+    SKIPPED: "Skipped",
+  };
+
+  return labels[status];
+}
+
+export function getDailyTaskStatusClasses(status: DailyTaskStatus) {
+  const classes: Record<DailyTaskStatus, string> = {
+    DONE: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    IN_PROGRESS: "bg-sky-50 text-sky-700 ring-sky-200",
+    PENDING: "bg-slate-100 text-slate-600 ring-slate-200",
+    SKIPPED: "bg-amber-50 text-amber-700 ring-amber-200",
+  };
+
+  return classes[status];
 }

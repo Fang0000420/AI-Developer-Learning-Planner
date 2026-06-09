@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -45,6 +46,27 @@ public class LearningPlanController {
         return learningPlanService.getPlan(planId);
     }
 
+    @GetMapping("/{planId}/tasks")
+    public List<PlanTaskResponse> listTasks(
+            @Positive(message = "Plan id must be positive.")
+            @PathVariable
+            Long planId
+    ) {
+        return learningPlanService.listTasks(planId);
+    }
+
+    @GetMapping("/{planId}/tasks/today")
+    public PlanDayResponse getTodayTasks(
+            @Positive(message = "Plan id must be positive.")
+            @PathVariable
+            Long planId,
+            @Positive(message = "Day index must be positive.")
+            @RequestParam(defaultValue = "1")
+            Integer dayIndex
+    ) {
+        return learningPlanService.getDayTasks(planId, dayIndex);
+    }
+
     @PutMapping("/{planId}")
     public LearningPlanResponse updatePlanStatus(
             @Positive(message = "Plan id must be positive.")
@@ -53,6 +75,19 @@ public class LearningPlanController {
             @Valid @RequestBody LearningPlanUpdateRequest request
     ) {
         return learningPlanService.updatePlanStatus(planId, request);
+    }
+
+    @PutMapping("/{planId}/tasks/{taskId}/status")
+    public PlanTaskResponse updateTaskStatus(
+            @Positive(message = "Plan id must be positive.")
+            @PathVariable
+            Long planId,
+            @Positive(message = "Task id must be positive.")
+            @PathVariable
+            Long taskId,
+            @Valid @RequestBody DailyTaskStatusUpdateRequest request
+    ) {
+        return learningPlanService.updateTaskStatus(planId, taskId, request);
     }
 
     @DeleteMapping("/{planId}")

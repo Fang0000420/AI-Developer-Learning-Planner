@@ -3,6 +3,7 @@ import type {
   ApiErrorResponse,
   LearningPlan,
   LearningPlanSummary,
+  PlanDay,
 } from "./goals";
 
 type BackendResult<T> =
@@ -98,6 +99,46 @@ export async function fetchBackendPlans(): Promise<
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Backend plans request failed.";
+
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendPlanDayTasks(
+  planId: string,
+  dayIndex: number,
+): Promise<BackendResult<PlanDay>> {
+  try {
+    const searchParams = new URLSearchParams({
+      dayIndex: String(dayIndex),
+    });
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/plans/${planId}/tasks/today?${searchParams.toString()}`,
+      {
+        cache: "no-store",
+      },
+    );
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(payload, "Backend daily tasks request failed."),
+      };
+    }
+
+    return {
+      data: payload as PlanDay,
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Backend daily tasks request failed.";
 
     return {
       data: null,

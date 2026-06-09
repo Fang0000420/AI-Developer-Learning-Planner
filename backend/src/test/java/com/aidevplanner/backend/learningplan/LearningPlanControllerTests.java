@@ -74,6 +74,32 @@ class LearningPlanControllerTests {
     }
 
     @Test
+    void listsPlanTasks() throws Exception {
+        when(learningPlanService.listTasks(30L)).thenReturn(planResponse().days().get(0).tasks());
+
+        mockMvc.perform(get("/api/plans/{planId}/tasks", 30L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].status").value("PENDING"));
+
+        verify(learningPlanService).listTasks(30L);
+    }
+
+    @Test
+    void returnsTodayTasksForRequestedDayIndex() throws Exception {
+        PlanDayResponse day = planResponse().days().get(0);
+        when(learningPlanService.getDayTasks(30L, 1)).thenReturn(day);
+
+        mockMvc.perform(get("/api/plans/{planId}/tasks/today", 30L)
+                        .param("dayIndex", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dayIndex").value(1))
+                .andExpect(jsonPath("$.tasks[0].title").value("Review architecture"));
+
+        verify(learningPlanService).getDayTasks(30L, 1);
+    }
+
+    @Test
     void updatesPlanStatus() throws Exception {
         when(learningPlanService.updatePlanStatus(
                 30L,
@@ -89,6 +115,40 @@ class LearningPlanControllerTests {
         verify(learningPlanService).updatePlanStatus(
                 30L,
                 new LearningPlanUpdateRequest(LearningPlanStatus.PAUSED)
+        );
+    }
+
+    @Test
+    void updatesTaskStatus() throws Exception {
+        PlanTaskResponse updatedTask = new PlanTaskResponse(
+                1L,
+                1,
+                1,
+                "Review architecture",
+                "Understand service boundaries.",
+                30,
+                "learning",
+                "Architecture notes",
+                "high",
+                DailyTaskStatus.IN_PROGRESS
+        );
+        when(learningPlanService.updateTaskStatus(
+                30L,
+                1L,
+                new DailyTaskStatusUpdateRequest(DailyTaskStatus.IN_PROGRESS)
+        )).thenReturn(updatedTask);
+
+        mockMvc.perform(put("/api/plans/{planId}/tasks/{taskId}/status", 30L, 1L)
+                        .contentType("application/json")
+                        .content("{\"status\":\"IN_PROGRESS\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+
+        verify(learningPlanService).updateTaskStatus(
+                30L,
+                1L,
+                new DailyTaskStatusUpdateRequest(DailyTaskStatus.IN_PROGRESS)
         );
     }
 
@@ -130,6 +190,17 @@ class LearningPlanControllerTests {
         mockMvc.perform(get("/api/plans/{planId}", -1L))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.planId").value("Plan id must be positive."));
+
+        verifyNoInteractions(learningPlanService);
+    }
+
+    @Test
+    void rejectsNegativeTaskId() throws Exception {
+        mockMvc.perform(put("/api/plans/{planId}/tasks/{taskId}/status", 30L, -1L)
+                        .contentType("application/json")
+                        .content("{\"status\":\"DONE\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.taskId").value("Task id must be positive."));
 
         verifyNoInteractions(learningPlanService);
     }

@@ -100,7 +100,7 @@ export function PlanRowActions({ plan }: PlanRowActionsProps) {
   }
 
   return (
-    <div className="flex shrink-0 flex-col gap-2 lg:w-40">
+    <div className="flex flex-col gap-2">
       <div className="flex gap-2">
         <button
           className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"

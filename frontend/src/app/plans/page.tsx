@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarCheck,
   CalendarDays,
   Clock3,
   ListChecks,
@@ -165,7 +166,16 @@ export default async function PlansPage() {
                     </div>
                   </Link>
 
-                  <PlanRowActions plan={plan} />
+                  <div className="flex shrink-0 flex-col gap-2 lg:w-40">
+                    <Link
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                      href={`/plans/${plan.id}/today`}
+                    >
+                      <CalendarCheck aria-hidden="true" className="size-4" />
+                      Today
+                    </Link>
+                    <PlanRowActions plan={plan} />
+                  </div>
                 </div>
               </article>
             ))}
