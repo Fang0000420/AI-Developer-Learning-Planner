@@ -24,16 +24,33 @@ export type SkillProfile = {
   updatedAt: string | null;
 };
 
+export type Priority = "high" | "medium" | "low";
+
 export type SubGoal = {
   title: string;
   description: string;
-  priority: "high" | "medium" | "low";
+  priority: Priority;
 };
 
 export type GoalDecomposition = {
   runId: number;
   goalId: number;
   subGoals: SubGoal[];
+  createdAt: string | null;
+};
+
+export type SkillGap = {
+  skill: string;
+  currentLevel: string;
+  targetLevel: string;
+  priority: Priority;
+  reason: string;
+};
+
+export type SkillGapAnalysis = {
+  runId: number;
+  goalId: number;
+  skillGaps: SkillGap[];
   createdAt: string | null;
 };
 
@@ -96,8 +113,8 @@ export function formatDailyHours(value: number | null) {
   return `${value} hours`;
 }
 
-export function getPriorityClasses(priority: SubGoal["priority"]) {
-  const classes: Record<SubGoal["priority"], string> = {
+export function getPriorityClasses(priority: Priority) {
+  const classes: Record<Priority, string> = {
     high: "bg-rose-50 text-rose-700 ring-rose-200",
     low: "bg-slate-100 text-slate-600 ring-slate-200",
     medium: "bg-amber-50 text-amber-700 ring-amber-200",

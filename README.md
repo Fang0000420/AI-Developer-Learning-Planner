@@ -56,7 +56,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 本地启动
 
-当前仓库处于 Day 06 Profile Analyzer 阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置、`/api/health`、goals CRUD、能力画像分析接口，以及 `users`、`goals`、`skill_profiles`、`agent_runs` migration。`agent-service/` 已具备 FastAPI 基础骨架、`/health` 和 `/agent/profile/analyze` 接口，未配置 `DEEPSEEK_API_KEY` 时使用 mock fallback。
+当前仓库处于 Day 08 Skill Gap Analyzer 阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置、`/api/health`、goals CRUD、能力画像分析、目标拆解和技能差距分析接口，以及 `users`、`goals`、`skill_profiles`、`agent_runs` migration。`agent-service/` 已具备 FastAPI 基础骨架、`/health`、`/agent/profile/analyze`、`/agent/goal/decompose` 和 `/agent/skill-gap/analyze` 接口，未配置 `DEEPSEEK_API_KEY` 时使用 mock fallback。
 
 计划中的本地启动方式：
 

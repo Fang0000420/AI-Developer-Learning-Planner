@@ -11,6 +11,7 @@ import {
   fetchBackendGoal,
   fetchBackendGoalDecomposition,
   fetchBackendGoalProfile,
+  fetchBackendSkillGapAnalysis,
 } from "@/lib/backend-goals";
 import {
   formatDailyHours,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/goals";
 import { GoalDecompositionPanel } from "./goal-decomposition-panel";
 import { ProfileAnalysisPanel } from "./profile-analysis-panel";
+import { SkillGapAnalysisPanel } from "./skill-gap-analysis-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,9 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
     : { data: null, error: null };
   const { data: decomposition, error: decompositionError } = goal
     ? await fetchBackendGoalDecomposition(goalId)
+    : { data: null, error: null };
+  const { data: skillGapAnalysis, error: skillGapError } = goal
+    ? await fetchBackendSkillGapAnalysis(goalId)
     : { data: null, error: null };
 
   if (error || !goal) {
@@ -166,6 +171,12 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
             goalId={goal.id}
             initialDecomposition={decomposition}
             initialError={decompositionError?.message ?? null}
+          />
+
+          <SkillGapAnalysisPanel
+            goalId={goal.id}
+            initialError={skillGapError?.message ?? null}
+            initialSkillGapAnalysis={skillGapAnalysis}
           />
         </div>
 

@@ -3,6 +3,7 @@ import type {
   ApiErrorResponse,
   Goal,
   GoalDecomposition,
+  SkillGapAnalysis,
   SkillProfile,
 } from "./goals";
 
@@ -187,6 +188,50 @@ export async function fetchBackendGoalDecomposition(
       error instanceof Error
         ? error.message
         : "Backend decomposition request failed.";
+
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendSkillGapAnalysis(
+  goalId: string,
+): Promise<BackendResult<SkillGapAnalysis | null>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/goals/${goalId}/skill-gap`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    if (response.status === 204) {
+      return {
+        data: null,
+        error: null,
+      };
+    }
+
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(payload, "Backend skill gap request failed."),
+      };
+    }
+
+    return {
+      data: payload as SkillGapAnalysis,
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Backend skill gap request failed.";
 
     return {
       data: null,
