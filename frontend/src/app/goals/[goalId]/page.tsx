@@ -21,6 +21,7 @@ import {
   getGoalStatusLabel,
 } from "@/lib/goals";
 import { GoalDecompositionPanel } from "./goal-decomposition-panel";
+import { GoalDemoRunner } from "./goal-demo-runner";
 import { ProfileAnalysisPanel } from "./profile-analysis-panel";
 import { ProjectRecommendationPanel } from "./project-recommendation-panel";
 import { SkillGapAnalysisPanel } from "./skill-gap-analysis-panel";
@@ -193,6 +194,14 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
         </div>
 
         <aside className="flex flex-col gap-6">
+          <GoalDemoRunner
+            goalId={goal.id}
+            hasDecomposition={decomposition !== null}
+            hasProfile={profile !== null}
+            hasProjectRecommendation={projectRecommendation !== null}
+            hasSkillGapAnalysis={skillGapAnalysis !== null}
+          />
+
           <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-slate-950">
               Backend Record
@@ -220,10 +229,10 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
           </section>
 
           <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
-            <h2 className="text-base font-semibold">Next Agent Step</h2>
+            <h2 className="text-base font-semibold">Demo Path</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              This saved goal is ready for profile analysis, goal decomposition,
-              and daily plan generation in the next MVP stages.
+              Run the agent chain, open the generated plan, then submit Day 1
+              progress to trigger review and the next day adjustment.
             </p>
           </section>
         </aside>

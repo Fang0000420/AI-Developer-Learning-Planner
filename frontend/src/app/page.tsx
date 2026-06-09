@@ -15,20 +15,20 @@ import { BackendHealthCard } from "./backend-health-card";
 const statusCards = [
   {
     label: "Active goal",
-    value: "Backend saved",
-    detail: "Goal creation now persists through the Spring Boot API.",
+    value: "Saved flow",
+    detail: "Goals persist through Spring Boot and feed the agent chain.",
     icon: Target,
   },
   {
     label: "Plan window",
     value: "14 or 21 days",
-    detail: "Daily task generation arrives after agent workflows.",
+    detail: "Plan generation stores learning plans and daily tasks.",
     icon: CalendarDays,
   },
   {
     label: "Today",
-    value: "No tasks yet",
-    detail: "Daily progress starts after the first plan exists.",
+    value: "Adaptive",
+    detail: "Progress review can adjust the next day's task list.",
     icon: Clock3,
   },
 ];
@@ -65,7 +65,10 @@ const workflowSteps = [
   { label: "Profile analysis", state: "Ready" },
   { label: "Goal decomposition", state: "Ready" },
   { label: "Skill gap review", state: "Ready" },
-  { label: "Daily plan", state: "Planned" },
+  { label: "Project recommendation", state: "Ready" },
+  { label: "Daily plan", state: "Ready" },
+  { label: "Progress review", state: "Ready" },
+  { label: "Plan adjustment", state: "Ready" },
 ];
 
 export default function Home() {
@@ -78,15 +81,15 @@ export default function Home() {
               <div className="max-w-3xl">
                 <p className="inline-flex h-8 items-center gap-2 rounded-md bg-emerald-50 px-3 text-sm font-medium text-emerald-700">
                   <Sparkles aria-hidden="true" className="size-4" />
-                  Day 08 workspace
+                  Day 15 demo flow
                 </p>
                 <h1 className="mt-4 text-3xl font-semibold text-slate-950">
                   Build an adaptive AI learning plan
                 </h1>
                 <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
                   Use this workspace to create a learning goal, inspect the
-                  generated plan, and track daily execution once the MVP flow is
-                  connected.
+                  generated plan, submit daily progress, and verify the next day
+                  adjusted task list.
                 </p>
               </div>
 
@@ -205,9 +208,8 @@ export default function Home() {
           <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
             <h2 className="text-base font-semibold">Next Step</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Profile analysis, goal decomposition, and skill gap review now run
-              from the goal detail page. Day 09 continues into project
-              recommendations.
+              Create a goal, run the demo chain from the goal detail page, open
+              Day 1 tasks, and submit progress with one unfinished task.
             </p>
             <Link
               className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-200"

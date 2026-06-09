@@ -21,6 +21,20 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 7. Agent 服务评估当日进度，给出反馈。
 8. 系统根据反馈动态调整后续任务。
 
+## 当前 Demo 路径
+
+当前已完成 Day 15，可以演示一条完整 MVP 闭环：
+
+1. 打开前端首页，进入 `New Goal` 创建目标。
+2. 推荐 demo 输入：Java 后端开发背景，有 Python 和基础 AI 使用经验，目标是在 21 天内做出 AI Developer Learning Planner，每天 2 小时。
+3. 在目标详情页点击侧栏 `Run to Plan`，系统会补齐能力画像、目标拆解、技能差距分析、项目推荐，并生成学习计划。
+4. 打开生成的计划详情，进入 `Today` 或 Day 1 任务页。
+5. 勾选部分任务为完成、至少保留一个未完成任务，填写反馈和阻塞项后提交进度。
+6. 最近提交记录会展示 Progress Reviewer 的 impact、suggestion 和 blockers。
+7. 切到 Day 2，确认 Plan Adjuster 新增的 carry-over 或 split 任务。
+
+服务器验收时可同步检查数据库：`agent_runs` 中应有 `Profile Analyzer`、`Goal Decomposer`、`Skill Gap Analyzer`、`Project Recommender`、`Plan Generator`、`Progress Reviewer` 和 `Plan Adjuster` 的 `SUCCESS` 记录；`skill_profiles`、`learning_plans`、`daily_tasks` 和 `progress_logs.review_result_json` 应能追踪对应结果。
+
 ## 技术栈
 
 | 模块              | 技术                                                                                                                                        |
@@ -54,37 +68,41 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 └── .github/workflows/  # GitHub Actions workflows
 ```
 
-## 本地启动
+## 启动与验收
 
-当前仓库处于 Day 08 Skill Gap Analyzer 阶段，`backend/` 已具备 Spring Boot + Maven 基础骨架、PostgreSQL/JPA/Flyway 配置、`/api/health`、goals CRUD、能力画像分析、目标拆解和技能差距分析接口，以及 `users`、`goals`、`skill_profiles`、`agent_runs` migration。`agent-service/` 已具备 FastAPI 基础骨架、`/health`、`/agent/profile/analyze`、`/agent/goal/decompose` 和 `/agent/skill-gap/analyze` 接口，未配置 `DEEPSEEK_API_KEY` 时使用 mock fallback。
+当前仓库处于 Day 15 跑通完整闭环阶段。`backend/` 已具备 goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘和计划调整接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback。
 
-计划中的本地启动方式：
+默认验收环境为服务器 `/home/AI-Developer-Learning-Planner`。启动或重启服务前，先在项目根目录加载 `.env`：
 
 ```bash
-# 1. 复制环境变量模板
-cp .env.example .env
+set -a && source .env && set +a
+```
 
-# 2. 启动 PostgreSQL 和 Redis
+基础启动方式：
+
+```bash
+# 1. PostgreSQL 和 Redis
 docker compose -f infra/docker-compose.yml up postgres redis
 
-# 3. 启动 Java 后端
+# 2. Java 后端
 cd backend
 mvn spring-boot:run
 
-# 4. 验证后端健康检查
+# 3. 后端健康检查
 curl http://localhost:8080/api/health
 
-# 5. 启动 Python Agent 服务
+# 4. Python Agent 服务
 cd agent-service
 source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 验证 Agent 服务健康检查
+# 5. Agent 健康检查
 curl http://localhost:8000/health
 
-# 6. 启动前端
+# 6. 前端
 cd frontend
-npm run dev
+npm run build
+npm run start:server
 ```
 
 ## 工程约定
