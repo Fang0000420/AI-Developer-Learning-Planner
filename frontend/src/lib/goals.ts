@@ -117,6 +117,21 @@ export type LearningPlanSummary = {
   updatedAt: string | null;
 };
 
+export type ProgressLog = {
+  id: number;
+  planId: number;
+  goalId: number;
+  userId: number;
+  dayIndex: number;
+  userFeedback: string;
+  completedTaskIds: number[];
+  unfinishedTaskIds: number[];
+  blockers: string[];
+  reviewResultJson: Record<string, unknown>;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type ApiErrorResponse = {
   status?: string;
   message?: string;

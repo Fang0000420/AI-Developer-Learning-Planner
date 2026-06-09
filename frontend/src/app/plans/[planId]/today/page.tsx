@@ -14,12 +14,14 @@ import {
   fetchBackendPlan,
   fetchBackendPlanDayTasks,
 } from "@/lib/backend-plans";
+import { fetchBackendProgressLogs } from "@/lib/backend-progress";
 import {
   formatMinutes,
   getDailyTaskStatusClasses,
   getDailyTaskStatusLabel,
   getPriorityClasses,
 } from "@/lib/goals";
+import { ProgressSubmitForm } from "./progress-submit-form";
 import { TaskStatusActions } from "./task-status-actions";
 
 export const dynamic = "force-dynamic";
@@ -45,11 +47,15 @@ export default async function TodayTasksPage({
   const { planId } = await params;
   const { dayIndex: dayIndexParam } = await searchParams;
   const dayIndex = parseDayIndex(dayIndexParam);
-  const [{ data: plan, error: planError }, { data: day, error: dayError }] =
-    await Promise.all([
-      fetchBackendPlan(planId),
-      fetchBackendPlanDayTasks(planId, dayIndex),
-    ]);
+  const [
+    { data: plan, error: planError },
+    { data: day, error: dayError },
+    { data: progressLogs, error: progressError },
+  ] = await Promise.all([
+    fetchBackendPlan(planId),
+    fetchBackendPlanDayTasks(planId, dayIndex),
+    fetchBackendProgressLogs(planId, dayIndex),
+  ]);
 
   const error = planError || dayError;
 
@@ -100,6 +106,7 @@ export default async function TodayTasksPage({
       enabled: nextDay !== null,
     },
   ];
+  const latestLog = progressLogs?.[0] ?? null;
 
   return (
     <main className="flex-1 bg-background text-foreground">
@@ -191,6 +198,19 @@ export default async function TodayTasksPage({
             </div>
           </div>
         </section>
+
+        {progressError ? (
+          <section className="rounded-md border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800">
+            {progressError.message || "Progress logs could not load."}
+          </section>
+        ) : null}
+
+        <ProgressSubmitForm
+          dayIndex={day.dayIndex}
+          latestLog={latestLog}
+          planId={plan.id}
+          tasks={day.tasks}
+        />
 
         <section className="flex flex-col gap-4">
           {day.tasks.map((task) => (
