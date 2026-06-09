@@ -54,6 +54,19 @@ export type SkillGapAnalysis = {
   createdAt: string | null;
 };
 
+export type ProjectRecommendation = {
+  runId: number;
+  goalId: number;
+  recommendedProject: string;
+  reason: string;
+  difficulty: string;
+  durationDays: number;
+  dailyTimeHours: number;
+  coreTechStack: string[];
+  finalDeliverables: string[];
+  createdAt: string | null;
+};
+
 export type ApiErrorResponse = {
   status?: string;
   message?: string;

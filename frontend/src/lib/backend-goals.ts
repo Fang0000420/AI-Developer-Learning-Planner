@@ -3,6 +3,7 @@ import type {
   ApiErrorResponse,
   Goal,
   GoalDecomposition,
+  ProjectRecommendation,
   SkillGapAnalysis,
   SkillProfile,
 } from "./goals";
@@ -232,6 +233,53 @@ export async function fetchBackendSkillGapAnalysis(
       error instanceof Error
         ? error.message
         : "Backend skill gap request failed.";
+
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendProjectRecommendation(
+  goalId: string,
+): Promise<BackendResult<ProjectRecommendation | null>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/goals/${goalId}/project-recommendation`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    if (response.status === 204) {
+      return {
+        data: null,
+        error: null,
+      };
+    }
+
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(
+          payload,
+          "Backend project recommendation request failed.",
+        ),
+      };
+    }
+
+    return {
+      data: payload as ProjectRecommendation,
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Backend project recommendation request failed.";
 
     return {
       data: null,
