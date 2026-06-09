@@ -69,6 +69,7 @@ export type ProjectRecommendation = {
 };
 
 export type DailyTaskStatus = "PENDING" | "IN_PROGRESS" | "DONE" | "SKIPPED";
+export type ProgressImpact = "none" | "minor" | "medium" | "major";
 
 export type PlanTask = {
   id: number;
@@ -117,6 +118,14 @@ export type LearningPlanSummary = {
   updatedAt: string | null;
 };
 
+export type ProgressReviewResult = {
+  completedTasks?: string[];
+  unfinishedTasks?: string[];
+  blockers?: string[];
+  impact?: ProgressImpact;
+  suggestion?: string;
+};
+
 export type ProgressLog = {
   id: number;
   planId: number;
@@ -127,7 +136,7 @@ export type ProgressLog = {
   completedTaskIds: number[];
   unfinishedTaskIds: number[];
   blockers: string[];
-  reviewResultJson: Record<string, unknown>;
+  reviewResultJson: ProgressReviewResult;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -235,4 +244,26 @@ export function getDailyTaskStatusClasses(status: DailyTaskStatus) {
   };
 
   return classes[status];
+}
+
+export function getProgressImpactLabel(impact: ProgressImpact) {
+  const labels: Record<ProgressImpact, string> = {
+    major: "Major impact",
+    medium: "Medium impact",
+    minor: "Minor impact",
+    none: "No impact",
+  };
+
+  return labels[impact];
+}
+
+export function getProgressImpactClasses(impact: ProgressImpact) {
+  const classes: Record<ProgressImpact, string> = {
+    major: "bg-rose-50 text-rose-700 ring-rose-200",
+    medium: "bg-amber-50 text-amber-700 ring-amber-200",
+    minor: "bg-sky-50 text-sky-700 ring-sky-200",
+    none: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  };
+
+  return classes[impact];
 }

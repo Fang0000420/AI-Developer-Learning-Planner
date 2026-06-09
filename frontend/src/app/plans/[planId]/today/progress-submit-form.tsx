@@ -3,15 +3,27 @@
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import {
+  Activity,
   CheckCircle2,
   ClipboardCheck,
+  Lightbulb,
   LoaderCircle,
   MessageSquareText,
   XCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { ApiErrorResponse, PlanTask, ProgressLog } from "@/lib/goals";
-import { formatGoalDate } from "@/lib/goals";
+import type {
+  ApiErrorResponse,
+  PlanTask,
+  ProgressImpact,
+  ProgressLog,
+  ProgressReviewResult,
+} from "@/lib/goals";
+import {
+  formatGoalDate,
+  getProgressImpactClasses,
+  getProgressImpactLabel,
+} from "@/lib/goals";
 
 type ProgressSubmitFormProps = {
   dayIndex: number;
@@ -35,6 +47,26 @@ function taskTitleMap(tasks: PlanTask[]) {
   return new Map(tasks.map((task) => [task.id, task.title]));
 }
 
+function normalizeReview(
+  review: ProgressReviewResult | null | undefined,
+): ProgressReviewResult | null {
+  if (!review || !review.impact || !review.suggestion) {
+    return null;
+  }
+
+  return {
+    blockers: Array.isArray(review.blockers) ? review.blockers : [],
+    completedTasks: Array.isArray(review.completedTasks)
+      ? review.completedTasks
+      : [],
+    impact: review.impact,
+    suggestion: review.suggestion,
+    unfinishedTasks: Array.isArray(review.unfinishedTasks)
+      ? review.unfinishedTasks
+      : [],
+  };
+}
+
 export function ProgressSubmitForm({
   dayIndex,
   latestLog,
@@ -43,6 +75,7 @@ export function ProgressSubmitForm({
 }: ProgressSubmitFormProps) {
   const router = useRouter();
   const titlesById = useMemo(() => taskTitleMap(tasks), [tasks]);
+  const latestReview = normalizeReview(latestLog?.reviewResultJson);
   const [completedTaskIds, setCompletedTaskIds] = useState<number[]>(
     tasks.filter((task) => task.status === "DONE").map((task) => task.id),
   );
@@ -236,6 +269,42 @@ export function ProgressSubmitForm({
                 </p>
               </div>
             </div>
+            {latestReview ? (
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <Activity aria-hidden="true" className="size-4" />
+                    Review
+                  </div>
+                  <span
+                    className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${getProgressImpactClasses(
+                      latestReview.impact as ProgressImpact,
+                    )}`}
+                  >
+                    {getProgressImpactLabel(
+                      latestReview.impact as ProgressImpact,
+                    )}
+                  </span>
+                </div>
+                <p className="mt-3 flex gap-2 text-sm leading-6 text-slate-700">
+                  <Lightbulb
+                    aria-hidden="true"
+                    className="mt-1 size-4 shrink-0 text-amber-600"
+                  />
+                  <span>{latestReview.suggestion}</span>
+                </p>
+                {latestReview.blockers && latestReview.blockers.length > 0 ? (
+                  <div className="mt-3 text-sm">
+                    <div className="font-medium text-slate-500">
+                      Reviewer blockers
+                    </div>
+                    <p className="mt-1 leading-6 text-slate-700">
+                      {latestReview.blockers.join(", ")}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

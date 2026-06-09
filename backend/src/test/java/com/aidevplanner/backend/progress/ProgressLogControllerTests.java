@@ -57,7 +57,9 @@ class ProgressLogControllerTests {
                 .andExpect(jsonPath("$.id").value(100))
                 .andExpect(jsonPath("$.completedTaskIds[0]").value(1))
                 .andExpect(jsonPath("$.unfinishedTaskIds[0]").value(2))
-                .andExpect(jsonPath("$.blockers[0]").value("Need frontend verification"));
+                .andExpect(jsonPath("$.blockers[0]").value("Need frontend verification"))
+                .andExpect(jsonPath("$.reviewResultJson.impact").value("minor"))
+                .andExpect(jsonPath("$.reviewResultJson.suggestion").value("Finish the UI polish tomorrow."));
 
         verify(progressLogService).submitProgress(request);
     }
@@ -113,7 +115,10 @@ class ProgressLogControllerTests {
                 List.of(1L),
                 List.of(2L),
                 List.of("Need frontend verification"),
-                Map.of(),
+                Map.of(
+                        "impact", "minor",
+                        "suggestion", "Finish the UI polish tomorrow."
+                ),
                 TIMESTAMP,
                 TIMESTAMP
         );

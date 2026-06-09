@@ -1,5 +1,8 @@
 package com.aidevplanner.backend.progress;
 
+import com.aidevplanner.backend.agent.AgentRun;
+import com.aidevplanner.backend.agent.AgentRunRepository;
+import com.aidevplanner.backend.agent.AgentRunStatus;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.learningplan.DailyTask;
@@ -8,6 +11,7 @@ import com.aidevplanner.backend.learningplan.DailyTaskStatus;
 import com.aidevplanner.backend.learningplan.LearningPlan;
 import com.aidevplanner.backend.learningplan.LearningPlanRepository;
 import com.aidevplanner.backend.user.User;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +36,9 @@ import static org.mockito.Mockito.when;
 class ProgressLogServiceTests {
 
     @Mock
+    private AgentRunRepository agentRunRepository;
+
+    @Mock
     private DailyTaskRepository dailyTaskRepository;
 
     @Mock
@@ -40,14 +47,22 @@ class ProgressLogServiceTests {
     @Mock
     private ProgressLogRepository progressLogRepository;
 
+    @Mock
+    private ProgressReviewerClient progressReviewerClient;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     private ProgressLogService progressLogService;
 
     @BeforeEach
     void setUp() {
         progressLogService = new ProgressLogService(
+                agentRunRepository,
                 dailyTaskRepository,
                 learningPlanRepository,
-                progressLogRepository
+                objectMapper,
+                progressLogRepository,
+                progressReviewerClient
         );
     }
 
@@ -59,6 +74,14 @@ class ProgressLogServiceTests {
         when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
         when(dailyTaskRepository.findByPlanIdAndDayIndexOrderByTaskOrderAsc(30L, 1))
                 .thenReturn(tasks);
+        when(progressReviewerClient.review(any(ProgressReviewAgentRequest.class)))
+                .thenReturn(new ProgressReviewAgentResponse(
+                        List.of("Create progress table"),
+                        List.of("Create progress form"),
+                        List.of("Need server verification"),
+                        "minor",
+                        "Finish the UI polish before adding new scope."
+                ));
         when(progressLogRepository.save(any(ProgressLog.class)))
                 .thenAnswer(invocation -> {
                     ProgressLog log = invocation.getArgument(0);
@@ -83,6 +106,9 @@ class ProgressLogServiceTests {
         assertThat(response.completedTaskIds()).containsExactly(1L);
         assertThat(response.unfinishedTaskIds()).containsExactly(2L);
         assertThat(response.blockers()).containsExactly("Need server verification");
+        assertThat(response.reviewResultJson())
+                .containsEntry("impact", "minor")
+                .containsEntry("suggestion", "Finish the UI polish before adding new scope.");
         assertThat(tasks.get(0).getStatus()).isEqualTo(DailyTaskStatus.DONE);
         assertThat(tasks.get(1).getStatus()).isEqualTo(DailyTaskStatus.PENDING);
 
@@ -90,6 +116,14 @@ class ProgressLogServiceTests {
         verify(progressLogRepository).save(logCaptor.capture());
         assertThat(logCaptor.getValue().getUserFeedback())
                 .isEqualTo("Finished the API and still need more UI polish.");
+        assertThat(logCaptor.getValue().getReviewResultJson()).containsEntry("impact", "minor");
+
+        ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
+        verify(agentRunRepository).save(runCaptor.capture());
+        assertThat(runCaptor.getValue().getAgentName()).isEqualTo("Progress Reviewer");
+        assertThat(runCaptor.getValue().getStatus()).isEqualTo(AgentRunStatus.SUCCESS);
+        assertThat(runCaptor.getValue().getInputJson()).contains("\"dayIndex\":1");
+        assertThat(runCaptor.getValue().getOutputJson()).contains("\"impact\":\"minor\"");
     }
 
     @Test
@@ -138,7 +172,10 @@ class ProgressLogServiceTests {
                 List.of(1L),
                 List.of(2L),
                 List.of("Waiting for deploy"),
-                Map.of()
+                Map.of(
+                        "impact", "medium",
+                        "suggestion", "Clear the deploy blocker first."
+                )
         );
         ReflectionTestUtils.setField(log, "id", 100L);
         ReflectionTestUtils.setField(log, "createdAt", LocalDateTime.of(2026, 6, 9, 14, 0));
