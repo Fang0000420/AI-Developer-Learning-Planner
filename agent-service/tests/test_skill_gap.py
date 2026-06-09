@@ -91,3 +91,57 @@ def test_skill_gap_model_output_is_normalized_and_padded() -> None:
     assert response.skillGaps[0].priority == "high"
     assert response.skillGaps[0].targetLevel == "intermediate"
     assert response.skillGaps[0].reason
+
+
+def test_skill_gap_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) -> None:
+    request = SkillGapAnalyzeRequest(
+        mainGoal="Build AI agent apps",
+        currentSkills=[],
+        strengths=[],
+        weaknesses=[],
+        subGoals=[],
+    )
+
+    def raise_invalid_response(_request: SkillGapAnalyzeRequest) -> SkillGapAnalyzeResponse:
+        raise ValueError("invalid model response")
+
+    monkeypatch.setattr(skill_gap_analyzer, "DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(
+        skill_gap_analyzer,
+        "analyze_skill_gap_with_model",
+        raise_invalid_response,
+    )
+
+    response = skill_gap_analyzer.analyze_skill_gap(request)
+
+    assert len(response.skillGaps) >= 4
+    assert response.skillGaps[0].priority == "high"
+
+
+def test_skill_gap_nested_dict_output_is_normalized() -> None:
+    request = SkillGapAnalyzeRequest(
+        mainGoal="Build AI agent apps",
+        currentSkills=[],
+        strengths=[],
+        weaknesses=[],
+        subGoals=[],
+    )
+    parsed = {
+        "data": {
+            "skill_gaps": {
+                "LLM evaluation": {
+                    "current_proficiency": "1",
+                    "target_level": "intermediate",
+                    "urgency": "urgent",
+                    "description": "Needed to judge output quality.",
+                }
+            }
+        }
+    }
+
+    normalized = skill_gap_analyzer._normalize_model_output(parsed, request)
+    response = SkillGapAnalyzeResponse.model_validate(normalized)
+
+    assert response.skillGaps[0].skill == "LLM evaluation"
+    assert response.skillGaps[0].currentLevel == "1"
+    assert response.skillGaps[0].priority == "high"

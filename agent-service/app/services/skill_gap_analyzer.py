@@ -52,10 +52,8 @@ def analyze_skill_gap(request: SkillGapAnalyzeRequest) -> SkillGapAnalyzeRespons
     if DEEPSEEK_API_KEY:
         try:
             return analyze_skill_gap_with_model(request)
-        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
-            raise SkillGapAnalyzerError(
-                "Skill gap analyzer model response was invalid."
-            ) from exc
+        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
+            return analyze_skill_gap_with_mock(request)
 
     return analyze_skill_gap_with_mock(request)
 
@@ -175,8 +173,16 @@ def _normalize_model_output(
     parsed: dict[str, object],
     request: SkillGapAnalyzeRequest,
 ) -> dict[str, list[dict[str, str]]]:
-    raw_skill_gaps = parsed.get("skillGaps") or parsed.get("skills") or parsed.get("gaps")
+    raw_skill_gaps = _find_skill_gap_items(parsed)
     normalized: list[dict[str, str]] = []
+
+    if isinstance(raw_skill_gaps, dict):
+        raw_skill_gaps = [
+            {"skill": str(skill), **item}
+            if isinstance(item, dict)
+            else {"skill": str(skill), "reason": str(item)}
+            for skill, item in raw_skill_gaps.items()
+        ]
 
     if isinstance(raw_skill_gaps, list):
         for item in raw_skill_gaps:
@@ -195,6 +201,10 @@ def _normalize_model_output(
                         "currentLevel",
                         "current_level",
                         "current",
+                        "currentSkillLevel",
+                        "currentProficiency",
+                        "current_proficiency",
+                        "from",
                         "当前水平",
                     )
                     or "beginner",
@@ -203,13 +213,25 @@ def _normalize_model_output(
                         "targetLevel",
                         "target_level",
                         "target",
+                        "targetSkillLevel",
+                        "targetProficiency",
+                        "target_proficiency",
+                        "to",
                         "目标水平",
                     )
                     or "intermediate",
                     "priority": _normalize_priority(
                         _first_string(item, "priority", "urgency", "优先级")
                     ),
-                    "reason": _first_string(item, "reason", "rationale", "why", "原因")
+                    "reason": _first_string(
+                        item,
+                        "reason",
+                        "rationale",
+                        "why",
+                        "gap",
+                        "description",
+                        "原因",
+                    )
                     or f"This skill is needed for the goal: {request.mainGoal}.",
                 }
             )
@@ -221,6 +243,30 @@ def _normalize_model_output(
             normalized.append(fallback)
 
     return {"skillGaps": normalized}
+
+
+def _find_skill_gap_items(parsed: dict[str, object]) -> object:
+    direct_keys = (
+        "skillGaps",
+        "skill_gaps",
+        "skills",
+        "gaps",
+        "items",
+        "results",
+        "analysis",
+    )
+    for key in direct_keys:
+        value = parsed.get(key)
+        if isinstance(value, list | dict):
+            return value
+
+    for value in parsed.values():
+        if isinstance(value, dict):
+            nested = _find_skill_gap_items(value)
+            if isinstance(nested, list | dict):
+                return nested
+
+    return []
 
 
 def _fallback_skill_gaps(request: SkillGapAnalyzeRequest) -> list[dict[str, str]]:
@@ -293,6 +339,8 @@ def _first_string(values: dict[object, object], *keys: str) -> str:
         value = values.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
+        if isinstance(value, int | float):
+            return str(value)
     return ""
 
 
