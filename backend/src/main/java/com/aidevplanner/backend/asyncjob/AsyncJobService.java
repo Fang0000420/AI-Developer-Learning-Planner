@@ -7,6 +7,7 @@ import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.learningplan.LearningPlanGenerateRequest;
 import com.aidevplanner.backend.learningplan.LearningPlan;
 import com.aidevplanner.backend.learningplan.LearningPlanRepository;
+import com.aidevplanner.backend.observability.ObservabilityContext;
 import com.aidevplanner.backend.progress.ProgressSubmitRequest;
 import com.aidevplanner.backend.user.User;
 import com.aidevplanner.backend.user.UserRepository;
@@ -57,7 +58,7 @@ public class AsyncJobService {
                 writeJson(request),
                 user
         ));
-        asyncJobRunner.runPlanGeneration(job.getId(), request.goalId());
+        asyncJobRunner.runPlanGeneration(job.getId(), request.goalId(), ObservabilityContext.getRequestId());
         return toResponse(job);
     }
 
@@ -72,7 +73,7 @@ public class AsyncJobService {
                 writeJson(request),
                 user
         ));
-        asyncJobRunner.runProgressSubmission(job.getId(), request);
+        asyncJobRunner.runProgressSubmission(job.getId(), request, ObservabilityContext.getRequestId());
         return toResponse(job);
     }
 

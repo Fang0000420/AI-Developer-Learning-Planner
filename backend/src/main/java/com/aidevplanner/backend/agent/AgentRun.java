@@ -1,9 +1,12 @@
 package com.aidevplanner.backend.agent;
 
 import com.aidevplanner.backend.goal.Goal;
+import com.aidevplanner.backend.learningplan.LearningPlan;
+import com.aidevplanner.backend.observability.ObservabilityContext;
 import com.aidevplanner.backend.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -17,6 +20,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
+@EntityListeners(AgentRunLogListener.class)
 @Table(name = "agent_runs")
 public class AgentRun {
 
@@ -31,6 +35,10 @@ public class AgentRun {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "goal_id")
     private Goal goal;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plan_id")
+    private LearningPlan plan;
 
     @Column(name = "agent_name", nullable = false, length = 100)
     private String agentName;
@@ -50,6 +58,9 @@ public class AgentRun {
 
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
+
+    @Column(name = "request_id", length = 100)
+    private String requestId;
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -75,6 +86,7 @@ public class AgentRun {
         this.status = status;
         this.latencyMs = latencyMs;
         this.errorMessage = errorMessage;
+        this.requestId = ObservabilityContext.getRequestId();
     }
 
     public Long getId() {
@@ -87,6 +99,14 @@ public class AgentRun {
 
     public Goal getGoal() {
         return goal;
+    }
+
+    public LearningPlan getPlan() {
+        return plan;
+    }
+
+    public void setPlan(LearningPlan plan) {
+        this.plan = plan;
     }
 
     public String getAgentName() {
@@ -111,6 +131,10 @@ public class AgentRun {
 
     public String getErrorMessage() {
         return errorMessage;
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 
     public LocalDateTime getCreatedAt() {

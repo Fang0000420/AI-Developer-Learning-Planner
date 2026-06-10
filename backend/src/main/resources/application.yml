@@ -26,3 +26,7 @@ server:
 
 agent-service:
   base-url: ${AGENT_SERVICE_BASE_URL:http://localhost:8000}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] requestId=%X{requestId:-none} %logger{36} - %msg%n"

@@ -6,22 +6,28 @@ export const AUTH_USERNAME_COOKIE_NAME = "ai_planner_username";
 export function authHeadersFromRequest(
   request: Request,
 ): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-Request-Id": request.headers.get("X-Request-Id") ?? crypto.randomUUID(),
+  };
   const authorization = request.headers.get("authorization");
   if (authorization) {
-    return { Authorization: authorization };
+    return { ...headers, Authorization: authorization };
   }
 
   const token = parseCookieHeader(request.headers.get("cookie") ?? "")[
     AUTH_COOKIE_NAME
   ];
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
 }
 
 export async function authHeadersFromCookies(): Promise<
   Record<string, string>
 > {
   const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: Record<string, string> = {
+    "X-Request-Id": crypto.randomUUID(),
+  };
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
 }
 
 export async function authDisplayFromCookies() {

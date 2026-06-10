@@ -1,6 +1,7 @@
 package com.aidevplanner.backend.skillgap;
 
 import com.aidevplanner.backend.agent.AgentServiceException;
+import com.aidevplanner.backend.agent.AgentServiceRequestHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -31,6 +32,7 @@ public class HttpSkillGapAnalyzerClient implements SkillGapAnalyzerClient {
                     .uri("/agent/skill-gap/analyze")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
+                    .headers(AgentServiceRequestHeaders::addTraceHeaders)
                     .body(request)
                     .retrieve()
                     .body(SkillGapAnalyzeResponse.class);

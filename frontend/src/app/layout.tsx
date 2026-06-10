@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  Activity,
   CalendarCheck,
   LayoutDashboard,
   ListChecks,
@@ -29,6 +30,7 @@ export default async function RootLayout({
     { href: "/goals/new", label: "New Goal", icon: Plus },
     { href: "/plans", label: "Plans", icon: ListChecks },
     { href: "/tasks/today", label: "Today", icon: CalendarCheck },
+    { href: "/agent-runs", label: "Agent Runs", icon: Activity },
     ...(auth ? [] : [{ href: "/login", label: "Login", icon: LogIn }]),
   ];
 

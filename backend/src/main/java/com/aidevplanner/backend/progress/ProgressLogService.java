@@ -110,7 +110,7 @@ public class ProgressLogService {
         try {
             reviewResponse = normalizeReviewResponse(progressReviewerClient.review(reviewRequest));
             String outputJson = writeJson(reviewResponse);
-            agentRunRepository.save(new AgentRun(
+            AgentRun reviewRun = new AgentRun(
                     plan.getUser(),
                     plan.getGoal(),
                     AGENT_NAME,
@@ -119,9 +119,11 @@ public class ProgressLogService {
                     AgentRunStatus.SUCCESS,
                     elapsedMs(startedAt),
                     null
-            ));
+            );
+            reviewRun.setPlan(plan);
+            agentRunRepository.save(reviewRun);
         } catch (AgentServiceException exception) {
-            agentRunRepository.save(new AgentRun(
+            AgentRun failedReviewRun = new AgentRun(
                     plan.getUser(),
                     plan.getGoal(),
                     AGENT_NAME,
@@ -130,7 +132,9 @@ public class ProgressLogService {
                     AgentRunStatus.FAILED,
                     elapsedMs(startedAt),
                     exception.getMessage()
-            ));
+            );
+            failedReviewRun.setPlan(plan);
+            agentRunRepository.save(failedReviewRun);
             throw exception;
         }
 
@@ -160,7 +164,7 @@ public class ProgressLogService {
             );
             appendAdjustmentHistory(plan, request.dayIndex(), targetDayIndex, adjustResponse);
             String adjustOutputJson = writeJson(adjustResponse);
-            agentRunRepository.save(new AgentRun(
+            AgentRun adjustRun = new AgentRun(
                     plan.getUser(),
                     plan.getGoal(),
                     PLAN_ADJUSTER_AGENT_NAME,
@@ -169,9 +173,11 @@ public class ProgressLogService {
                     AgentRunStatus.SUCCESS,
                     elapsedMs(adjustStartedAt),
                     null
-            ));
+            );
+            adjustRun.setPlan(plan);
+            agentRunRepository.save(adjustRun);
         } catch (AgentServiceException exception) {
-            agentRunRepository.save(new AgentRun(
+            AgentRun failedAdjustRun = new AgentRun(
                     plan.getUser(),
                     plan.getGoal(),
                     PLAN_ADJUSTER_AGENT_NAME,
@@ -180,7 +186,9 @@ public class ProgressLogService {
                     AgentRunStatus.FAILED,
                     elapsedMs(adjustStartedAt),
                     exception.getMessage()
-            ));
+            );
+            failedAdjustRun.setPlan(plan);
+            agentRunRepository.save(failedAdjustRun);
             throw exception;
         }
 

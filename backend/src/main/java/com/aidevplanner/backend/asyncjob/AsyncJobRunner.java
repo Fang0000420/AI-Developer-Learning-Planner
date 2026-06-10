@@ -3,6 +3,7 @@ package com.aidevplanner.backend.asyncjob;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.learningplan.LearningPlanResponse;
 import com.aidevplanner.backend.learningplan.LearningPlanService;
+import com.aidevplanner.backend.observability.ObservabilityContext;
 import com.aidevplanner.backend.progress.ProgressLogResponse;
 import com.aidevplanner.backend.progress.ProgressLogService;
 import com.aidevplanner.backend.progress.ProgressSubmitRequest;
@@ -34,24 +35,30 @@ public class AsyncJobRunner {
     }
 
     @Async
-    public void runPlanGeneration(UUID jobId, Long goalId) {
-        markRunning(jobId);
+    public void runPlanGeneration(UUID jobId, Long goalId, String requestId) {
+        ObservabilityContext.setRequestId(requestId);
         try {
+            markRunning(jobId);
             LearningPlanResponse response = learningPlanService.generatePlan(goalId);
             markSucceeded(jobId, writeJson(response));
         } catch (Exception exception) {
             markFailed(jobId, exception);
+        } finally {
+            ObservabilityContext.clear();
         }
     }
 
     @Async
-    public void runProgressSubmission(UUID jobId, ProgressSubmitRequest request) {
-        markRunning(jobId);
+    public void runProgressSubmission(UUID jobId, ProgressSubmitRequest request, String requestId) {
+        ObservabilityContext.setRequestId(requestId);
         try {
+            markRunning(jobId);
             ProgressLogResponse response = progressLogService.submitProgress(request);
             markSucceeded(jobId, writeJson(response));
         } catch (Exception exception) {
             markFailed(jobId, exception);
+        } finally {
+            ObservabilityContext.clear();
         }
     }
 

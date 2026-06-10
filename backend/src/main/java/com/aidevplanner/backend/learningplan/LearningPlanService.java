@@ -190,6 +190,7 @@ public class LearningPlanService {
                     agentResponse.durationDays(),
                     toPlanJson(agentResponse)
             ));
+            savedRun.setPlan(savedPlan);
             List<DailyTask> savedTasks = dailyTaskRepository.saveAll(toDailyTasks(savedPlan, goal, agentResponse));
 
             return toResponse(savedPlan, savedTasks);

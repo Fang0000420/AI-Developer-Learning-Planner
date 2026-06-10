@@ -190,6 +190,26 @@ export type AsyncJob<T> = {
   updatedAt: string | null;
 };
 
+export type AgentRunStatus = "SUCCESS" | "FAILED";
+
+export type AgentRunSummary = {
+  id: number;
+  userId: number | null;
+  goalId: number | null;
+  planId: number | null;
+  agentName: string;
+  status: AgentRunStatus;
+  latencyMs: number;
+  errorMessage: string | null;
+  requestId: string | null;
+  createdAt: string | null;
+};
+
+export type AgentRunDetail = AgentRunSummary & {
+  inputJson: unknown;
+  outputJson: unknown;
+};
+
 export type ApiErrorResponse = {
   status?: string;
   message?: string;

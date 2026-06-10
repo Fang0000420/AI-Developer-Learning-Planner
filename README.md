@@ -23,7 +23,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 当前 Demo 路径
 
-当前已完成 Day 17，可以演示一条带基础登录保护的完整 MVP 闭环，计划生成和进度提交会通过异步 job 轮询完成：
+当前已完成 Day 18，可以演示一条带基础登录保护、异步 job 和 Agent 执行追踪的完整 MVP 闭环：
 
 1. 打开前端 `/login`，注册或登录一个测试用户。
 2. 进入 `New Goal` 创建目标。
@@ -33,8 +33,9 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 6. 勾选部分任务为完成、至少保留一个未完成任务，填写反馈和阻塞项后提交进度。
 7. 最近提交记录会展示 Progress Reviewer 的 impact、suggestion 和 blockers。
 8. 切到 Day 2，确认 Plan Adjuster 新增的 carry-over 或 split 任务。
+9. 打开顶部导航 `Agent Runs`，查看本次 workflow 的 Agent 执行历史；进入详情页可检查 input/output JSON、latency、status、errorMessage 和 requestId。
 
-服务器验收时可同步检查数据库：`async_jobs` 中应有 `PLAN_GENERATION` 和 `PROGRESS_SUBMISSION` 的 `SUCCEEDED` 记录；`agent_runs` 中应有 `Profile Analyzer`、`Goal Decomposer`、`Skill Gap Analyzer`、`Project Recommender`、`Plan Generator`、`Progress Reviewer` 和 `Plan Adjuster` 的 `SUCCESS` 记录；`skill_profiles`、`learning_plans`、`daily_tasks` 和 `progress_logs.review_result_json` 应能追踪对应结果。
+服务器验收时可同步检查数据库：`async_jobs` 中应有 `PLAN_GENERATION` 和 `PROGRESS_SUBMISSION` 的 `SUCCEEDED` 记录；`agent_runs` 中应有 `Profile Analyzer`、`Goal Decomposer`、`Skill Gap Analyzer`、`Project Recommender`、`Plan Generator`、`Progress Reviewer` 和 `Plan Adjuster` 的 `SUCCESS` 记录；`agent_runs.request_id` 应有值，`Plan Generator`、`Progress Reviewer`、`Plan Adjuster` 等可关联计划的记录应有 `plan_id`；`skill_profiles`、`learning_plans`、`daily_tasks` 和 `progress_logs.review_result_json` 应能追踪对应结果。
 
 ## 技术栈
 
@@ -71,7 +72,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 启动与验收
 
-当前仓库处于 Day 17 安全与校验阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整和异步 job 状态接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 retry。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback。
+当前仓库处于 Day 18 日志与可观测性阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 retry 和 requestId 日志。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback。
 
 默认验收环境为服务器 `/home/AI-Developer-Learning-Planner`。启动或重启服务前，先在项目根目录加载 `.env`：
 

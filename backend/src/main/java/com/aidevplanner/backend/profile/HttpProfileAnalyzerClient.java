@@ -1,6 +1,7 @@
 package com.aidevplanner.backend.profile;
 
 import com.aidevplanner.backend.agent.AgentServiceException;
+import com.aidevplanner.backend.agent.AgentServiceRequestHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -31,6 +32,7 @@ public class HttpProfileAnalyzerClient implements ProfileAnalyzerClient {
                     .uri("/agent/profile/analyze")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
+                    .headers(AgentServiceRequestHeaders::addTraceHeaders)
                     .body(request)
                     .retrieve()
                     .body(ProfileAnalyzeResponse.class);
