@@ -38,7 +38,7 @@ services:
 
   agent-service:
     build:
-      context: ../agent-service
+      context: ./agent-service
       dockerfile: Dockerfile
     image: ai-planner-agent-service:local
     container_name: ai-planner-agent-service
@@ -69,7 +69,7 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     image: ai-planner-backend:local
     container_name: ai-planner-backend
@@ -103,7 +103,7 @@ services:
 
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
       dockerfile: Dockerfile
     image: ai-planner-frontend:local
     container_name: ai-planner-frontend

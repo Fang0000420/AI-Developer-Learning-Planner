@@ -5,9 +5,9 @@
 ## 当前阶段
 
 - 当前日期: 2026-06-10
-- 当前进度: Day 19 已完成
-- 当前主题: 测试与 CI
-- 下一阶段: Day 20 - Docker 部署
+- 当前进度: Day 20 已完成
+- 当前主题: Docker 部署
+- 下一阶段: Day 21 - 项目展示
 - 当前模型策略: 能力画像、目标拆解、技能差距分析、项目推荐、计划生成、进度复盘和计划调整优先使用 DeepSeek，目标模型暂定 `deepseek-v4-pro`；未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；已配置真实模型时会区分可重试错误和不可重试错误，网络/超时/429/5xx/模型输出格式问题先重试，重试耗尽后才 fallback，401/403/404/400 等配置或权限问题直接报错不 fallback；服务器暂不部署 Clash 或其他代理方案。
 
 Day 13 已完成并在服务器验收通过：Agent 服务新增 `POST /agent/progress/review`，可根据今日任务、完成/未完成任务、阻塞项和用户反馈返回结构化复盘；后端 `POST /api/progress` 提交后会调用 Progress Reviewer，将结果保存到 `progress_logs.review_result_json`，并把本次调用写入 `agent_runs`；前端 `/plans/[planId]/today` 的最近提交记录可展示 impact、suggestion 和 reviewer blockers。服务器数据库已确认 `progress_logs.review_result_json` 包含复盘内容，`agent_runs` 已写入 `Progress Reviewer` 的 `SUCCESS` 记录。
@@ -23,6 +23,8 @@ Day 17 已完成并在服务器验收通过：后端新增 `POST /api/auth/regis
 Day 18 已完成并在服务器验收通过：后端新增 `V9__add_agent_run_observability_fields.sql`，为 `agent_runs` 增加 `plan_id`、`request_id` 和相关索引；新增 `GET /api/agent-runs` 与 `GET /api/agent-runs/{runId}`，支持按 `goalId`、`planId`、`agentName` 过滤，并按当前 JWT 用户限制访问，详情返回 input/output JSON、错误原因、latency 和 requestId。后端新增请求日志过滤器，为每个请求生成或透传 `X-Request-Id`，响应回写同名 header，日志 pattern 写入 MDC requestId；所有 Spring 到 Agent 服务的 HTTP client 会透传 requestId，异步 job 会把创建请求的 requestId 带入后台线程；Agent 服务新增 FastAPI request logging middleware，回传 `X-Request-Id`，模型重试日志也包含 requestId。前端新增 `/agent-runs` 和 `/agent-runs/[runId]` 页面，以及同源 `/api/agent-runs`、`/api/agent-runs/[runId]` route，顶部导航新增 Agent Runs 入口。服务器验收时通过 Agent Runs 页面定位到一次 Goal Decomposer 偶发失败，随后补齐 Goal Decomposer 模型输出归一化，并将 Agent 服务模型调用改为按错误类型处理：可重试错误重试耗尽后 fallback，不可重试错误直接报错。本机验证：后端临时指定 Java 17 后 `mvn test` 通过，`Tests run: 89, Failures: 0, Errors: 0, Skipped: 0`；Agent `.venv` 下 `pytest` 通过，`28 passed, 1 warning`，`ruff check .` 通过；前端 `npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过。
 
 Day 19 已完成，等待服务器验收：新增 GitHub Actions `.github/workflows/ci.yml`，PR 和 main push 会分别运行 backend、agent-service、frontend 三组检查；backend job 使用 Java 17 并启动 PostgreSQL 16 和 Redis 7 service，agent-service job 执行 `ruff check .` 和 `pytest`，frontend job 执行 `npm run lint`、`npm test`、`npm run typecheck`、`npm run format:check` 和 `npm run build`。前端新增 Vitest + Testing Library 测试基座，覆盖 `/goals/new` 目标表单校验/API 错误状态，以及 `/plans/[planId]/today` 今日任务渲染/API 错误状态。Agent 服务新增 schema 契约测试，覆盖 profile、goal、skill-gap、project、plan、progress 和 adjust 相关 Pydantic schema 与归一化行为。后端补充 health/request id 测试，验证 `X-Request-Id` 自动生成与透传。README 已补充三端测试命令和 CI 说明。本机验证：后端临时指定 Java 17 后 `mvn test` 通过，`Tests run: 90, Failures: 0, Errors: 0, Skipped: 0`；Agent `.venv` 下 `pytest` 通过，`31 passed, 1 warning`，`ruff check .` 通过；前端 `npm test` 通过，`4 passed`，`npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 均通过。
+
+Day 20 已完成，等待服务器验收：新增 `backend/Dockerfile`、`agent-service/Dockerfile` 和 `frontend/Dockerfile`，分别构建 Spring Boot jar、FastAPI Uvicorn 服务和 Next.js standalone 生产服务；新增根目录 `docker-compose.yml`，并完善 `infra/docker-compose.yml`，可通过 `docker compose up --build` 启动 PostgreSQL、Redis、backend、agent-service 和 frontend。容器内网络已切换为 compose service name：backend 使用 `jdbc:postgresql://postgres:5432/...` 和 `http://agent-service:8000`，frontend 使用 `http://backend:8080`，agent-service 预留 `redis://redis:6379/0`。README 和 `infra/README.md` 已补充服务器一键启动、健康检查、日志查看、端口占用、数据库 volume、API Key 缺失和 HTTP Cookie 配置说明。本机验证：`docker compose config` 和 `docker compose -f infra/docker-compose.yml config` 均通过；前端 `npm run build` 通过；后端临时切换 Java 17 后 `mvn -B package -DskipTests` 通过；Agent `python -m compileall app` 通过。本机 Docker Desktop 未启动，完整镜像构建和容器联调等待服务器执行验收。
 
 ## 运行环境约定
 

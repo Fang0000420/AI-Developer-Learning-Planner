@@ -23,7 +23,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 当前 Demo 路径
 
-当前已完成 Day 18，可以演示一条带基础登录保护、异步 job 和 Agent 执行追踪的完整 MVP 闭环：
+当前已完成 Day 20，可以演示一条带基础登录保护、异步 job、Agent 执行追踪和 Docker Compose 部署的完整 MVP 闭环：
 
 1. 打开前端 `/login`，注册或登录一个测试用户。
 2. 进入 `New Goal` 创建目标。
@@ -72,7 +72,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 启动与验收
 
-当前仓库处于 Day 19 测试与 CI 阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 requestId 日志和错误分类重试。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；已配置真实模型时，网络、超时、429、5xx 和模型输出格式问题会先重试，重试耗尽后才 fallback，401、403、404、400 等配置或权限问题会直接报错。
+当前仓库处于 Day 20 Docker 部署阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 requestId 日志和错误分类重试。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；已配置真实模型时，网络、超时、429、5xx 和模型输出格式问题会先重试，重试耗尽后才 fallback，401、403、404、400 等配置或权限问题会直接报错。
 
 默认验收环境为服务器 `/home/AI-Developer-Learning-Planner`。启动或重启服务前，先在项目根目录加载 `.env`：
 
@@ -80,32 +80,64 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 set -a && source .env && set +a
 ```
 
-基础启动方式：
+Docker Compose 一键启动方式：
 
 ```bash
-# 1. PostgreSQL 和 Redis
-docker compose -f infra/docker-compose.yml up postgres redis
+# 首次启动或更新镜像
+docker compose up --build
 
-# 2. Java 后端
-cd backend
-mvn spring-boot:run
+# 后台运行
+docker compose up --build -d
 
-# 3. 后端健康检查
+# 查看状态和日志
+docker compose ps
+docker compose logs -f backend agent-service frontend
+
+# 健康检查
 curl http://localhost:8080/api/health
+curl http://localhost:8000/health
+curl http://localhost:3000/api/backend-health
+```
 
-# 4. Python Agent 服务
+历史入口仍可使用：
+
+```bash
+docker compose -f infra/docker-compose.yml up --build
+```
+
+容器内网络约定：
+
+- `frontend` 通过 `http://backend:8080` 调用后端。
+- `backend` 通过 `jdbc:postgresql://postgres:5432/ai_planner` 访问数据库。
+- `backend` 通过 `http://agent-service:8000` 调用 Agent 服务。
+- `agent-service` 预留 `redis://redis:6379/0` 配置。
+
+手动开发启动方式：
+
+```bash
+# PostgreSQL 和 Redis
+docker compose up postgres redis
+
+# Java 后端
+cd backend && mvn spring-boot:run
+
+# Python Agent 服务
 cd agent-service
 source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 5. Agent 健康检查
-curl http://localhost:8000/health
-
-# 6. 前端
+# 前端
 cd frontend
 npm run build
 npm run start:server
 ```
+
+常见问题：
+
+- 端口占用：调整 `.env` 中的 `FRONTEND_PORT`、`BACKEND_PORT`、`AGENT_SERVICE_PORT`、`POSTGRES_PORT` 或 `REDIS_PORT` 后重新 `docker compose up --build`。
+- 数据库初始化失败：先看 `docker compose logs postgres backend`；如果是测试环境需要清空旧数据，可执行 `docker compose down -v` 后重新启动，注意这会删除本地数据库 volume。
+- API Key 缺失：未配置 `DEEPSEEK_API_KEY` 时 Agent 服务会使用 mock fallback；如需真实模型，写入服务器 `.env` 后重新创建容器。
+- 登录 Cookie 不生效：HTTP 部署保持 `AUTH_COOKIE_SECURE=false`；HTTPS 部署再改为 `true`。
 
 ## 测试与 CI
 
