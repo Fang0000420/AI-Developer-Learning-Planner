@@ -41,6 +41,7 @@ def test_plan_generate_returns_structured_stub_response(monkeypatch: MonkeyPatch
             "finalDeliverables": ["Runnable full-stack demo"],
             "durationDays": 14,
             "dailyAvailableHours": 2,
+            "responseLanguage": "en",
         },
     )
 
@@ -71,6 +72,7 @@ def test_plan_generate_rejects_unsupported_duration() -> None:
             "recommendedProject": "AI Developer Learning Planner",
             "durationDays": 10,
             "dailyAvailableHours": 2,
+            "responseLanguage": "en",
         },
     )
 
@@ -83,6 +85,7 @@ def test_plan_model_output_is_normalized_and_padded() -> None:
         recommendedProject="AI Developer Learning Planner",
         durationDays=14,
         dailyAvailableHours=1.5,
+        responseLanguage="en",
     )
     parsed = {
         "learning_plan": {
@@ -122,6 +125,7 @@ def test_plan_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) -> None
         recommendedProject="AI Developer Learning Planner",
         durationDays=21,
         dailyAvailableHours=2,
+        responseLanguage="en",
     )
 
     def raise_invalid_response(_request: PlanGenerateRequest) -> PlanGenerateResponse:
@@ -182,6 +186,7 @@ def test_plan_adjust_moves_unfinished_task_to_next_day(monkeypatch: MonkeyPatch)
                 }
             ],
             "nextDayTasks": [],
+            "responseLanguage": "en",
         },
     )
 
@@ -229,6 +234,7 @@ def test_plan_adjust_splits_large_unfinished_task(monkeypatch: MonkeyPatch) -> N
                 }
             ],
             "nextDayTasks": [],
+            "responseLanguage": "en",
         },
     )
 
@@ -238,3 +244,24 @@ def test_plan_adjust_splits_large_unfinished_task(monkeypatch: MonkeyPatch) -> N
     assert body["splitTasks"][0]["sourceTaskId"] == 2
     assert len(body["splitTasks"][0]["parts"]) == 2
     assert sum(part["estimatedMinutes"] for part in body["splitTasks"][0]["parts"]) == 120
+
+
+def test_plan_generate_returns_chinese_stub_response(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(plan_generator, "DEEPSEEK_API_KEY", "")
+
+    response = client.post(
+        "/agent/plan/generate",
+        json={
+            "mainGoal": "构建 AI Agent 应用",
+            "recommendedProject": "AI Developer Learning Planner",
+            "durationDays": 14,
+            "dailyAvailableHours": 2,
+            "responseLanguage": "zh",
+        },
+    )
+
+    body = response.json()
+
+    assert response.status_code == 200
+    assert "天" in body["planTitle"]
+    assert body["days"][0]["tasks"][0]["title"].startswith("梳理")

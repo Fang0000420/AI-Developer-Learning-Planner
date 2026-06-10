@@ -14,11 +14,15 @@ import {
   getGoalStatusClasses,
   getGoalStatusLabel,
 } from "@/lib/goals";
+import { dictionaries, responseLanguageLabel } from "@/lib/i18n";
+import { getCurrentLocale } from "@/lib/i18n-server";
 import { GoalRowActions } from "./goal-row-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function GoalsPage() {
+  const locale = await getCurrentLocale();
+  const t = dictionaries[locale];
   const { data: goals, error } = await fetchBackendGoals();
 
   return (
@@ -31,18 +35,17 @@ export default async function GoalsPage() {
               href="/"
             >
               <ArrowLeft aria-hidden="true" className="size-4" />
-              Dashboard
+              {t.common.dashboard}
             </Link>
             <p className="mt-5 inline-flex h-8 items-center gap-2 rounded-md bg-sky-50 px-3 text-sm font-medium text-sky-700">
               <Target aria-hidden="true" className="size-4" />
-              Goal management
+              {t.goals.badge}
             </p>
             <h1 className="mt-4 text-3xl font-semibold text-slate-950">
-              Learning Goals
+              {t.goals.title}
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-              Review saved learning goals from the backend and open a goal to
-              continue the MVP planning flow.
+              {t.goals.description}
             </p>
           </div>
 
@@ -51,17 +54,17 @@ export default async function GoalsPage() {
             href="/goals/new"
           >
             <Plus aria-hidden="true" className="size-4" />
-            New Goal
+            {t.common.newGoal}
           </Link>
         </div>
 
         {error ? (
           <section className="rounded-md border border-rose-200 bg-rose-50 p-5">
             <h2 className="text-base font-semibold text-rose-950">
-              Goals unavailable
+              {t.goals.unavailableTitle}
             </h2>
             <p className="mt-2 text-sm leading-6 text-rose-700">
-              {error.message || "The backend goals API did not respond."}
+              {error.message || t.common.backendError}
             </p>
           </section>
         ) : goals.length === 0 ? (
@@ -70,18 +73,17 @@ export default async function GoalsPage() {
               <Target aria-hidden="true" className="size-6" />
             </span>
             <h2 className="mt-5 text-xl font-semibold text-slate-950">
-              No goals yet
+              {t.goals.emptyTitle}
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">
-              Create the first learning goal to persist it in the backend and
-              use it for upcoming profile analysis and planning.
+              {t.goals.emptyDescription}
             </p>
             <Link
               className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
               href="/goals/new"
             >
               <Plus aria-hidden="true" className="size-4" />
-              Create Goal
+              {t.common.createGoal}
             </Link>
           </section>
         ) : (
@@ -102,17 +104,24 @@ export default async function GoalsPage() {
                           <span
                             className={`inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold ring-1 ${getGoalStatusClasses(goal.status)}`}
                           >
-                            {getGoalStatusLabel(goal.status)}
+                            {getGoalStatusLabel(goal.status, locale)}
                           </span>
                           <span className="text-sm text-slate-500">
-                            Goal #{goal.id}
+                            {t.common.goalId}
+                            {goal.id}
+                          </span>
+                          <span className="inline-flex h-7 items-center rounded-md bg-indigo-50 px-2 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+                            {responseLanguageLabel(
+                              goal.responseLanguage ?? "zh",
+                              locale,
+                            )}
                           </span>
                         </div>
                         <h2 className="mt-3 text-lg font-semibold text-slate-950">
                           {goal.title}
                         </h2>
                         <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
-                          {goal.description || "No description recorded."}
+                          {goal.description || t.common.noDescription}
                         </p>
                       </div>
 
@@ -123,35 +132,35 @@ export default async function GoalsPage() {
                               aria-hidden="true"
                               className="size-4"
                             />
-                            Cycle
+                            {t.common.cycle}
                           </div>
                           <p className="mt-2 text-sm font-semibold text-slate-950">
-                            {goal.durationDays} days
+                            {goal.durationDays} {t.common.days}
                           </p>
                         </div>
                         <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
                           <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                             <Clock3 aria-hidden="true" className="size-4" />
-                            Daily
+                            {t.common.daily}
                           </div>
                           <p className="mt-2 text-sm font-semibold text-slate-950">
-                            {formatDailyHours(goal.dailyAvailableHours)}
+                            {formatDailyHours(goal.dailyAvailableHours, locale)}
                           </p>
                         </div>
                         <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
                           <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                             <ArrowRight aria-hidden="true" className="size-4" />
-                            Updated
+                            {t.common.updated}
                           </div>
                           <p className="mt-2 text-sm font-semibold text-slate-950">
-                            {formatGoalDate(goal.updatedAt)}
+                            {formatGoalDate(goal.updatedAt, locale)}
                           </p>
                         </div>
                       </div>
                     </div>
                   </Link>
 
-                  <GoalRowActions goal={goal} />
+                  <GoalRowActions goal={goal} locale={locale} />
                 </div>
               </article>
             ))}

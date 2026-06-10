@@ -16,13 +16,14 @@ from app.schemas.plan import (
     PlanMovedTask,
     PlanSplitTask,
 )
+from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
 
-PLAN_ADJUSTER_PROMPT = """
+PLAN_ADJUSTER_PROMPT_EN = """
 You are the Plan Adjuster for AI Developer Learning Planner.
 
 Adjust only the next day of an existing learning plan. Return JSON only, with this exact shape:
@@ -79,6 +80,64 @@ Rules:
 - Preserve existing next-day tasks unless the unfinished work needs the first slot.
 """.strip()
 
+PLAN_ADJUSTER_PROMPT_ZH = """
+你是 AI Developer Learning Planner 的计划调整器。
+
+只调整现有学习计划的下一天。只返回 JSON，结构必须完全如下：
+{
+  "nextDayTasks": [
+    {
+      "id": 123,
+      "dayIndex": 2,
+      "taskOrder": 1,
+      "title": "string",
+      "description": "string",
+      "estimatedMinutes": 45,
+      "type": "build",
+      "deliverable": "string",
+      "priority": "high|medium|low",
+      "status": "PENDING"
+    }
+  ],
+  "movedTasks": [
+    {
+      "taskId": 123,
+      "title": "string",
+      "fromDayIndex": 1,
+      "toDayIndex": 2,
+      "reason": "string"
+    }
+  ],
+  "splitTasks": [
+    {
+      "sourceTaskId": 123,
+      "sourceTitle": "string",
+      "parts": [
+        {
+          "title": "string",
+          "description": "string",
+          "estimatedMinutes": 45,
+          "type": "build",
+          "deliverable": "string",
+          "priority": "high"
+        }
+      ],
+      "reason": "string"
+    }
+  ],
+  "reason": "string"
+}
+
+规则：
+- 不要包含 markdown 代码块或解释性正文。
+- title、description、deliverable、reason 必须使用简体中文。
+- 不要重复已完成任务。
+- 添加新范围前，优先处理未完成任务。
+- 对于下一天难以聚焦完成的大任务，应拆分成小任务。
+- 只调整下一天，不要重写整个计划。
+- 除非未完成任务需要排到首位，否则保留已有下一天任务。
+""".strip()
+
 
 class PlanAdjusterError(RuntimeError):
     pass
@@ -106,7 +165,14 @@ def adjust_plan_with_model(request: PlanAdjustRequest) -> PlanAdjustResponse:
         json={
             "model": PROFILE_ANALYZER_MODEL,
             "messages": [
-                {"role": "system", "content": PLAN_ADJUSTER_PROMPT},
+                {
+                    "role": "system",
+                    "content": prompt_for(
+                        request.responseLanguage,
+                        PLAN_ADJUSTER_PROMPT_ZH,
+                        PLAN_ADJUSTER_PROMPT_EN,
+                    ),
+                },
                 {
                     "role": "user",
                     "content": json.dumps(request.model_dump(), ensure_ascii=False),
@@ -138,15 +204,31 @@ def adjust_plan_with_mock(request: PlanAdjustRequest) -> PlanAdjustResponse:
             parts = [
                 _copy_task(
                     task,
-                    title=f"{task.title} - part 1",
-                    description=f"Complete the first focused slice of: {task.description}",
+                    title=(
+                        f"{task.title} - 第 1 部分"
+                        if is_zh(request.responseLanguage)
+                        else f"{task.title} - part 1"
+                    ),
+                    description=(
+                        f"完成该任务的第一个聚焦切片：{task.description}"
+                        if is_zh(request.responseLanguage)
+                        else f"Complete the first focused slice of: {task.description}"
+                    ),
                     estimated_minutes=part_minutes,
                     day_index=target_day,
                 ),
                 _copy_task(
                     task,
-                    title=f"{task.title} - part 2",
-                    description=f"Complete the remaining focused slice of: {task.description}",
+                    title=(
+                        f"{task.title} - 第 2 部分"
+                        if is_zh(request.responseLanguage)
+                        else f"{task.title} - part 2"
+                    ),
+                    description=(
+                        f"完成剩余聚焦切片：{task.description}"
+                        if is_zh(request.responseLanguage)
+                        else f"Complete the remaining focused slice of: {task.description}"
+                    ),
                     estimated_minutes=max(15, task.estimatedMinutes - part_minutes),
                     day_index=target_day,
                 ),
@@ -157,8 +239,12 @@ def adjust_plan_with_mock(request: PlanAdjustRequest) -> PlanAdjustResponse:
                     sourceTitle=task.title,
                     parts=parts,
                     reason=(
-                        "The unfinished task is large enough to split into "
-                        "focused next-day slices."
+                        "该未完成任务较大，适合拆成下一天可聚焦完成的小切片。"
+                        if is_zh(request.responseLanguage)
+                        else (
+                            "The unfinished task is large enough to split into "
+                            "focused next-day slices."
+                        )
                     ),
                 )
             )
@@ -166,7 +252,11 @@ def adjust_plan_with_mock(request: PlanAdjustRequest) -> PlanAdjustResponse:
         else:
             carried = _copy_task(
                 task,
-                title=f"Carry over: {task.title}",
+                title=(
+                    f"结转：{task.title}"
+                    if is_zh(request.responseLanguage)
+                    else f"Carry over: {task.title}"
+                ),
                 description=task.description,
                 estimated_minutes=task.estimatedMinutes,
                 day_index=target_day,
@@ -178,7 +268,11 @@ def adjust_plan_with_mock(request: PlanAdjustRequest) -> PlanAdjustResponse:
                     title=task.title,
                     fromDayIndex=request.currentDayIndex,
                     toDayIndex=target_day,
-                    reason="The task was unfinished and should be handled before new scope.",
+                    reason=(
+                        "该任务尚未完成，应在新增范围前优先处理。"
+                        if is_zh(request.responseLanguage)
+                        else "The task was unfinished and should be handled before new scope."
+                    ),
                 )
             )
 
@@ -264,12 +358,21 @@ def _moved_list(
                     moved.append(
                         {
                             "taskId": _first_int(item, "taskId", "id", "sourceTaskId"),
-                            "title": title or "Unfinished task",
+                            "title": title
+                            or (
+                                "未完成任务"
+                                if is_zh(request.responseLanguage)
+                                else "Unfinished task"
+                            ),
                             "fromDayIndex": _first_int(item, "fromDayIndex")
                             or request.currentDayIndex,
                             "toDayIndex": _first_int(item, "toDayIndex") or target_day,
                             "reason": _first_string(item, "reason")
-                            or "The task was unfinished.",
+                            or (
+                                "该任务尚未完成。"
+                                if is_zh(request.responseLanguage)
+                                else "The task was unfinished."
+                            ),
                         }
                     )
             return moved
@@ -304,14 +407,18 @@ def _split_list(
                                 "title",
                                 "taskTitle",
                             )
-                            or "Split task",
+                            or ("拆分任务" if is_zh(request.responseLanguage) else "Split task"),
                             "parts": [
                                 _normalize_task(part, request)
                                 for part in parts
                                 if isinstance(part, dict)
                             ],
                             "reason": _first_string(item, "reason")
-                            or "The task was split to reduce next-day scope.",
+                            or (
+                                "该任务被拆分以降低下一天范围。"
+                                if is_zh(request.responseLanguage)
+                                else "The task was split to reduce next-day scope."
+                            ),
                         }
                     )
             return split
@@ -328,14 +435,22 @@ def _normalize_task(
         "dayIndex": _first_int(item, "dayIndex", "day") or target_day,
         "taskOrder": _first_int(item, "taskOrder", "order"),
         "title": _first_string(item, "title", "name", "task")
-        or "Adjusted learning task",
+        or ("调整后的学习任务" if is_zh(request.responseLanguage) else "Adjusted learning task"),
         "description": _first_string(item, "description", "details", "summary")
-        or "Complete the adjusted learning task.",
+        or (
+            "完成调整后的学习任务。"
+            if is_zh(request.responseLanguage)
+            else "Complete the adjusted learning task."
+        ),
         "estimatedMinutes": _first_int(item, "estimatedMinutes", "minutes", "duration")
         or 45,
         "type": _first_string(item, "type", "category") or "build",
         "deliverable": _first_string(item, "deliverable", "output")
-        or "Updated learning artifact",
+        or (
+            "更新后的学习产物"
+            if is_zh(request.responseLanguage)
+            else "Updated learning artifact"
+        ),
         "priority": _normalize_priority(_first_string(item, "priority", "urgency")),
         "status": _first_string(item, "status") or "PENDING",
     }
@@ -372,13 +487,25 @@ def _target_day_index(request: PlanAdjustRequest) -> int:
 
 def _reason_for(request: PlanAdjustRequest, carried_tasks: list[PlanAdjustTask]) -> str:
     if not carried_tasks:
-        return "No local plan change is needed because there are no unfinished tasks."
+        return (
+            "没有未完成任务，因此不需要本地调整计划。"
+            if is_zh(request.responseLanguage)
+            else "No local plan change is needed because there are no unfinished tasks."
+        )
     if request.progressReview.impact in {"medium", "major"}:
         return (
-            "Tomorrow's plan was adjusted to resolve unfinished work and "
-            "blockers before new scope."
+            "明天计划已调整为先处理未完成工作和阻塞，再进入新范围。"
+            if is_zh(request.responseLanguage)
+            else (
+                "Tomorrow's plan was adjusted to resolve unfinished work and "
+                "blockers before new scope."
+            )
         )
-    return "Tomorrow's plan was adjusted to carry over unfinished work before new scope."
+    return (
+        "明天计划已调整为先结转未完成工作，再进入新范围。"
+        if is_zh(request.responseLanguage)
+        else "Tomorrow's plan was adjusted to carry over unfinished work before new scope."
+    )
 
 
 def _first_string(values: dict[object, object], *keys: str) -> str:

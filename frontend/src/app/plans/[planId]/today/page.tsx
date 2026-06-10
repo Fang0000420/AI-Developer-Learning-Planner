@@ -21,6 +21,8 @@ import {
   getDailyTaskStatusLabel,
   getPriorityClasses,
 } from "@/lib/goals";
+import { dictionaries } from "@/lib/i18n";
+import { getCurrentLocale } from "@/lib/i18n-server";
 import { ProgressSubmitForm } from "./progress-submit-form";
 import { TaskStatusActions } from "./task-status-actions";
 
@@ -45,6 +47,8 @@ export default async function TodayTasksPage({
   searchParams,
 }: TodayTasksPageProps) {
   const { planId } = await params;
+  const locale = await getCurrentLocale();
+  const t = dictionaries[locale];
   const { dayIndex: dayIndexParam } = await searchParams;
   const dayIndex = parseDayIndex(dayIndexParam);
   const [
@@ -68,15 +72,18 @@ export default async function TodayTasksPage({
             href={`/plans/${planId}`}
           >
             <ArrowLeft aria-hidden="true" className="size-4" />
-            Plan
+            {t.common.plan}
           </Link>
 
           <section className="mt-6 rounded-md border border-rose-200 bg-rose-50 p-5">
             <h1 className="text-xl font-semibold text-rose-950">
-              Tasks unavailable
+              {locale === "zh" ? "任务不可用" : "Tasks unavailable"}
             </h1>
             <p className="mt-2 text-sm leading-6 text-rose-700">
-              {error?.message || "The requested daily tasks could not load."}
+              {error?.message ||
+                (locale === "zh"
+                  ? "无法加载请求的每日任务。"
+                  : "The requested daily tasks could not load.")}
             </p>
           </section>
         </section>
@@ -96,13 +103,13 @@ export default async function TodayTasksPage({
         ? `/plans/${plan.id}/today?dayIndex=${previousDay}`
         : "",
       icon: ChevronLeft,
-      label: "Previous",
+      label: locale === "zh" ? "上一天" : "Previous",
       enabled: previousDay !== null,
     },
     {
       href: nextDay ? `/plans/${plan.id}/today?dayIndex=${nextDay}` : "",
       icon: ChevronRight,
-      label: "Next",
+      label: locale === "zh" ? "下一天" : "Next",
       enabled: nextDay !== null,
     },
   ];
@@ -119,12 +126,15 @@ export default async function TodayTasksPage({
                 href={`/plans/${plan.id}`}
               >
                 <ArrowLeft aria-hidden="true" className="size-4" />
-                Plan #{plan.id}
+                {locale === "zh" ? "计划 #" : "Plan #"}
+                {plan.id}
               </Link>
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 <span className="inline-flex h-8 items-center gap-2 rounded-md bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">
                   <CalendarCheck aria-hidden="true" className="size-4" />
-                  Day {day.dayIndex}
+                  {locale === "zh"
+                    ? `第 ${day.dayIndex} 天`
+                    : `Day ${day.dayIndex}`}
                 </span>
                 <span className="text-sm text-slate-500">{plan.planTitle}</span>
               </div>
@@ -163,7 +173,7 @@ export default async function TodayTasksPage({
             <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                 <ListChecks aria-hidden="true" className="size-4" />
-                Tasks
+                {locale === "zh" ? "任务" : "Tasks"}
               </div>
               <p className="mt-2 text-lg font-semibold text-slate-950">
                 {day.tasks.length}
@@ -172,16 +182,16 @@ export default async function TodayTasksPage({
             <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                 <Clock3 aria-hidden="true" className="size-4" />
-                Time
+                {locale === "zh" ? "时间" : "Time"}
               </div>
               <p className="mt-2 text-lg font-semibold text-slate-950">
-                {formatMinutes(day.totalEstimatedMinutes)}
+                {formatMinutes(day.totalEstimatedMinutes, locale)}
               </p>
             </div>
             <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                 <ArrowRight aria-hidden="true" className="size-4" />
-                In progress
+                {locale === "zh" ? "进行中" : "In progress"}
               </div>
               <p className="mt-2 text-lg font-semibold text-slate-950">
                 {inProgressCount}
@@ -190,7 +200,7 @@ export default async function TodayTasksPage({
             <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                 <CheckCircle2 aria-hidden="true" className="size-4" />
-                Done
+                {locale === "zh" ? "已完成" : "Done"}
               </div>
               <p className="mt-2 text-lg font-semibold text-slate-950">
                 {doneCount}/{day.tasks.length}
@@ -201,13 +211,17 @@ export default async function TodayTasksPage({
 
         {progressError ? (
           <section className="rounded-md border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800">
-            {progressError.message || "Progress logs could not load."}
+            {progressError.message ||
+              (locale === "zh"
+                ? "无法加载进度记录。"
+                : "Progress logs could not load.")}
           </section>
         ) : null}
 
         <ProgressSubmitForm
           dayIndex={day.dayIndex}
           latestLog={latestLog}
+          locale={locale}
           planId={plan.id}
           tasks={day.tasks}
         />
@@ -224,7 +238,7 @@ export default async function TodayTasksPage({
                     <span
                       className={`inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold ring-1 ${getDailyTaskStatusClasses(task.status)}`}
                     >
-                      {getDailyTaskStatusLabel(task.status)}
+                      {getDailyTaskStatusLabel(task.status, locale)}
                     </span>
                     <span
                       className={`inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold ring-1 ${getPriorityClasses(task.priority)}`}
@@ -232,7 +246,7 @@ export default async function TodayTasksPage({
                       {task.priority}
                     </span>
                     <span className="text-sm text-slate-500">
-                      Task {task.taskOrder}
+                      {locale === "zh" ? "任务" : "Task"} {task.taskOrder}
                     </span>
                   </div>
                   <h2 className="mt-3 text-lg font-semibold text-slate-950">
@@ -244,7 +258,11 @@ export default async function TodayTasksPage({
                 </div>
 
                 <div className="shrink-0 lg:w-[420px]">
-                  <TaskStatusActions planId={plan.id} task={task} />
+                  <TaskStatusActions
+                    locale={locale}
+                    planId={plan.id}
+                    task={task}
+                  />
                 </div>
               </div>
 
@@ -252,16 +270,16 @@ export default async function TodayTasksPage({
                 <div className="rounded-md bg-slate-50 p-3">
                   <div className="flex items-center gap-2 font-medium text-slate-500">
                     <Clock3 aria-hidden="true" className="size-4" />
-                    Estimate
+                    {locale === "zh" ? "预计" : "Estimate"}
                   </div>
                   <p className="mt-2 font-semibold text-slate-950">
-                    {formatMinutes(task.estimatedMinutes)}
+                    {formatMinutes(task.estimatedMinutes, locale)}
                   </p>
                 </div>
                 <div className="rounded-md bg-slate-50 p-3">
                   <div className="flex items-center gap-2 font-medium text-slate-500">
                     <ListChecks aria-hidden="true" className="size-4" />
-                    Type
+                    {locale === "zh" ? "类型" : "Type"}
                   </div>
                   <p className="mt-2 font-semibold text-slate-950">
                     {task.type}
@@ -273,7 +291,7 @@ export default async function TodayTasksPage({
                       aria-hidden="true"
                       className="mt-0.5 size-4 shrink-0"
                     />
-                    Deliverable
+                    {locale === "zh" ? "交付物" : "Deliverable"}
                   </div>
                   <p className="mt-2 font-semibold leading-6 text-slate-950">
                     {task.deliverable}

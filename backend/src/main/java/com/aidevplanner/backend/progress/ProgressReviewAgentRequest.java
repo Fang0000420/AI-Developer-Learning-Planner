@@ -8,6 +8,7 @@ public record ProgressReviewAgentRequest(
         String userFeedback,
         List<ProgressReviewTaskPayload> completedTasks,
         List<ProgressReviewTaskPayload> unfinishedTasks,
-        List<String> blockers
+        List<String> blockers,
+        String responseLanguage
 ) {
 }

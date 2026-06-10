@@ -244,7 +244,8 @@ public class LearningPlanService {
                 cleanList(projectRecommendation.coreTechStack()),
                 cleanList(projectRecommendation.finalDeliverables()),
                 goal.getDurationDays(),
-                goal.getUser().getDailyAvailableHours()
+                goal.getUser().getDailyAvailableHours(),
+                goal.getResponseLanguage().name()
         );
     }
 
@@ -282,14 +283,17 @@ public class LearningPlanService {
     }
 
     private ProjectRecommendResponse fallbackProjectRecommendation(Goal goal) {
+        boolean zh = goal != null && "zh".equalsIgnoreCase(goal.getResponseLanguage().name());
         return new ProjectRecommendResponse(
                 "AI Developer Learning Planner",
-                "Build the planner MVP as the learning project.",
-                "medium-high",
+                zh ? "将学习规划器 MVP 作为本阶段学习项目。" : "Build the planner MVP as the learning project.",
+                zh ? "中高" : "medium-high",
                 goal == null ? 21 : goal.getDurationDays(),
                 goal == null ? BigDecimal.valueOf(2) : goal.getUser().getDailyAvailableHours(),
                 List.of("Spring Boot", "FastAPI", "DeepSeek", "PostgreSQL", "Next.js"),
-                List.of("Runnable full-stack demo", "Agent run records", "Learning plan overview")
+                zh
+                        ? List.of("可运行的全栈演示", "Agent 调用记录", "学习计划总览")
+                        : List.of("Runnable full-stack demo", "Agent run records", "Learning plan overview")
         );
     }
 
@@ -361,7 +365,9 @@ public class LearningPlanService {
         return new PlanGenerateAgentResponse(
                 firstPresent(
                         response.planTitle(),
-                        durationDays + "-Day " + request.recommendedProject() + " Build Plan"
+                        isZh(request)
+                                ? durationDays + " 天 " + request.recommendedProject() + " 构建计划"
+                                : durationDays + "-Day " + request.recommendedProject() + " Build Plan"
                 ),
                 durationDays,
                 days
@@ -377,7 +383,7 @@ public class LearningPlanService {
         List<PlanTaskAgentResponse> tasks = new ArrayList<>();
         if (day.tasks() != null) {
             for (PlanTaskAgentResponse task : day.tasks()) {
-                tasks.add(normalizeTask(task));
+                tasks.add(normalizeTask(task, request));
             }
         }
         if (tasks.isEmpty()) {
@@ -386,24 +392,34 @@ public class LearningPlanService {
 
         return new PlanDayAgentResponse(
                 dayIndex,
-                firstPresent(day.theme(), "Day " + dayIndex + " implementation"),
+                firstPresent(
+                        day.theme(),
+                        isZh(request) ? "第 " + dayIndex + " 天实现" : "Day " + dayIndex + " implementation"
+                ),
                 tasks
         );
     }
 
-    private PlanTaskAgentResponse normalizeTask(PlanTaskAgentResponse task) {
+    private PlanTaskAgentResponse normalizeTask(PlanTaskAgentResponse task, PlanGenerateAgentRequest request) {
+        boolean zh = isZh(request);
         return new PlanTaskAgentResponse(
-                firstPresent(task.title(), "Focused planner task"),
-                firstPresent(task.description(), "Complete the planned learning and implementation work."),
+                firstPresent(task.title(), zh ? "聚焦规划任务" : "Focused planner task"),
+                firstPresent(
+                        task.description(),
+                        zh
+                                ? "完成计划中的学习和实现工作。"
+                                : "Complete the planned learning and implementation work."
+                ),
                 positiveOrDefault(task.estimatedMinutes(), 45),
                 firstPresent(task.type(), "build"),
-                firstPresent(task.deliverable(), "Working progress artifact"),
+                firstPresent(task.deliverable(), zh ? "可工作的阶段产物" : "Working progress artifact"),
                 normalizePriority(task.priority())
         );
     }
 
     private PlanDayAgentResponse fallbackDay(int dayIndex, PlanGenerateAgentRequest request) {
-        String focus = "planner MVP capability";
+        boolean zh = isZh(request);
+        String focus = zh ? "规划器 MVP 能力" : "planner MVP capability";
         if (request.subGoals() != null && !request.subGoals().isEmpty()) {
             focus = request.subGoals().get((dayIndex - 1) % request.subGoals().size()).title();
         } else if (request.skillGaps() != null && !request.skillGaps().isEmpty()) {
@@ -412,30 +428,38 @@ public class LearningPlanService {
 
         return new PlanDayAgentResponse(
                 dayIndex,
-                "Build and verify " + focus,
+                zh ? "构建并验证 " + focus : "Build and verify " + focus,
                 List.of(
                         new PlanTaskAgentResponse(
-                                "Clarify Day " + dayIndex + " scope",
-                                "Review the relevant goal context and decide the smallest useful slice.",
+                                zh ? "明确第 " + dayIndex + " 天范围" : "Clarify Day " + dayIndex + " scope",
+                                zh
+                                        ? "复盘相关目标上下文，并确定最小可用切片。"
+                                        : "Review the relevant goal context and decide the smallest useful slice.",
                                 30,
                                 "learning",
-                                "Day " + dayIndex + " scope notes",
+                                zh ? "第 " + dayIndex + " 天范围说明" : "Day " + dayIndex + " scope notes",
                                 "high"
                         ),
                         new PlanTaskAgentResponse(
-                                "Implement " + focus,
-                                "Build the planned slice and connect it to the MVP workflow.",
+                                zh ? "实现 " + focus : "Implement " + focus,
+                                zh
+                                        ? "构建计划切片，并把它接入 MVP 工作流。"
+                                        : "Build the planned slice and connect it to the MVP workflow.",
                                 75,
                                 "build",
-                                "Working " + focus + " slice",
+                                zh ? "可运行的 " + focus + " 切片" : "Working " + focus + " slice",
                                 "high"
                         ),
                         new PlanTaskAgentResponse(
-                                "Verify Day " + dayIndex + " progress",
-                                "Run focused checks and record what should continue next.",
+                                zh ? "验证第 " + dayIndex + " 天进展" : "Verify Day " + dayIndex + " progress",
+                                zh
+                                        ? "运行聚焦检查，并记录下一步要继续的内容。"
+                                        : "Run focused checks and record what should continue next.",
                                 15,
                                 "review",
-                                "Day " + dayIndex + " verification note",
+                                zh
+                                        ? "第 " + dayIndex + " 天验证记录"
+                                        : "Day " + dayIndex + " verification note",
                                 "medium"
                         )
                 )
@@ -583,6 +607,10 @@ public class LearningPlanService {
             }
         }
         return "";
+    }
+
+    private boolean isZh(PlanGenerateAgentRequest request) {
+        return "zh".equalsIgnoreCase(request.responseLanguage());
     }
 
     private Integer positiveOrDefault(Integer value, Integer defaultValue) {

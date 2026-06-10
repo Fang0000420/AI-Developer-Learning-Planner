@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.services.language import ResponseLanguage
+
 
 class ProgressTask(BaseModel):
     id: int = Field(gt=0)
@@ -20,6 +22,7 @@ class ProgressReviewRequest(BaseModel):
     completedTasks: list[ProgressTask] = Field(default_factory=list)
     unfinishedTasks: list[ProgressTask] = Field(default_factory=list)
     blockers: list[str] = Field(default_factory=list)
+    responseLanguage: ResponseLanguage = "zh"
 
     @field_validator("userFeedback")
     @classmethod

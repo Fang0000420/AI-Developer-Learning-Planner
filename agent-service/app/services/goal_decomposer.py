@@ -10,13 +10,14 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.goal import GoalDecomposeRequest, GoalDecomposeResponse, SubGoal
+from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
 
-GOAL_DECOMPOSER_PROMPT = """
+GOAL_DECOMPOSER_PROMPT_EN = """
 You are the Goal Decomposer for AI Developer Learning Planner.
 
 Decompose the learner's main goal into practical sub-goals for a developer
@@ -38,6 +39,31 @@ Rules:
 - Each description must explain what the learner should be able to do.
 - priority must be exactly one of: high, medium, low.
 - Use the optional background only to make the decomposition more realistic.
+""".strip()
+
+GOAL_DECOMPOSER_PROMPT_ZH = """
+你是 AI Developer Learning Planner 的目标拆解器。
+
+把学习者的主目标拆解成适合开发者学习计划的实践子目标。只返回 JSON，
+结构必须完全如下：
+{
+  "subGoals": [
+    {
+      "title": "string",
+      "description": "string",
+      "priority": "high | medium | low"
+    }
+  ]
+}
+
+规则：
+- 不要包含 markdown 代码块或解释性正文。
+- 所有 title 和 description 必须使用简体中文。
+- 生成 5 到 8 个子目标。
+- 每个 title 必须具体、行动导向。
+- 每个 description 必须说明学习者最终应能做到什么。
+- priority 必须是 high、medium、low 之一。
+- 仅用可选背景让拆解更贴近真实情况。
 """.strip()
 
 
@@ -67,13 +93,21 @@ def decompose_goal_with_model(request: GoalDecomposeRequest) -> GoalDecomposeRes
         json={
             "model": PROFILE_ANALYZER_MODEL,
             "messages": [
-                {"role": "system", "content": GOAL_DECOMPOSER_PROMPT},
+                {
+                    "role": "system",
+                    "content": prompt_for(
+                        request.responseLanguage,
+                        GOAL_DECOMPOSER_PROMPT_ZH,
+                        GOAL_DECOMPOSER_PROMPT_EN,
+                    ),
+                },
                 {
                     "role": "user",
                     "content": json.dumps(
                         {
                             "mainGoal": request.mainGoal,
                             "background": request.background,
+                            "responseLanguage": request.responseLanguage,
                         },
                         ensure_ascii=False,
                     ),
@@ -93,6 +127,39 @@ def decompose_goal_with_model(request: GoalDecomposeRequest) -> GoalDecomposeRes
 
 
 def decompose_goal_with_mock(request: GoalDecomposeRequest) -> GoalDecomposeResponse:
+    if is_zh(request.responseLanguage):
+        return GoalDecomposeResponse(
+            subGoals=[
+                SubGoal(
+                    title="明确目标能力地图",
+                    description="把主目标拆成所需工程能力、交付物和可衡量检查点。",
+                    priority="high",
+                ),
+                SubGoal(
+                    title="搭建核心 Agent 服务接口",
+                    description="实现带结构化请求和响应校验的 FastAPI Agent 接口。",
+                    priority="high",
+                ),
+                SubGoal(
+                    title="持久化 Agent 输出",
+                    description="把 Java 后端接入 Agent 服务，并保存每次成功或失败的调用记录。",
+                    priority="high",
+                ),
+                SubGoal(
+                    title="在前端展示规划结果",
+                    description="在目标详情页展示生成结果，并覆盖加载、重试、成功和错误状态。",
+                    priority="medium",
+                ),
+                SubGoal(
+                    title="验证端到端 MVP 路径",
+                    description=(
+                        f"围绕目标「{request.mainGoal}」验证 Agent、后端持久化和 UI 渲染链路。"
+                    ),
+                    priority="medium",
+                ),
+            ]
+        )
+
     return GoalDecomposeResponse(
         subGoals=[
             SubGoal(

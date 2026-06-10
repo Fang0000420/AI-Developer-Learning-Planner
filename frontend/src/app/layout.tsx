@@ -10,8 +10,11 @@ import {
   Target,
 } from "lucide-react";
 import { authDisplayFromCookies } from "@/lib/backend-auth";
+import { dictionaries } from "@/lib/i18n";
+import { getCurrentLocale } from "@/lib/i18n-server";
 import { AuthStatus } from "./auth-status";
 import "./globals.css";
+import { LanguageSwitcher } from "./language-switcher";
 
 export const metadata: Metadata = {
   title: "AI Developer Learning Planner",
@@ -24,18 +27,23 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const auth = await authDisplayFromCookies();
+  const locale = await getCurrentLocale();
+  const t = dictionaries[locale];
   const navigationItems = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/goals", label: "Goals", icon: Target },
-    { href: "/goals/new", label: "New Goal", icon: Plus },
-    { href: "/plans", label: "Plans", icon: ListChecks },
-    { href: "/tasks/today", label: "Today", icon: CalendarCheck },
-    { href: "/agent-runs", label: "Agent Runs", icon: Activity },
-    ...(auth ? [] : [{ href: "/login", label: "Login", icon: LogIn }]),
+    { href: "/", label: t.nav.dashboard, icon: LayoutDashboard },
+    { href: "/goals", label: t.nav.goals, icon: Target },
+    { href: "/goals/new", label: t.nav.newGoal, icon: Plus },
+    { href: "/plans", label: t.nav.plans, icon: ListChecks },
+    { href: "/tasks/today", label: t.nav.today, icon: CalendarCheck },
+    { href: "/agent-runs", label: t.nav.agentRuns, icon: Activity },
+    ...(auth ? [] : [{ href: "/login", label: t.nav.login, icon: LogIn }]),
   ];
 
   return (
-    <html lang="en" className="h-full antialiased">
+    <html
+      lang={locale === "zh" ? "zh-CN" : "en"}
+      className="h-full antialiased"
+    >
       <body className="flex min-h-full flex-col">
         <header className="border-b border-slate-200 bg-white">
           <div className="mx-auto flex min-h-16 w-full max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
@@ -47,7 +55,9 @@ export default async function RootLayout({
                 <span className="text-sm font-semibold text-slate-950">
                   AI Developer Learning Planner
                 </span>
-                <span className="text-xs text-slate-500">MVP workspace</span>
+                <span className="text-xs text-slate-500">
+                  {t.nav.workspace}
+                </span>
               </span>
             </Link>
 
@@ -68,9 +78,15 @@ export default async function RootLayout({
                     </li>
                   );
                 })}
+                <li>
+                  <LanguageSwitcher locale={locale} />
+                </li>
                 {auth ? (
                   <li>
-                    <AuthStatus username={auth.username} />
+                    <AuthStatus
+                      signOutLabel={t.nav.signOut}
+                      username={auth.username}
+                    />
                   </li>
                 ) : null}
               </ul>

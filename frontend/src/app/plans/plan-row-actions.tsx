@@ -9,12 +9,14 @@ import type {
   LearningPlanStatus,
   LearningPlanSummary,
 } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 
 type PlanRowActionsProps = {
+  locale: Locale;
   plan: LearningPlanSummary;
 };
 
-function getErrorMessage(error: ApiErrorResponse) {
+function getErrorMessage(error: ApiErrorResponse, locale: Locale) {
   if (error.errors) {
     const firstError = Object.values(error.errors)[0];
     if (firstError) {
@@ -22,10 +24,13 @@ function getErrorMessage(error: ApiErrorResponse) {
     }
   }
 
-  return error.message || "Plan operation failed.";
+  return (
+    error.message ||
+    (locale === "zh" ? "计划操作失败。" : "Plan operation failed.")
+  );
 }
 
-export function PlanRowActions({ plan }: PlanRowActionsProps) {
+export function PlanRowActions({ locale, plan }: PlanRowActionsProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<
@@ -52,7 +57,7 @@ export function PlanRowActions({ plan }: PlanRowActionsProps) {
         | ApiErrorResponse;
 
       if (!response.ok) {
-        setError(getErrorMessage(payload as ApiErrorResponse));
+        setError(getErrorMessage(payload as ApiErrorResponse, locale));
         return;
       }
 
@@ -61,7 +66,9 @@ export function PlanRowActions({ plan }: PlanRowActionsProps) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Plan operation failed.",
+          : locale === "zh"
+            ? "计划操作失败。"
+            : "Plan operation failed.",
       );
     } finally {
       setPendingAction(null);
@@ -69,7 +76,11 @@ export function PlanRowActions({ plan }: PlanRowActionsProps) {
   }
 
   async function deletePlan() {
-    if (!window.confirm(`Delete plan #${plan.id}?`)) {
+    if (
+      !window.confirm(
+        locale === "zh" ? `删除计划 #${plan.id}？` : `Delete plan #${plan.id}?`,
+      )
+    ) {
       return;
     }
 
@@ -83,7 +94,7 @@ export function PlanRowActions({ plan }: PlanRowActionsProps) {
 
       if (!response.ok) {
         const payload = (await response.json()) as ApiErrorResponse;
-        setError(getErrorMessage(payload));
+        setError(getErrorMessage(payload, locale));
         return;
       }
 
@@ -92,7 +103,9 @@ export function PlanRowActions({ plan }: PlanRowActionsProps) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Plan operation failed.",
+          : locale === "zh"
+            ? "计划操作失败。"
+            : "Plan operation failed.",
       );
     } finally {
       setPendingAction(null);
@@ -115,13 +128,19 @@ export function PlanRowActions({ plan }: PlanRowActionsProps) {
           ) : (
             <Pause aria-hidden="true" className="size-4" />
           )}
-          {isPaused ? "Activate" : "Pause"}
+          {isPaused
+            ? locale === "zh"
+              ? "激活"
+              : "Activate"
+            : locale === "zh"
+              ? "暂停"
+              : "Pause"}
         </button>
         <button
           className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-rose-200 bg-white text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-rose-300"
           disabled={pendingAction !== null}
           onClick={deletePlan}
-          title="Delete plan"
+          title={locale === "zh" ? "删除计划" : "Delete plan"}
           type="button"
         >
           {pendingAction === "delete" ? (

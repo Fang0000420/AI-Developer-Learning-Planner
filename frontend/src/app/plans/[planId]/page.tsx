@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { fetchBackendPlan } from "@/lib/backend-plans";
 import { formatGoalDate, formatMinutes, getPriorityClasses } from "@/lib/goals";
+import { dictionaries } from "@/lib/i18n";
+import { getCurrentLocale } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,8 @@ type PlanDetailPageProps = {
 
 export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
   const { planId } = await params;
+  const locale = await getCurrentLocale();
+  const t = dictionaries[locale];
   const { data: plan, error } = await fetchBackendPlan(planId);
 
   if (error || !plan) {
@@ -34,16 +38,18 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
             href="/goals"
           >
             <ArrowLeft aria-hidden="true" className="size-4" />
-            Goals
+            {t.nav.goals}
           </Link>
 
           <section className="mt-6 rounded-md border border-rose-200 bg-rose-50 p-5">
             <h1 className="text-xl font-semibold text-rose-950">
-              Plan unavailable
+              {locale === "zh" ? "计划不可用" : "Plan unavailable"}
             </h1>
             <p className="mt-2 text-sm leading-6 text-rose-700">
               {error?.message ||
-                "The requested learning plan could not be loaded."}
+                (locale === "zh"
+                  ? "无法加载请求的学习计划。"
+                  : "The requested learning plan could not be loaded.")}
             </p>
           </section>
         </section>
@@ -62,18 +68,18 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
   const summaryItems = [
     {
       icon: CalendarDays,
-      label: "Plan cycle",
-      value: `${plan.durationDays} days`,
+      label: locale === "zh" ? "计划周期" : "Plan cycle",
+      value: `${plan.durationDays} ${t.common.days}`,
     },
     {
       icon: ListChecks,
-      label: "Tasks",
-      value: `${taskCount} tasks`,
+      label: locale === "zh" ? "任务" : "Tasks",
+      value: locale === "zh" ? `${taskCount} 个任务` : `${taskCount} tasks`,
     },
     {
       icon: Clock3,
-      label: "Total time",
-      value: formatMinutes(totalMinutes),
+      label: locale === "zh" ? "总时间" : "Total time",
+      value: formatMinutes(totalMinutes, locale),
     },
   ];
 
@@ -88,21 +94,26 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
                 href={`/goals/${plan.goalId}`}
               >
                 <ArrowLeft aria-hidden="true" className="size-4" />
-                Goal #{plan.goalId}
+                {t.common.goalId}
+                {plan.goalId}
               </Link>
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 <span className="inline-flex h-8 items-center gap-2 rounded-md bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">
                   <CheckCircle2 aria-hidden="true" className="size-4" />
-                  Ready
+                  {t.common.ready}
                 </span>
-                <span className="text-sm text-slate-500">Plan #{plan.id}</span>
+                <span className="text-sm text-slate-500">
+                  {locale === "zh" ? "计划 #" : "Plan #"}
+                  {plan.id}
+                </span>
               </div>
               <h1 className="mt-4 max-w-4xl text-3xl font-semibold text-slate-950">
                 {plan.planTitle}
               </h1>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                Generated from the latest profile, goal decomposition, skill gap
-                analysis, and project recommendation saved for this goal.
+                {locale === "zh"
+                  ? "由该目标已保存的最新能力画像、目标拆解、技能差距分析和项目推荐生成。"
+                  : "Generated from the latest profile, goal decomposition, skill gap analysis, and project recommendation saved for this goal."}
               </p>
             </div>
             <Link
@@ -110,7 +121,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
               href={`/plans/${plan.id}/today`}
             >
               <CalendarCheck aria-hidden="true" className="size-4" />
-              Today Tasks
+              {locale === "zh" ? "今日任务" : "Today Tasks"}
             </Link>
           </div>
 
@@ -147,7 +158,9 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
                   <div>
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
                       <Target aria-hidden="true" className="size-4" />
-                      Day {day.dayIndex}
+                      {locale === "zh"
+                        ? `第 ${day.dayIndex} 天`
+                        : `Day ${day.dayIndex}`}
                     </div>
                     <h2 className="mt-2 text-lg font-semibold text-slate-950">
                       {day.theme}
@@ -158,14 +171,16 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
                       className="inline-flex h-8 items-center gap-2 rounded-md bg-slate-950 px-3 text-white transition-colors hover:bg-slate-800"
                       href={`/plans/${plan.id}/today?dayIndex=${day.dayIndex}`}
                     >
-                      Open
+                      {locale === "zh" ? "打开" : "Open"}
                       <ArrowRight aria-hidden="true" className="size-4" />
                     </Link>
                     <span className="inline-flex h-8 items-center rounded-md bg-slate-100 px-3">
-                      {day.tasks.length} tasks
+                      {locale === "zh"
+                        ? `${day.tasks.length} 个任务`
+                        : `${day.tasks.length} tasks`}
                     </span>
                     <span className="inline-flex h-8 items-center rounded-md bg-slate-100 px-3">
-                      {formatMinutes(day.totalEstimatedMinutes)}
+                      {formatMinutes(day.totalEstimatedMinutes, locale)}
                     </span>
                   </div>
                 </div>
@@ -190,7 +205,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
                           </p>
                         </div>
                         <span className="inline-flex h-8 shrink-0 items-center rounded-md bg-sky-50 px-3 text-sm font-semibold text-sky-700 ring-1 ring-sky-200">
-                          {formatMinutes(task.estimatedMinutes)}
+                          {formatMinutes(task.estimatedMinutes, locale)}
                         </span>
                       </div>
 
@@ -220,25 +235,27 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
           <aside className="flex flex-col gap-6">
             <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold text-slate-950">
-                Backend Record
+                {locale === "zh" ? "后端记录" : "Backend Record"}
               </h2>
               <dl className="mt-5 space-y-4">
                 <div>
                   <dt className="text-sm font-medium text-slate-500">
-                    Created
+                    {t.common.created}
                   </dt>
                   <dd className="mt-1 text-sm font-semibold text-slate-950">
-                    {formatGoalDate(plan.createdAt)}
+                    {formatGoalDate(plan.createdAt, locale)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-slate-500">
-                    Agent run
+                    {locale === "zh" ? "Agent 运行" : "Agent run"}
                   </dt>
                   <dd className="mt-1 text-sm font-semibold text-slate-950">
                     {plan.sourceAgentRunId
                       ? `#${plan.sourceAgentRunId}`
-                      : "Not recorded"}
+                      : locale === "zh"
+                        ? "未记录"
+                        : "Not recorded"}
                   </dd>
                 </div>
                 <div>
@@ -251,10 +268,13 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
             </section>
 
             <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
-              <h2 className="text-base font-semibold">Daily Work</h2>
+              <h2 className="text-base font-semibold">
+                {locale === "zh" ? "每日工作" : "Daily Work"}
+              </h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Open a day from this plan to update task status and keep the
-                saved daily task records current.
+                {locale === "zh"
+                  ? "打开计划中的某一天来更新任务状态，并保持每日任务记录最新。"
+                  : "Open a day from this plan to update task status and keep the saved daily task records current."}
               </p>
             </section>
           </aside>

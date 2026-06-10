@@ -10,13 +10,14 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.project import ProjectRecommendRequest, ProjectRecommendResponse
+from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
 
-PROJECT_RECOMMENDER_PROMPT = """
+PROJECT_RECOMMENDER_PROMPT_EN = """
 You are the Project Recommender for AI Developer Learning Planner.
 
 Recommend exactly one MVP project direction for the learner. Return JSON only,
@@ -39,6 +40,31 @@ Rules:
 - Do not include a daily implementation plan or bonus/stretch work.
 - durationDays should match the requested durationDays unless it is impossible.
 - dailyTimeHours should match dailyAvailableHours when provided.
+""".strip()
+
+PROJECT_RECOMMENDER_PROMPT_ZH = """
+你是 AI Developer Learning Planner 的项目推荐器。
+
+为学习者推荐且只推荐一个 MVP 项目方向。只返回 JSON，结构必须完全如下：
+{
+  "recommendedProject": "string",
+  "reason": "string",
+  "difficulty": "string",
+  "durationDays": 21,
+  "dailyTimeHours": 2,
+  "coreTechStack": ["string"],
+  "finalDeliverables": ["string"]
+}
+
+规则：
+- 不要包含 markdown 代码块或解释性正文。
+- 推荐项目名优先使用：AI Developer Learning Planner。
+- reason、difficulty、finalDeliverables 中的自然语言必须使用简体中文。
+- 根据 profile、subGoals、skillGaps、durationDays 和 dailyAvailableHours
+  调整推荐理由、难度、技术栈和交付物。
+- 不要包含每日实施计划或额外拓展任务。
+- durationDays 应匹配请求中的 durationDays。
+- dailyTimeHours 应在提供 dailyAvailableHours 时与其一致。
 """.strip()
 
 
@@ -70,7 +96,14 @@ def recommend_project_with_model(
         json={
             "model": PROFILE_ANALYZER_MODEL,
             "messages": [
-                {"role": "system", "content": PROJECT_RECOMMENDER_PROMPT},
+                {
+                    "role": "system",
+                    "content": prompt_for(
+                        request.responseLanguage,
+                        PROJECT_RECOMMENDER_PROMPT_ZH,
+                        PROJECT_RECOMMENDER_PROMPT_EN,
+                    ),
+                },
                 {
                     "role": "user",
                     "content": json.dumps(
@@ -83,6 +116,7 @@ def recommend_project_with_model(
                             "skillGaps": [item.model_dump() for item in request.skillGaps],
                             "durationDays": request.durationDays,
                             "dailyAvailableHours": request.dailyAvailableHours,
+                            "responseLanguage": request.responseLanguage,
                         },
                         ensure_ascii=False,
                     ),
@@ -105,6 +139,34 @@ def recommend_project_with_mock(
     request: ProjectRecommendRequest,
 ) -> ProjectRecommendResponse:
     daily_hours = _daily_hours(request)
+    if is_zh(request.responseLanguage):
+        return ProjectRecommendResponse(
+            recommendedProject="AI Developer Learning Planner",
+            reason=(
+                "这个项目能把学习目标落到一个具体的全栈 AI Agent MVP 中，"
+                "同时练习后端 API、FastAPI Agent 服务、结构化模型输出、"
+                "数据库持久化和面向用户的规划界面。"
+            ),
+            difficulty="中高",
+            durationDays=request.durationDays,
+            dailyTimeHours=daily_hours,
+            coreTechStack=[
+                "Spring Boot",
+                "FastAPI",
+                "DeepSeek",
+                "PostgreSQL",
+                "Next.js",
+                "Docker",
+            ],
+            finalDeliverables=[
+                "完整 GitHub 仓库",
+                "可运行的全栈演示",
+                "PostgreSQL 中的 Agent 执行记录",
+                "README 和架构文档",
+                "可部署的服务配置",
+            ],
+        )
+
     return ProjectRecommendResponse(
         recommendedProject="AI Developer Learning Planner",
         reason=(

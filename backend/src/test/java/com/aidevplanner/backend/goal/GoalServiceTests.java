@@ -54,6 +54,7 @@ class GoalServiceTests {
                 "  Build an AI Agent project  ",
                 "  Practice production workflows.  ",
                 21,
+                null,
                 new BigDecimal("2.0")
         ));
 
@@ -61,6 +62,7 @@ class GoalServiceTests {
         assertThat(response.userId()).isEqualTo(1L);
         assertThat(response.title()).isEqualTo("Build an AI Agent project");
         assertThat(response.description()).isEqualTo("Practice production workflows.");
+        assertThat(response.responseLanguage()).isEqualTo(ResponseLanguage.zh);
         assertThat(response.dailyAvailableHours()).isEqualByComparingTo("2.0");
         assertThat(user.getDailyAvailableHours()).isEqualByComparingTo("2.0");
         assertThat(user.getBackground()).isEqualTo("Backend developer with Java and PostgreSQL experience.");
@@ -79,6 +81,7 @@ class GoalServiceTests {
                 "New title",
                 null,
                 21,
+                ResponseLanguage.en,
                 GoalStatus.PAUSED,
                 new BigDecimal("3.0")
         ));
@@ -86,6 +89,7 @@ class GoalServiceTests {
         assertThat(response.title()).isEqualTo("New title");
         assertThat(response.description()).isNull();
         assertThat(response.durationDays()).isEqualTo(21);
+        assertThat(response.responseLanguage()).isEqualTo(ResponseLanguage.en);
         assertThat(response.status()).isEqualTo(GoalStatus.PAUSED);
         assertThat(response.dailyAvailableHours()).isEqualByComparingTo("3.0");
     }
@@ -124,6 +128,7 @@ class GoalServiceTests {
                 "Build an AI Agent project",
                 null,
                 14,
+                null,
                 new BigDecimal("2.0")
         ));
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Server } from "lucide-react";
+import type { Locale } from "@/lib/i18n";
 
 type BackendHealth = {
   backendBaseUrl: string;
@@ -12,7 +13,11 @@ type BackendHealth = {
   status: string;
 };
 
-export function BackendHealthCard() {
+type BackendHealthCardProps = {
+  locale: Locale;
+};
+
+export function BackendHealthCard({ locale }: BackendHealthCardProps) {
   const [health, setHealth] = useState<BackendHealth | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -70,26 +75,32 @@ export function BackendHealthCard() {
 
   const isOnline = health?.online ?? false;
   const checkedAt = health
-    ? new Intl.DateTimeFormat("en", {
+    ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
       }).format(new Date(health.checkedAt))
-    : "Not checked";
+    : locale === "zh"
+      ? "未检查"
+      : "Not checked";
 
   return (
     <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-950">
-            Backend Status
+            {locale === "zh" ? "后端状态" : "Backend Status"}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Spring Boot health endpoint
+            {locale === "zh"
+              ? "Spring Boot 健康检查接口"
+              : "Spring Boot health endpoint"}
           </p>
         </div>
         <button
-          aria-label="Refresh backend status"
+          aria-label={
+            locale === "zh" ? "刷新后端状态" : "Refresh backend status"
+          }
           className="inline-flex size-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isLoading}
           onClick={loadHealth}
@@ -113,32 +124,46 @@ export function BackendHealthCard() {
           <Server aria-hidden="true" className="size-5" />
         </span>
         <div>
-          <p className="text-sm font-medium text-slate-500">Status</p>
+          <p className="text-sm font-medium text-slate-500">
+            {locale === "zh" ? "状态" : "Status"}
+          </p>
           <p className="mt-1 text-lg font-semibold text-slate-950">
             {isLoading && !health
-              ? "Checking"
+              ? locale === "zh"
+                ? "检查中"
+                : "Checking"
               : isOnline
-                ? "Online"
-                : "Offline"}
+                ? locale === "zh"
+                  ? "在线"
+                  : "Online"
+                : locale === "zh"
+                  ? "离线"
+                  : "Offline"}
           </p>
         </div>
       </div>
 
       <dl className="mt-5 space-y-3 text-sm">
         <div>
-          <dt className="font-medium text-slate-500">Service</dt>
+          <dt className="font-medium text-slate-500">
+            {locale === "zh" ? "服务" : "Service"}
+          </dt>
           <dd className="mt-1 text-slate-950">
             {health?.service ?? "backend"}
           </dd>
         </div>
         <div>
-          <dt className="font-medium text-slate-500">Backend URL</dt>
+          <dt className="font-medium text-slate-500">
+            {locale === "zh" ? "后端地址" : "Backend URL"}
+          </dt>
           <dd className="mt-1 break-all text-slate-950">
-            {health?.backendBaseUrl ?? "Loading"}
+            {health?.backendBaseUrl ?? (locale === "zh" ? "加载中" : "Loading")}
           </dd>
         </div>
         <div>
-          <dt className="font-medium text-slate-500">Last checked</dt>
+          <dt className="font-medium text-slate-500">
+            {locale === "zh" ? "最近检查" : "Last checked"}
+          </dt>
           <dd className="mt-1 text-slate-950">{checkedAt}</dd>
         </div>
       </dl>

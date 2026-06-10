@@ -10,14 +10,16 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ApiErrorResponse, SkillProfile } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 
 type ProfileAnalysisPanelProps = {
   goalId: number;
   initialError?: string | null;
   initialProfile: SkillProfile | null;
+  locale: Locale;
 };
 
-function getErrorMessage(error: ApiErrorResponse) {
+function getErrorMessage(error: ApiErrorResponse, locale: Locale) {
   if (error.errors) {
     const firstError = Object.values(error.errors)[0];
     if (firstError) {
@@ -25,12 +27,19 @@ function getErrorMessage(error: ApiErrorResponse) {
     }
   }
 
-  return error.message || "Profile analysis failed.";
+  return (
+    error.message ||
+    (locale === "zh" ? "能力画像生成失败。" : "Profile analysis failed.")
+  );
 }
 
-function ProfileList({ items }: { items: string[] }) {
+function ProfileList({ items, locale }: { items: string[]; locale: Locale }) {
   if (items.length === 0) {
-    return <p className="text-sm leading-6 text-slate-500">Not returned.</p>;
+    return (
+      <p className="text-sm leading-6 text-slate-500">
+        {locale === "zh" ? "未返回。" : "Not returned."}
+      </p>
+    );
   }
 
   return (
@@ -48,6 +57,7 @@ export function ProfileAnalysisPanel({
   goalId,
   initialError = null,
   initialProfile,
+  locale,
 }: ProfileAnalysisPanelProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(initialError);
@@ -67,7 +77,7 @@ export function ProfileAnalysisPanel({
         | ApiErrorResponse;
 
       if (!response.ok) {
-        setError(getErrorMessage(payload as ApiErrorResponse));
+        setError(getErrorMessage(payload as ApiErrorResponse, locale));
         return;
       }
 
@@ -77,7 +87,9 @@ export function ProfileAnalysisPanel({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Profile analysis failed.",
+          : locale === "zh"
+            ? "能力画像生成失败。"
+            : "Profile analysis failed.",
       );
     } finally {
       setIsGenerating(false);
@@ -85,12 +97,20 @@ export function ProfileAnalysisPanel({
   }
 
   const statusLabel = isGenerating
-    ? "Generating"
+    ? locale === "zh"
+      ? "生成中"
+      : "Generating"
     : error
-      ? "Failed"
+      ? locale === "zh"
+        ? "失败"
+        : "Failed"
       : profile
-        ? "Ready"
-        : "Not generated";
+        ? locale === "zh"
+          ? "就绪"
+          : "Ready"
+        : locale === "zh"
+          ? "未生成"
+          : "Not generated";
 
   return (
     <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
@@ -102,7 +122,7 @@ export function ProfileAnalysisPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-950">
-                Skill Profile
+                {locale === "zh" ? "能力画像" : "Skill Profile"}
               </h2>
               <span className="inline-flex h-7 items-center gap-1 rounded-md bg-slate-100 px-2 text-xs font-semibold text-slate-600">
                 {isGenerating ? (
@@ -119,8 +139,9 @@ export function ProfileAnalysisPanel({
               </span>
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Structured profile generated from the saved background, goal, and
-              daily time budget.
+              {locale === "zh"
+                ? "根据已保存的背景、目标和每日时间预算生成结构化画像。"
+                : "Structured profile generated from the saved background, goal, and daily time budget."}
             </p>
           </div>
         </div>
@@ -136,14 +157,22 @@ export function ProfileAnalysisPanel({
           ) : (
             <Sparkles aria-hidden="true" className="size-4" />
           )}
-          {profile ? "Regenerate" : "Generate"}
+          {profile
+            ? locale === "zh"
+              ? "重新生成"
+              : "Regenerate"
+            : locale === "zh"
+              ? "生成"
+              : "Generate"}
         </button>
       </div>
 
       {error ? (
         <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm font-semibold text-rose-950">
-            Unable to generate profile.
+            {locale === "zh"
+              ? "无法生成能力画像。"
+              : "Unable to generate profile."}
           </p>
           <p className="mt-2 text-sm leading-6 text-rose-700">{error}</p>
         </div>
@@ -153,27 +182,31 @@ export function ProfileAnalysisPanel({
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
             <h3 className="text-sm font-semibold text-slate-950">
-              Current Skills
+              {locale === "zh" ? "当前技能" : "Current Skills"}
             </h3>
             <div className="mt-3">
-              <ProfileList items={profile.currentSkills} />
+              <ProfileList items={profile.currentSkills} locale={locale} />
             </div>
           </div>
           <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-            <h3 className="text-sm font-semibold text-slate-950">Strengths</h3>
+            <h3 className="text-sm font-semibold text-slate-950">
+              {locale === "zh" ? "优势" : "Strengths"}
+            </h3>
             <div className="mt-3">
-              <ProfileList items={profile.strengths} />
+              <ProfileList items={profile.strengths} locale={locale} />
             </div>
           </div>
           <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-            <h3 className="text-sm font-semibold text-slate-950">Weaknesses</h3>
+            <h3 className="text-sm font-semibold text-slate-950">
+              {locale === "zh" ? "短板" : "Weaknesses"}
+            </h3>
             <div className="mt-3">
-              <ProfileList items={profile.weaknesses} />
+              <ProfileList items={profile.weaknesses} locale={locale} />
             </div>
           </div>
           <div className="rounded-md border border-slate-200 bg-slate-50 p-4 lg:col-span-3">
             <h3 className="text-sm font-semibold text-slate-950">
-              Recommended Direction
+              {locale === "zh" ? "推荐方向" : "Recommended Direction"}
             </h3>
             <p className="mt-3 text-sm leading-7 text-slate-600">
               {profile.recommendedDirection}
@@ -182,8 +215,9 @@ export function ProfileAnalysisPanel({
         </div>
       ) : (
         <p className="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-          Generate a profile to save structured profile and agent run records
-          for this goal.
+          {locale === "zh"
+            ? "生成能力画像后，会为该目标保存结构化画像和 Agent 运行记录。"
+            : "Generate a profile to save structured profile and agent run records for this goal."}
         </p>
       )}
     </section>

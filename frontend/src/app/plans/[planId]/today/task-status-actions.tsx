@@ -11,8 +11,10 @@ import {
 import { useRouter } from "next/navigation";
 import type { ApiErrorResponse, DailyTaskStatus, PlanTask } from "@/lib/goals";
 import { getDailyTaskStatusLabel } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 
 type TaskStatusActionsProps = {
+  locale: Locale;
   planId: number;
   task: PlanTask;
 };
@@ -27,7 +29,7 @@ const statusOptions: {
   { icon: SkipForward, status: "SKIPPED" },
 ];
 
-function getErrorMessage(error: ApiErrorResponse) {
+function getErrorMessage(error: ApiErrorResponse, locale: Locale) {
   if (error.errors) {
     const firstError = Object.values(error.errors)[0];
     if (firstError) {
@@ -35,10 +37,17 @@ function getErrorMessage(error: ApiErrorResponse) {
     }
   }
 
-  return error.message || "Task status update failed.";
+  return (
+    error.message ||
+    (locale === "zh" ? "任务状态更新失败。" : "Task status update failed.")
+  );
 }
 
-export function TaskStatusActions({ planId, task }: TaskStatusActionsProps) {
+export function TaskStatusActions({
+  locale,
+  planId,
+  task,
+}: TaskStatusActionsProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<DailyTaskStatus | null>(
@@ -67,7 +76,7 @@ export function TaskStatusActions({ planId, task }: TaskStatusActionsProps) {
       const payload = (await response.json()) as PlanTask | ApiErrorResponse;
 
       if (!response.ok) {
-        setError(getErrorMessage(payload as ApiErrorResponse));
+        setError(getErrorMessage(payload as ApiErrorResponse, locale));
         return;
       }
 
@@ -76,7 +85,9 @@ export function TaskStatusActions({ planId, task }: TaskStatusActionsProps) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Task status update failed.",
+          : locale === "zh"
+            ? "任务状态更新失败。"
+            : "Task status update failed.",
       );
     } finally {
       setPendingStatus(null);
@@ -101,7 +112,7 @@ export function TaskStatusActions({ planId, task }: TaskStatusActionsProps) {
               disabled={pendingStatus !== null}
               key={option.status}
               onClick={() => updateStatus(option.status)}
-              title={getDailyTaskStatusLabel(option.status)}
+              title={getDailyTaskStatusLabel(option.status, locale)}
               type="button"
             >
               {isPending ? (
@@ -112,7 +123,7 @@ export function TaskStatusActions({ planId, task }: TaskStatusActionsProps) {
               ) : (
                 <Icon aria-hidden="true" className="size-4" />
               )}
-              {getDailyTaskStatusLabel(option.status)}
+              {getDailyTaskStatusLabel(option.status, locale)}
             </button>
           );
         })}

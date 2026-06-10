@@ -120,7 +120,8 @@ public class ProjectRecommendationService {
                 latestSubGoals(goal.getId()),
                 latestSkillGaps(goal.getId()),
                 goal.getDurationDays(),
-                goal.getUser().getDailyAvailableHours()
+                goal.getUser().getDailyAvailableHours(),
+                goal.getResponseLanguage().name()
         );
     }
 
@@ -212,6 +213,7 @@ public class ProjectRecommendationService {
     }
 
     private ProjectRecommendResponse normalizeResponse(ProjectRecommendResponse response, Goal goal) {
+        boolean zh = goal != null && "zh".equalsIgnoreCase(goal.getResponseLanguage().name());
         Integer durationDays = response.durationDays();
         if (durationDays == null || durationDays <= 0) {
             durationDays = goal == null ? 21 : goal.getDurationDays();
@@ -232,17 +234,19 @@ public class ProjectRecommendationService {
 
         List<String> finalDeliverables = cleanList(response.finalDeliverables());
         if (finalDeliverables.isEmpty()) {
-            finalDeliverables = List.of(
-                    "Complete GitHub repository",
-                    "Runnable full-stack demo",
-                    "README and architecture documentation"
-            );
+            finalDeliverables = zh
+                    ? List.of("完整 GitHub 仓库", "可运行的全栈演示", "README 和架构文档")
+                    : List.of(
+                            "Complete GitHub repository",
+                            "Runnable full-stack demo",
+                            "README and architecture documentation"
+                    );
         }
 
         return new ProjectRecommendResponse(
                 "AI Developer Learning Planner",
-                firstPresent(response.reason(), "No recommendation reason returned."),
-                firstPresent(response.difficulty(), "medium-high"),
+                firstPresent(response.reason(), zh ? "未返回推荐理由。" : "No recommendation reason returned."),
+                firstPresent(response.difficulty(), zh ? "中高" : "medium-high"),
                 durationDays,
                 dailyTimeHours,
                 coreTechStack,

@@ -19,17 +19,20 @@ import type {
   ProjectRecommendation,
 } from "@/lib/goals";
 import { formatDailyHours } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 
 type ProjectRecommendationPanelProps = {
   goalId: number;
   initialError?: string | null;
   initialRecommendation: ProjectRecommendation | null;
+  locale: Locale;
 };
 
 export function ProjectRecommendationPanel({
   goalId,
   initialError = null,
   initialRecommendation,
+  locale,
 }: ProjectRecommendationPanelProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(initialError);
@@ -59,7 +62,9 @@ export function ProjectRecommendationPanel({
         setError(
           getApiErrorMessage(
             payload as ApiErrorResponse,
-            "Project recommendation failed.",
+            locale === "zh"
+              ? "项目推荐失败。"
+              : "Project recommendation failed.",
           ),
         );
         return;
@@ -71,7 +76,9 @@ export function ProjectRecommendationPanel({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Project recommendation failed.",
+          : locale === "zh"
+            ? "项目推荐失败。"
+            : "Project recommendation failed.",
       );
     } finally {
       setIsGenerating(false);
@@ -80,7 +87,7 @@ export function ProjectRecommendationPanel({
 
   async function handleGeneratePlan() {
     setPlanError(null);
-    setPlanJobStatus("Starting");
+    setPlanJobStatus(locale === "zh" ? "启动中" : "Starting");
     setIsGeneratingPlan(true);
 
     try {
@@ -97,7 +104,9 @@ export function ProjectRecommendationPanel({
       setPlanError(
         requestError instanceof Error
           ? requestError.message
-          : "Learning plan generation failed.",
+          : locale === "zh"
+            ? "学习计划生成失败。"
+            : "Learning plan generation failed.",
       );
     } finally {
       setPlanJobStatus(null);
@@ -106,12 +115,20 @@ export function ProjectRecommendationPanel({
   }
 
   const statusLabel = isGenerating
-    ? "Generating"
+    ? locale === "zh"
+      ? "生成中"
+      : "Generating"
     : error
-      ? "Failed"
+      ? locale === "zh"
+        ? "失败"
+        : "Failed"
       : recommendation
-        ? "Ready"
-        : "Not generated";
+        ? locale === "zh"
+          ? "就绪"
+          : "Ready"
+        : locale === "zh"
+          ? "未生成"
+          : "Not generated";
 
   return (
     <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
@@ -123,7 +140,7 @@ export function ProjectRecommendationPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-950">
-                Project Recommendation
+                {locale === "zh" ? "项目推荐" : "Project Recommendation"}
               </h2>
               <span className="inline-flex h-7 items-center gap-1 rounded-md bg-slate-100 px-2 text-xs font-semibold text-slate-600">
                 {isGenerating ? (
@@ -140,8 +157,9 @@ export function ProjectRecommendationPanel({
               </span>
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Turn the profile, sub-goals, and skill gaps into one concrete MVP
-              project direction.
+              {locale === "zh"
+                ? "把画像、子目标和技能差距转化为一个具体 MVP 项目方向。"
+                : "Turn the profile, sub-goals, and skill gaps into one concrete MVP project direction."}
             </p>
           </div>
         </div>
@@ -157,14 +175,22 @@ export function ProjectRecommendationPanel({
           ) : (
             <Sparkles aria-hidden="true" className="size-4" />
           )}
-          {recommendation ? "Regenerate" : "Generate"}
+          {recommendation
+            ? locale === "zh"
+              ? "重新生成"
+              : "Regenerate"
+            : locale === "zh"
+              ? "生成"
+              : "Generate"}
         </button>
       </div>
 
       {error ? (
         <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm font-semibold text-rose-950">
-            Unable to recommend a project.
+            {locale === "zh"
+              ? "无法推荐项目。"
+              : "Unable to recommend a project."}
           </p>
           <p className="mt-2 text-sm leading-6 text-rose-700">{error}</p>
         </div>
@@ -189,15 +215,20 @@ export function ProjectRecommendationPanel({
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-slate-200 bg-white p-4">
-                <p className="text-sm font-medium text-slate-500">Duration</p>
+                <p className="text-sm font-medium text-slate-500">
+                  {locale === "zh" ? "周期" : "Duration"}
+                </p>
                 <p className="mt-1 text-lg font-semibold text-slate-950">
-                  {recommendation.durationDays} days
+                  {recommendation.durationDays}{" "}
+                  {locale === "zh" ? "天" : "days"}
                 </p>
               </div>
               <div className="rounded-md border border-slate-200 bg-white p-4">
-                <p className="text-sm font-medium text-slate-500">Daily time</p>
+                <p className="text-sm font-medium text-slate-500">
+                  {locale === "zh" ? "每日时间" : "Daily time"}
+                </p>
                 <p className="mt-1 text-lg font-semibold text-slate-950">
-                  {formatDailyHours(recommendation.dailyTimeHours)}
+                  {formatDailyHours(recommendation.dailyTimeHours, locale)}
                 </p>
               </div>
             </div>
@@ -207,7 +238,7 @@ export function ProjectRecommendationPanel({
             <div className="rounded-md border border-slate-200 p-5">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
                 <Layers3 aria-hidden="true" className="size-4 text-slate-500" />
-                Core Tech Stack
+                {locale === "zh" ? "核心技术栈" : "Core Tech Stack"}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {recommendation.coreTechStack.map((tech) => (
@@ -227,7 +258,7 @@ export function ProjectRecommendationPanel({
                   aria-hidden="true"
                   className="size-4 text-slate-500"
                 />
-                Final Deliverables
+                {locale === "zh" ? "最终交付物" : "Final Deliverables"}
               </div>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
                 {recommendation.finalDeliverables.map((deliverable) => (
@@ -258,14 +289,20 @@ export function ProjectRecommendationPanel({
               <Rocket aria-hidden="true" className="size-4" />
             )}
             {isGeneratingPlan
-              ? `Generating Plan${planJobStatus ? `: ${planJobStatus}` : ""}`
-              : "Generate Learning Plan"}
+              ? locale === "zh"
+                ? `生成计划中${planJobStatus ? `：${planJobStatus}` : ""}`
+                : `Generating Plan${planJobStatus ? `: ${planJobStatus}` : ""}`
+              : locale === "zh"
+                ? "生成学习计划"
+                : "Generate Learning Plan"}
           </button>
 
           {planError ? (
             <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
               <p className="text-sm font-semibold text-rose-950">
-                Unable to generate a learning plan.
+                {locale === "zh"
+                  ? "无法生成学习计划。"
+                  : "Unable to generate a learning plan."}
               </p>
               <p className="mt-2 text-sm leading-6 text-rose-700">
                 {planError}
@@ -275,8 +312,9 @@ export function ProjectRecommendationPanel({
         </div>
       ) : (
         <p className="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-          Generate a project recommendation after skill gaps are available to
-          get a focused build target for the next planning step.
+          {locale === "zh"
+            ? "技能差距可用后生成项目推荐，为下一步计划获得聚焦的构建目标。"
+            : "Generate a project recommendation after skill gaps are available to get a focused build target for the next planning step."}
         </p>
       )}
     </section>

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 
 type AuthStatusProps = {
+  signOutLabel: string;
   username: string;
 };
 
-export function AuthStatus({ username }: AuthStatusProps) {
+export function AuthStatus({ signOutLabel, username }: AuthStatusProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -24,7 +25,7 @@ export function AuthStatus({ username }: AuthStatusProps) {
       <User aria-hidden="true" className="size-4" />
       <span className="max-w-36 truncate">{username}</span>
       <button
-        aria-label="Sign out"
+        aria-label={signOutLabel}
         className="inline-flex size-7 items-center justify-center rounded text-slate-500 transition hover:bg-slate-200 hover:text-slate-950 disabled:opacity-50"
         disabled={isLoggingOut}
         onClick={logout}

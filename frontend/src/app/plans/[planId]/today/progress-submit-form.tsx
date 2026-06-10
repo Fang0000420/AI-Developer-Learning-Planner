@@ -22,6 +22,7 @@ import type {
   ProgressLog,
   ProgressReviewResult,
 } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 import {
   formatGoalDate,
   getProgressImpactClasses,
@@ -31,6 +32,7 @@ import {
 type ProgressSubmitFormProps = {
   dayIndex: number;
   latestLog: ProgressLog | null;
+  locale: Locale;
   planId: number;
   tasks: PlanTask[];
 };
@@ -63,6 +65,7 @@ function normalizeReview(
 export function ProgressSubmitForm({
   dayIndex,
   latestLog,
+  locale,
   planId,
   tasks,
 }: ProgressSubmitFormProps) {
@@ -106,7 +109,7 @@ export function ProgressSubmitForm({
   async function submitProgress(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setJobStatus("Starting");
+    setJobStatus(locale === "zh" ? "启动中" : "Starting");
     setIsSubmitting(true);
 
     try {
@@ -133,7 +136,9 @@ export function ProgressSubmitForm({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Progress submission failed.",
+          : locale === "zh"
+            ? "进度提交失败。"
+            : "Progress submission failed.",
       );
     } finally {
       setJobStatus(null);
@@ -147,15 +152,18 @@ export function ProgressSubmitForm({
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
             <ClipboardCheck aria-hidden="true" className="size-4" />
-            Progress
+            {locale === "zh" ? "进度" : "Progress"}
           </div>
           <h2 className="mt-2 text-xl font-semibold text-slate-950">
-            Submit Day {dayIndex}
+            {locale === "zh"
+              ? `提交第 ${dayIndex} 天`
+              : `Submit Day ${dayIndex}`}
           </h2>
         </div>
         {latestLog ? (
           <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
-            Last submitted {formatGoalDate(latestLog.createdAt)}
+            {locale === "zh" ? "上次提交 " : "Last submitted "}
+            {formatGoalDate(latestLog.createdAt, locale)}
           </div>
         ) : null}
       </div>
@@ -165,7 +173,7 @@ export function ProgressSubmitForm({
           <div className="rounded-md border border-slate-200 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <CheckCircle2 aria-hidden="true" className="size-4" />
-              Completed
+              {locale === "zh" ? "已完成" : "Completed"}
             </div>
             <div className="mt-3 flex flex-col gap-2">
               {tasks.map((task) => (
@@ -188,7 +196,7 @@ export function ProgressSubmitForm({
           <div className="rounded-md border border-slate-200 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <XCircle aria-hidden="true" className="size-4" />
-              Unfinished
+              {locale === "zh" ? "未完成" : "Unfinished"}
             </div>
             <div className="mt-3 flex flex-col gap-2">
               {tasks.map((task) => (
@@ -212,23 +220,27 @@ export function ProgressSubmitForm({
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
           <span className="flex items-center gap-2">
             <MessageSquareText aria-hidden="true" className="size-4" />
-            Feedback
+            {locale === "zh" ? "反馈" : "Feedback"}
           </span>
           <textarea
             className="min-h-28 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-normal leading-6 text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-950"
             onChange={(event) => setUserFeedback(event.target.value)}
-            placeholder="What changed today?"
+            placeholder={
+              locale === "zh" ? "今天发生了什么变化？" : "What changed today?"
+            }
             required
             value={userFeedback}
           />
         </label>
 
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-          Blockers
+          {locale === "zh" ? "阻塞项" : "Blockers"}
           <textarea
             className="min-h-24 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-normal leading-6 text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-950"
             onChange={(event) => setBlockers(event.target.value)}
-            placeholder="One blocker per line"
+            placeholder={
+              locale === "zh" ? "每行一个阻塞项" : "One blocker per line"
+            }
             value={blockers}
           />
         </label>
@@ -236,26 +248,38 @@ export function ProgressSubmitForm({
         {latestLog ? (
           <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm font-semibold text-slate-700">
-              Latest record
+              {locale === "zh" ? "最近记录" : "Latest record"}
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {latestLog.userFeedback}
             </p>
             <div className="mt-3 grid gap-3 text-sm lg:grid-cols-2">
               <div>
-                <div className="font-medium text-slate-500">Completed</div>
+                <div className="font-medium text-slate-500">
+                  {locale === "zh" ? "已完成" : "Completed"}
+                </div>
                 <p className="mt-1 leading-6 text-slate-700">
                   {latestLog.completedTaskIds
-                    .map((taskId) => titlesById.get(taskId) ?? `Task ${taskId}`)
-                    .join(", ") || "None"}
+                    .map(
+                      (taskId) =>
+                        titlesById.get(taskId) ??
+                        `${locale === "zh" ? "任务" : "Task"} ${taskId}`,
+                    )
+                    .join(", ") || (locale === "zh" ? "无" : "None")}
                 </p>
               </div>
               <div>
-                <div className="font-medium text-slate-500">Unfinished</div>
+                <div className="font-medium text-slate-500">
+                  {locale === "zh" ? "未完成" : "Unfinished"}
+                </div>
                 <p className="mt-1 leading-6 text-slate-700">
                   {latestLog.unfinishedTaskIds
-                    .map((taskId) => titlesById.get(taskId) ?? `Task ${taskId}`)
-                    .join(", ") || "None"}
+                    .map(
+                      (taskId) =>
+                        titlesById.get(taskId) ??
+                        `${locale === "zh" ? "任务" : "Task"} ${taskId}`,
+                    )
+                    .join(", ") || (locale === "zh" ? "无" : "None")}
                 </p>
               </div>
             </div>
@@ -264,7 +288,7 @@ export function ProgressSubmitForm({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                     <Activity aria-hidden="true" className="size-4" />
-                    Review
+                    {locale === "zh" ? "复盘" : "Review"}
                   </div>
                   <span
                     className={`inline-flex w-fit items-center rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${getProgressImpactClasses(
@@ -273,6 +297,7 @@ export function ProgressSubmitForm({
                   >
                     {getProgressImpactLabel(
                       latestReview.impact as ProgressImpact,
+                      locale,
                     )}
                   </span>
                 </div>
@@ -286,7 +311,7 @@ export function ProgressSubmitForm({
                 {latestReview.blockers && latestReview.blockers.length > 0 ? (
                   <div className="mt-3 text-sm">
                     <div className="font-medium text-slate-500">
-                      Reviewer blockers
+                      {locale === "zh" ? "复盘阻塞项" : "Reviewer blockers"}
                     </div>
                     <p className="mt-1 leading-6 text-slate-700">
                       {latestReview.blockers.join(", ")}
@@ -297,7 +322,7 @@ export function ProgressSubmitForm({
                   <div className="mt-4 rounded-md border border-sky-200 bg-sky-50 p-4">
                     <div className="flex items-center gap-2 text-sm font-semibold text-sky-900">
                       <ArrowRight aria-hidden="true" className="size-4" />
-                      Tomorrow adjustment
+                      {locale === "zh" ? "明日调整" : "Tomorrow adjustment"}
                     </div>
                     {latestReview.planAdjustment.reason ? (
                       <p className="mt-2 text-sm leading-6 text-sky-800">
@@ -308,14 +333,15 @@ export function ProgressSubmitForm({
                     latestReview.planAdjustment.movedTasks.length > 0 ? (
                       <div className="mt-3 text-sm">
                         <div className="font-medium text-sky-900">
-                          Moved tasks
+                          {locale === "zh" ? "移动任务" : "Moved tasks"}
                         </div>
                         <ul className="mt-2 space-y-1 text-sky-800">
                           {latestReview.planAdjustment.movedTasks.map(
                             (task) => (
                               <li key={`${task.taskId}-${task.title}`}>
-                                {task.title}: Day {task.fromDayIndex} to Day{" "}
-                                {task.toDayIndex}
+                                {locale === "zh"
+                                  ? `${task.title}: 第 ${task.fromDayIndex} 天 → 第 ${task.toDayIndex} 天`
+                                  : `${task.title}: Day ${task.fromDayIndex} to Day ${task.toDayIndex}`}
                               </li>
                             ),
                           )}
@@ -326,7 +352,7 @@ export function ProgressSubmitForm({
                     latestReview.planAdjustment.splitTasks.length > 0 ? (
                       <div className="mt-3 text-sm">
                         <div className="font-medium text-sky-900">
-                          Split tasks
+                          {locale === "zh" ? "拆分任务" : "Split tasks"}
                         </div>
                         <ul className="mt-2 space-y-2 text-sky-800">
                           {latestReview.planAdjustment.splitTasks.map(
@@ -357,7 +383,8 @@ export function ProgressSubmitForm({
 
         {isSubmitting && jobStatus ? (
           <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm font-medium text-sky-800">
-            Async job status: {jobStatus}
+            {locale === "zh" ? "异步任务状态：" : "Async job status: "}
+            {jobStatus}
           </div>
         ) : null}
 
@@ -365,7 +392,9 @@ export function ProgressSubmitForm({
           <p className="text-sm text-rose-700">
             {getApiErrorMessage(
               { message: error } as ApiErrorResponse,
-              "Progress submission failed.",
+              locale === "zh"
+                ? "进度提交失败。"
+                : "Progress submission failed.",
             )}
           </p>
         ) : null}
@@ -384,7 +413,13 @@ export function ProgressSubmitForm({
             ) : (
               <ClipboardCheck aria-hidden="true" className="size-4" />
             )}
-            {isSubmitting ? "Submitting" : "Submit"}
+            {isSubmitting
+              ? locale === "zh"
+                ? "提交中"
+                : "Submitting"
+              : locale === "zh"
+                ? "提交"
+                : "Submit"}
           </button>
         </div>
       </form>

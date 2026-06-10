@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -87,10 +89,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException exception) {
+        String fieldName = extractJsonFieldName(exception);
         ApiErrorResponse response = ApiErrorResponse.of(
                 "BAD_REQUEST",
                 "Request contains invalid values.",
-                Map.of("request", "Request body is malformed or contains invalid values.")
+                Map.of(fieldName, "request".equals(fieldName)
+                        ? "Request body is malformed or contains invalid values."
+                        : "Invalid value for " + fieldName + ".")
         );
         return ResponseEntity.badRequest().body(response);
     }
@@ -137,5 +142,20 @@ public class GlobalExceptionHandler {
             return propertyPath;
         }
         return propertyPath.substring(separatorIndex + 1);
+    }
+
+    private String extractJsonFieldName(HttpMessageNotReadableException exception) {
+        Throwable cause = exception.getCause();
+        if (cause instanceof JsonMappingException mappingException
+                && mappingException.getPath() != null
+                && !mappingException.getPath().isEmpty()) {
+            String fieldName = mappingException.getPath()
+                    .get(mappingException.getPath().size() - 1)
+                    .getFieldName();
+            if (fieldName != null && !fieldName.isBlank()) {
+                return fieldName;
+            }
+        }
+        return "request";
     }
 }

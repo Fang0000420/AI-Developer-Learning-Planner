@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { pollJob, postJson } from "@/lib/client-jobs";
 import type { AsyncJob, LearningPlan } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 
 type GoalDemoRunnerProps = {
   goalId: number;
@@ -17,6 +18,7 @@ type GoalDemoRunnerProps = {
   hasProfile: boolean;
   hasProjectRecommendation: boolean;
   hasSkillGapAnalysis: boolean;
+  locale: Locale;
 };
 
 type StepStatus = "pending" | "running" | "ready" | "failed";
@@ -28,12 +30,26 @@ type DemoStep = {
   ready: boolean;
 };
 
+function statusLabel(status: StepStatus, locale: Locale) {
+  if (locale === "zh") {
+    const labels: Record<StepStatus, string> = {
+      failed: "失败",
+      pending: "待开始",
+      ready: "就绪",
+      running: "运行中",
+    };
+    return labels[status];
+  }
+  return status;
+}
+
 export function GoalDemoRunner({
   goalId,
   hasDecomposition,
   hasProfile,
   hasProjectRecommendation,
   hasSkillGapAnalysis,
+  locale,
 }: GoalDemoRunnerProps) {
   const router = useRouter();
   const steps = useMemo<DemoStep[]>(
@@ -41,25 +57,25 @@ export function GoalDemoRunner({
       {
         endpoint: `/api/goals/${goalId}/profile/analyze`,
         key: "profile",
-        label: "Profile",
+        label: locale === "zh" ? "画像" : "Profile",
         ready: hasProfile,
       },
       {
         endpoint: `/api/goals/${goalId}/decomposition/decompose`,
         key: "decomposition",
-        label: "Decomposition",
+        label: locale === "zh" ? "目标拆解" : "Decomposition",
         ready: hasDecomposition,
       },
       {
         endpoint: `/api/goals/${goalId}/skill-gap/analyze`,
         key: "skill-gap",
-        label: "Skill gaps",
+        label: locale === "zh" ? "技能差距" : "Skill gaps",
         ready: hasSkillGapAnalysis,
       },
       {
         endpoint: `/api/goals/${goalId}/project-recommendation/recommend`,
         key: "project",
-        label: "Project",
+        label: locale === "zh" ? "项目" : "Project",
         ready: hasProjectRecommendation,
       },
     ],
@@ -69,6 +85,7 @@ export function GoalDemoRunner({
       hasProfile,
       hasProjectRecommendation,
       hasSkillGapAnalysis,
+      locale,
     ],
   );
   const [statuses, setStatuses] = useState<Record<string, StepStatus>>(() =>
@@ -112,7 +129,9 @@ export function GoalDemoRunner({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Demo flow failed.",
+          : locale === "zh"
+            ? "演示链路失败。"
+            : "Demo flow failed.",
       );
       setStatuses((current) => {
         const runningStep = Object.entries(current).find(
@@ -135,9 +154,13 @@ export function GoalDemoRunner({
           <PlayCircle aria-hidden="true" className="size-4" />
         </span>
         <div>
-          <h2 className="text-base font-semibold text-slate-950">Demo Chain</h2>
+          <h2 className="text-base font-semibold text-slate-950">
+            {locale === "zh" ? "演示链路" : "Demo Chain"}
+          </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Run missing agent steps and create a learning plan for this goal.
+            {locale === "zh"
+              ? "运行缺失的 Agent 步骤，并为该目标创建学习计划。"
+              : "Run missing agent steps and create a learning plan for this goal."}
           </p>
         </div>
       </div>
@@ -171,14 +194,14 @@ export function GoalDemoRunner({
                     className="size-3.5 text-rose-600"
                   />
                 ) : null}
-                {status}
+                {statusLabel(status, locale)}
               </span>
             </div>
           );
         })}
         <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2">
           <span className="text-sm font-medium text-slate-700">
-            Plan generation
+            {locale === "zh" ? "计划生成" : "Plan generation"}
           </span>
           <span className="flex items-center gap-1 text-xs font-semibold capitalize text-slate-500">
             {planStatus === "running" ? (
@@ -197,7 +220,7 @@ export function GoalDemoRunner({
                 className="size-3.5 text-rose-600"
               />
             ) : null}
-            {planStatus}
+            {statusLabel(planStatus, locale)}
           </span>
         </div>
       </div>
@@ -219,7 +242,13 @@ export function GoalDemoRunner({
         ) : (
           <PlayCircle aria-hidden="true" className="size-4" />
         )}
-        {isRunning ? "Running" : "Run to Plan"}
+        {isRunning
+          ? locale === "zh"
+            ? "运行中"
+            : "Running"
+          : locale === "zh"
+            ? "运行到计划"
+            : "Run to Plan"}
       </button>
     </section>
   );

@@ -47,6 +47,7 @@ class GoalControllerTests {
                                   "title": "Build an AI Agent project",
                                   "description": "Practice production AI Agent workflows.",
                                   "durationDays": 21,
+                                  "responseLanguage": "en",
                                   "dailyAvailableHours": 2.0
                                 }
                                 """))
@@ -55,6 +56,7 @@ class GoalControllerTests {
                 .andExpect(jsonPath("$.id").value(10))
                 .andExpect(jsonPath("$.title").value("Build an AI Agent project"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.responseLanguage").value("zh"))
                 .andExpect(jsonPath("$.dailyAvailableHours").value(2.0));
 
         verify(goalService).createGoal(any(GoalCreateRequest.class));
@@ -70,7 +72,8 @@ class GoalControllerTests {
                         .param("status", "ACTIVE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(10))
-                .andExpect(jsonPath("$[0].status").value("ACTIVE"));
+                .andExpect(jsonPath("$[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$[0].responseLanguage").value("zh"));
 
         verify(goalService).listGoals(1L, GoalStatus.ACTIVE);
     }
@@ -99,12 +102,14 @@ class GoalControllerTests {
                                   "title": "Build an AI Agent project",
                                   "description": "Practice production AI Agent workflows.",
                                   "durationDays": 21,
+                                  "responseLanguage": "en",
                                   "status": "PAUSED",
                                   "dailyAvailableHours": 2.0
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.responseLanguage").value("zh"))
                 .andExpect(jsonPath("$.status").value("PAUSED"));
 
         verify(goalService).updateGoal(any(Long.class), any(GoalUpdateRequest.class));
@@ -153,6 +158,26 @@ class GoalControllerTests {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.errors.durationDays").value("Duration days must be 14 or 21."));
+
+        verifyNoInteractions(goalService);
+    }
+
+    @Test
+    void rejectsInvalidResponseLanguage() throws Exception {
+        mockMvc.perform(post("/api/goals")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Build an AI Agent project",
+                                  "description": "Practice production AI Agent workflows.",
+                                  "durationDays": 21,
+                                  "responseLanguage": "fr",
+                                  "dailyAvailableHours": 2.0
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errors.responseLanguage").value("Invalid value for responseLanguage."));
 
         verifyNoInteractions(goalService);
     }
@@ -222,6 +247,7 @@ class GoalControllerTests {
                 "Build an AI Agent project",
                 "Practice production AI Agent workflows.",
                 21,
+                ResponseLanguage.zh,
                 status,
                 new BigDecimal("2.0"),
                 TIMESTAMP,

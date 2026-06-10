@@ -40,6 +40,7 @@ public class GoalService {
 
         Goal goal = new Goal(user, normalizeRequired(request.title()), request.durationDays());
         goal.setDescription(normalizeOptional(request.description()));
+        goal.setResponseLanguage(defaultLanguage(request.responseLanguage()));
 
         return GoalResponse.from(goalRepository.save(goal));
     }
@@ -78,6 +79,7 @@ public class GoalService {
         goal.setTitle(normalizeRequired(request.title()));
         goal.setDescription(normalizeOptional(request.description()));
         goal.setDurationDays(request.durationDays());
+        goal.setResponseLanguage(defaultLanguage(request.responseLanguage()));
         if (request.status() != null) {
             goal.setStatus(request.status());
         }
@@ -150,5 +152,9 @@ public class GoalService {
             return null;
         }
         return value.trim();
+    }
+
+    private ResponseLanguage defaultLanguage(ResponseLanguage responseLanguage) {
+        return responseLanguage == null ? ResponseLanguage.zh : responseLanguage;
     }
 }

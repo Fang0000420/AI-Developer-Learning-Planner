@@ -2,6 +2,7 @@ package com.aidevplanner.backend.goaldecomposition;
 
 public record GoalDecomposeRequest(
         String mainGoal,
-        String background
+        String background,
+        String responseLanguage
 ) {
 }

@@ -18,6 +18,12 @@ vi.mock("@/lib/backend-progress", () => ({
   fetchBackendProgressLogs: vi.fn(),
 }));
 
+vi.mock("@/lib/i18n-server", () => {
+  return {
+    getCurrentLocale: vi.fn(async () => "en"),
+  };
+});
+
 import {
   fetchBackendPlan,
   fetchBackendPlanDayTasks,

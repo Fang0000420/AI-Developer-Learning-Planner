@@ -9,6 +9,7 @@ public record SkillGapAnalyzeRequest(
         List<String> currentSkills,
         List<String> strengths,
         List<String> weaknesses,
-        List<SubGoalResponse> subGoals
+        List<SubGoalResponse> subGoals,
+        String responseLanguage
 ) {
 }

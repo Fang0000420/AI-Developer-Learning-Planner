@@ -1,9 +1,12 @@
 from pydantic import BaseModel, Field
 
+from app.services.language import ResponseLanguage
+
 
 class GoalDecomposeRequest(BaseModel):
     mainGoal: str = Field(min_length=1)
     background: str | None = None
+    responseLanguage: ResponseLanguage = "zh"
 
 
 class SubGoal(BaseModel):

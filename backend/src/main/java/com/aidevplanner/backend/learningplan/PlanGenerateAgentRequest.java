@@ -19,6 +19,7 @@ public record PlanGenerateAgentRequest(
         List<String> coreTechStack,
         List<String> finalDeliverables,
         Integer durationDays,
-        BigDecimal dailyAvailableHours
+        BigDecimal dailyAvailableHours,
+        String responseLanguage
 ) {
 }

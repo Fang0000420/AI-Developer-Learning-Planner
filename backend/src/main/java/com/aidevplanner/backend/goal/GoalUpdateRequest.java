@@ -22,6 +22,8 @@ public record GoalUpdateRequest(
         @AllowedGoalDurationDays
         Integer durationDays,
 
+        ResponseLanguage responseLanguage,
+
         GoalStatus status,
 
         @NotNull(message = "Daily available hours is required.")

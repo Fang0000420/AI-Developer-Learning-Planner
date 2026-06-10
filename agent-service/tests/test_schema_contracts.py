@@ -41,7 +41,13 @@ def test_agent_request_schemas_accept_minimal_valid_payloads() -> None:
         background="Java backend developer",
         goal="Build AI agent applications",
         dailyAvailableHours=2,
-    )
+    ).responseLanguage == "zh"
+    assert ProfileAnalyzeRequest(
+        background="Java backend developer",
+        goal="Build AI agent applications",
+        dailyAvailableHours=2,
+        responseLanguage="en",
+    ).responseLanguage == "en"
     assert GoalDecomposeRequest(mainGoal="Build AI agent applications")
     assert SkillGapAnalyzeRequest(
         mainGoal="Build AI agent applications",

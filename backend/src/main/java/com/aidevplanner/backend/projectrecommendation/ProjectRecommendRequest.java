@@ -14,6 +14,7 @@ public record ProjectRecommendRequest(
         List<SubGoalResponse> subGoals,
         List<SkillGapResponse> skillGaps,
         Integer durationDays,
-        BigDecimal dailyAvailableHours
+        BigDecimal dailyAvailableHours,
+        String responseLanguage
 ) {
 }

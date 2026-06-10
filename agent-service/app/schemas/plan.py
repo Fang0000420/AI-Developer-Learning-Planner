@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.schemas.goal import SubGoal
 from app.schemas.skill_gap import SkillGap
+from app.services.language import ResponseLanguage
 
 
 class PlanTask(BaseModel):
@@ -49,6 +50,7 @@ class PlanGenerateRequest(BaseModel):
     finalDeliverables: list[str] = Field(default_factory=list)
     durationDays: int = Field(gt=0)
     dailyAvailableHours: float | None = Field(default=None, ge=0)
+    responseLanguage: ResponseLanguage = "zh"
 
     @field_validator("durationDays")
     @classmethod
@@ -110,6 +112,7 @@ class PlanAdjustRequest(BaseModel):
     progressReview: PlanAdjustReview
     unfinishedTasks: list[PlanAdjustTask] = Field(default_factory=list)
     nextDayTasks: list[PlanAdjustTask] = Field(default_factory=list)
+    responseLanguage: ResponseLanguage = "zh"
 
 
 class PlanMovedTask(BaseModel):

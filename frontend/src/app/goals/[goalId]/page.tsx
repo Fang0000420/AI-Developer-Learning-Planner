@@ -20,6 +20,8 @@ import {
   getGoalStatusClasses,
   getGoalStatusLabel,
 } from "@/lib/goals";
+import { dictionaries, responseLanguageLabel } from "@/lib/i18n";
+import { getCurrentLocale } from "@/lib/i18n-server";
 import { GoalDecompositionPanel } from "./goal-decomposition-panel";
 import { GoalDemoRunner } from "./goal-demo-runner";
 import { ProfileAnalysisPanel } from "./profile-analysis-panel";
@@ -36,6 +38,8 @@ type GoalDetailPageProps = {
 
 export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
   const { goalId } = await params;
+  const locale = await getCurrentLocale();
+  const t = dictionaries[locale];
   const { data: goal, error } = await fetchBackendGoal(goalId);
   const { data: profile, error: profileError } = goal
     ? await fetchBackendGoalProfile(goalId)
@@ -60,15 +64,18 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
             href="/goals"
           >
             <ArrowLeft aria-hidden="true" className="size-4" />
-            Goals
+            {t.nav.goals}
           </Link>
 
           <section className="mt-6 rounded-md border border-rose-200 bg-rose-50 p-5">
             <h1 className="text-xl font-semibold text-rose-950">
-              Goal unavailable
+              {locale === "zh" ? "目标不可用" : "Goal unavailable"}
             </h1>
             <p className="mt-2 text-sm leading-6 text-rose-700">
-              {error?.message || "The requested goal could not be loaded."}
+              {error?.message ||
+                (locale === "zh"
+                  ? "无法加载请求的目标。"
+                  : "The requested goal could not be loaded.")}
             </p>
           </section>
         </section>
@@ -79,18 +86,23 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
   const summaryItems = [
     {
       icon: CalendarDays,
-      label: "Plan cycle",
-      value: `${goal.durationDays} days`,
+      label: locale === "zh" ? "计划周期" : "Plan cycle",
+      value: `${goal.durationDays} ${t.common.days}`,
     },
     {
       icon: Clock3,
-      label: "Daily time",
-      value: formatDailyHours(goal.dailyAvailableHours),
+      label: locale === "zh" ? "每日时间" : "Daily time",
+      value: formatDailyHours(goal.dailyAvailableHours, locale),
     },
     {
       icon: Target,
-      label: "Status",
-      value: getGoalStatusLabel(goal.status),
+      label: t.common.status,
+      value: getGoalStatusLabel(goal.status, locale),
+    },
+    {
+      icon: Target,
+      label: t.common.responseLanguage,
+      value: responseLanguageLabel(goal.responseLanguage ?? "zh", locale),
     },
   ];
 
@@ -106,16 +118,17 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
                   href="/goals"
                 >
                   <ArrowLeft aria-hidden="true" className="size-4" />
-                  Goals
+                  {t.nav.goals}
                 </Link>
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <span
                     className={`inline-flex h-8 items-center rounded-md px-3 text-sm font-semibold ring-1 ${getGoalStatusClasses(goal.status)}`}
                   >
-                    {getGoalStatusLabel(goal.status)}
+                    {getGoalStatusLabel(goal.status, locale)}
                   </span>
                   <span className="text-sm text-slate-500">
-                    Goal #{goal.id}
+                    {t.common.goalId}
+                    {goal.id}
                   </span>
                 </div>
                 <h1 className="mt-4 max-w-3xl text-3xl font-semibold text-slate-950">
@@ -128,11 +141,11 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
                 href="/goals/new"
               >
                 <Plus aria-hidden="true" className="size-4" />
-                New Goal
+                {t.common.newGoal}
               </Link>
             </div>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="mt-8 grid gap-4 md:grid-cols-4">
               {summaryItems.map((item) => {
                 const Icon = item.icon;
 
@@ -160,11 +173,11 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
                 <FileText aria-hidden="true" className="size-4" />
               </span>
               <h2 className="text-lg font-semibold text-slate-950">
-                Goal Description
+                {locale === "zh" ? "目标描述" : "Goal Description"}
               </h2>
             </div>
             <p className="mt-5 whitespace-pre-line text-sm leading-7 text-slate-600">
-              {goal.description || "No description recorded."}
+              {goal.description || t.common.noDescription}
             </p>
           </section>
 
@@ -172,24 +185,28 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
             goalId={goal.id}
             initialError={profileError?.message ?? null}
             initialProfile={profile}
+            locale={locale}
           />
 
           <GoalDecompositionPanel
             goalId={goal.id}
             initialDecomposition={decomposition}
             initialError={decompositionError?.message ?? null}
+            locale={locale}
           />
 
           <SkillGapAnalysisPanel
             goalId={goal.id}
             initialError={skillGapError?.message ?? null}
             initialSkillGapAnalysis={skillGapAnalysis}
+            locale={locale}
           />
 
           <ProjectRecommendationPanel
             goalId={goal.id}
             initialError={projectRecommendationError?.message ?? null}
             initialRecommendation={projectRecommendation}
+            locale={locale}
           />
         </div>
 
@@ -200,23 +217,28 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
             hasProfile={profile !== null}
             hasProjectRecommendation={projectRecommendation !== null}
             hasSkillGapAnalysis={skillGapAnalysis !== null}
+            locale={locale}
           />
 
           <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-slate-950">
-              Backend Record
+              {locale === "zh" ? "后端记录" : "Backend Record"}
             </h2>
             <dl className="mt-5 space-y-4">
               <div>
-                <dt className="text-sm font-medium text-slate-500">Created</dt>
+                <dt className="text-sm font-medium text-slate-500">
+                  {t.common.created}
+                </dt>
                 <dd className="mt-1 text-sm font-semibold text-slate-950">
-                  {formatGoalDate(goal.createdAt)}
+                  {formatGoalDate(goal.createdAt, locale)}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Updated</dt>
+                <dt className="text-sm font-medium text-slate-500">
+                  {t.common.updated}
+                </dt>
                 <dd className="mt-1 text-sm font-semibold text-slate-950">
-                  {formatGoalDate(goal.updatedAt)}
+                  {formatGoalDate(goal.updatedAt, locale)}
                 </dd>
               </div>
               <div>
@@ -229,10 +251,13 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
           </section>
 
           <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
-            <h2 className="text-base font-semibold">Demo Path</h2>
+            <h2 className="text-base font-semibold">
+              {locale === "zh" ? "演示路径" : "Demo Path"}
+            </h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Run the agent chain, open the generated plan, then submit Day 1
-              progress to trigger review and the next day adjustment.
+              {locale === "zh"
+                ? "运行 Agent 链路，打开生成的计划，然后提交第 1 天进度以触发复盘和下一天调整。"
+                : "Run the agent chain, open the generated plan, then submit Day 1 progress to trigger review and the next day adjustment."}
             </p>
           </section>
         </aside>

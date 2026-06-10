@@ -6,40 +6,46 @@ import { CalendarDays, Clock3, RotateCcw, Save, Target } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import type { ApiErrorResponse, Goal, GoalCreatePayload } from "@/lib/goals";
+import type {
+  ApiErrorResponse,
+  Goal,
+  GoalCreatePayload,
+  ResponseLanguage,
+} from "@/lib/goals";
+import { dictionaries, responseLanguageLabel, type Locale } from "@/lib/i18n";
 
-const goalFormSchema = z.object({
-  technicalBackground: z
-    .string()
-    .trim()
-    .min(10, "Describe your background in at least 10 characters.")
-    .max(3000, "Technical background cannot exceed 3000 characters."),
-  learningGoal: z
-    .string()
-    .trim()
-    .min(10, "Describe your learning goal in at least 10 characters.")
-    .max(255, "Learning goal cannot exceed 255 characters."),
-  jobTarget: z
-    .string()
-    .trim()
-    .min(2, "Enter a target role or career direction.")
-    .max(120, "Job target cannot exceed 120 characters."),
-  dailyAvailableHours: z
-    .number()
-    .min(0.5, "Daily time must be at least 0.5 hours.")
-    .max(12, "Daily time cannot exceed 12 hours."),
-  planCycleDays: z.enum(["14", "21"]),
-});
+function createGoalFormSchema(locale: Locale) {
+  const t = dictionaries[locale].newGoal.validation;
+  return z.object({
+    technicalBackground: z
+      .string()
+      .trim()
+      .min(10, t.technicalBackground)
+      .max(3000, t.technicalBackgroundMax),
+    learningGoal: z
+      .string()
+      .trim()
+      .min(10, t.learningGoal)
+      .max(255, t.learningGoalMax),
+    jobTarget: z.string().trim().min(2, t.jobTarget).max(120, t.jobTargetMax),
+    dailyAvailableHours: z.number().min(0.5, t.dailyMin).max(12, t.dailyMax),
+    planCycleDays: z.enum(["14", "21"]),
+    responseLanguage: z.enum(["zh", "en"]),
+  });
+}
 
-type GoalFormValues = z.infer<typeof goalFormSchema>;
+type GoalFormValues = z.infer<ReturnType<typeof createGoalFormSchema>>;
 
-const defaultValues: GoalFormValues = {
-  dailyAvailableHours: 2,
-  jobTarget: "",
-  learningGoal: "",
-  planCycleDays: "14",
-  technicalBackground: "",
-};
+function defaultValues(locale: Locale): GoalFormValues {
+  return {
+    dailyAvailableHours: 2,
+    jobTarget: "",
+    learningGoal: "",
+    planCycleDays: "14",
+    responseLanguage: locale,
+    technicalBackground: "",
+  };
+}
 
 function FieldError({ message }: { message?: string }) {
   if (!message) {
@@ -49,17 +55,23 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-2 text-sm font-medium text-rose-600">{message}</p>;
 }
 
-function composeGoalPayload(values: GoalFormValues): GoalCreatePayload {
+function composeGoalPayload(
+  values: GoalFormValues,
+  locale: Locale,
+): GoalCreatePayload {
   return {
     dailyAvailableHours: values.dailyAvailableHours,
-    description: [`Job target: ${values.jobTarget.trim()}`].join("\n\n"),
+    description: [
+      `${locale === "zh" ? "目标方向" : "Job target"}: ${values.jobTarget.trim()}`,
+    ].join("\n\n"),
     durationDays: Number(values.planCycleDays),
+    responseLanguage: values.responseLanguage,
     technicalBackground: values.technicalBackground.trim(),
     title: values.learningGoal.trim(),
   };
 }
 
-function getErrorMessage(error: ApiErrorResponse) {
+function getErrorMessage(error: ApiErrorResponse, fallback: string) {
   if (error.errors) {
     const firstFieldError = Object.values(error.errors)[0];
     if (firstFieldError) {
@@ -67,12 +79,18 @@ function getErrorMessage(error: ApiErrorResponse) {
     }
   }
 
-  return error.message || "Goal creation failed.";
+  return error.message || fallback;
 }
 
-export function NewGoalForm() {
+type NewGoalFormProps = {
+  locale: Locale;
+};
+
+export function NewGoalForm({ locale }: NewGoalFormProps) {
+  const t = dictionaries[locale];
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const initialValues = defaultValues(locale);
 
   const {
     control,
@@ -81,8 +99,8 @@ export function NewGoalForm() {
     register,
     reset,
   } = useForm<GoalFormValues>({
-    defaultValues,
-    resolver: zodResolver(goalFormSchema),
+    defaultValues: initialValues,
+    resolver: zodResolver(createGoalFormSchema(locale)),
   });
 
   const watchedValues = useWatch({ control });
@@ -90,31 +108,39 @@ export function NewGoalForm() {
   const summaryItems = [
     {
       icon: Clock3,
-      label: "Daily time",
-      value: `${watchedValues.dailyAvailableHours || 0} hours`,
+      label: locale === "zh" ? "每日时间" : "Daily time",
+      value: `${watchedValues.dailyAvailableHours || 0} ${t.common.hours}`,
     },
     {
       icon: CalendarDays,
-      label: "Plan cycle",
-      value: `${watchedValues.planCycleDays || defaultValues.planCycleDays} days`,
+      label: locale === "zh" ? "计划周期" : "Plan cycle",
+      value: `${watchedValues.planCycleDays || initialValues.planCycleDays} ${t.common.days}`,
     },
     {
       icon: Target,
-      label: "Target",
-      value: watchedValues.jobTarget || "Not set",
+      label: locale === "zh" ? "目标方向" : "Target",
+      value: watchedValues.jobTarget || t.common.notSet,
+    },
+    {
+      icon: Target,
+      label: t.common.responseLanguage,
+      value: responseLanguageLabel(
+        (watchedValues.responseLanguage || locale) as ResponseLanguage,
+        locale,
+      ),
     },
   ];
 
   function handleReset() {
     setSubmitError(null);
-    reset(defaultValues);
+    reset(initialValues);
   }
 
   async function onSubmit(values: GoalFormValues) {
     setSubmitError(null);
 
     const response = await fetch("/api/goals", {
-      body: JSON.stringify(composeGoalPayload(values)),
+      body: JSON.stringify(composeGoalPayload(values, locale)),
       headers: {
         "content-type": "application/json",
       },
@@ -124,7 +150,9 @@ export function NewGoalForm() {
     const payload = (await response.json()) as Goal | ApiErrorResponse;
 
     if (!response.ok) {
-      setSubmitError(getErrorMessage(payload as ApiErrorResponse));
+      setSubmitError(
+        getErrorMessage(payload as ApiErrorResponse, t.goals.createFailed),
+      );
       return;
     }
 
@@ -146,12 +174,12 @@ export function NewGoalForm() {
               className="text-sm font-semibold text-slate-950"
               htmlFor="technicalBackground"
             >
-              Technical Background
+              {t.newGoal.technicalBackground}
             </label>
             <textarea
               className="mt-2 min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
               id="technicalBackground"
-              placeholder="Backend developer with Java and PostgreSQL experience..."
+              placeholder={t.newGoal.technicalPlaceholder}
               {...register("technicalBackground")}
             />
             <FieldError message={errors.technicalBackground?.message} />
@@ -162,12 +190,12 @@ export function NewGoalForm() {
               className="text-sm font-semibold text-slate-950"
               htmlFor="learningGoal"
             >
-              Learning Goal
+              {t.newGoal.learningGoal}
             </label>
             <textarea
               className="mt-2 min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
               id="learningGoal"
-              placeholder="Build AI agent applications and understand production workflows..."
+              placeholder={t.newGoal.learningPlaceholder}
               {...register("learningGoal")}
             />
             <FieldError message={errors.learningGoal?.message} />
@@ -179,12 +207,12 @@ export function NewGoalForm() {
                 className="text-sm font-semibold text-slate-950"
                 htmlFor="jobTarget"
               >
-                Job Target
+                {t.newGoal.jobTarget}
               </label>
               <input
                 className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                 id="jobTarget"
-                placeholder="AI Engineer"
+                placeholder={t.newGoal.jobPlaceholder}
                 type="text"
                 {...register("jobTarget")}
               />
@@ -196,7 +224,7 @@ export function NewGoalForm() {
                 className="text-sm font-semibold text-slate-950"
                 htmlFor="dailyAvailableHours"
               >
-                Daily Hours
+                {t.newGoal.dailyHours}
               </label>
               <input
                 className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
@@ -215,18 +243,36 @@ export function NewGoalForm() {
                 className="text-sm font-semibold text-slate-950"
                 htmlFor="planCycleDays"
               >
-                Plan Cycle
+                {t.newGoal.planCycle}
               </label>
               <select
                 className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                 id="planCycleDays"
                 {...register("planCycleDays")}
               >
-                <option value="14">14 days</option>
-                <option value="21">21 days</option>
+                <option value="14">14 {t.common.days}</option>
+                <option value="21">21 {t.common.days}</option>
               </select>
               <FieldError message={errors.planCycleDays?.message} />
             </div>
+          </div>
+
+          <div>
+            <label
+              className="text-sm font-semibold text-slate-950"
+              htmlFor="responseLanguage"
+            >
+              {t.common.responseLanguage}
+            </label>
+            <select
+              className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+              id="responseLanguage"
+              {...register("responseLanguage")}
+            >
+              <option value="zh">{t.common.chinese}</option>
+              <option value="en">{t.common.english}</option>
+            </select>
+            <FieldError message={errors.responseLanguage?.message} />
           </div>
         </div>
 
@@ -237,7 +283,7 @@ export function NewGoalForm() {
             type="button"
           >
             <RotateCcw aria-hidden="true" className="size-4" />
-            Reset
+            {t.common.reset}
           </button>
           <button
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
@@ -245,7 +291,7 @@ export function NewGoalForm() {
             type="submit"
           >
             <Save aria-hidden="true" className="size-4" />
-            {isSubmitting ? "Creating..." : "Create Goal"}
+            {isSubmitting ? t.newGoal.creating : t.newGoal.submit}
           </button>
         </div>
       </form>
@@ -253,7 +299,7 @@ export function NewGoalForm() {
       <aside className="flex flex-col gap-6">
         <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-base font-semibold text-slate-950">
-            Goal Summary
+            {t.newGoal.summary}
           </h2>
           <div className="mt-5 space-y-4">
             {summaryItems.map((item) => {
@@ -279,18 +325,15 @@ export function NewGoalForm() {
         </section>
 
         <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
-          <h2 className="text-base font-semibold">Create Status</h2>
+          <h2 className="text-base font-semibold">{t.newGoal.createStatus}</h2>
           {submitError ? (
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
-              <p className="font-medium text-rose-300">
-                Unable to create goal.
-              </p>
+              <p className="font-medium text-rose-300">{t.newGoal.unable}</p>
               <p>{submitError}</p>
             </div>
           ) : (
             <p className="mt-4 text-sm leading-6 text-slate-300">
-              Valid submissions are saved to the backend and opened from the
-              goal detail page.
+              {t.newGoal.validHint}
             </p>
           )}
         </section>

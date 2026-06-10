@@ -10,13 +10,14 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.progress import ProgressReviewRequest, ProgressReviewResponse
+from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
 
-PROGRESS_REVIEWER_PROMPT = """
+PROGRESS_REVIEWER_PROMPT_EN = """
 You are the Progress Reviewer for AI Developer Learning Planner.
 
 Review one day of learning progress. Return JSON only, with this exact shape:
@@ -36,6 +37,29 @@ Rules:
 - Use major only when most tasks are unfinished or blockers prevent progress.
 - Keep suggestion actionable for tomorrow, but do not rewrite the plan.
 - Do not perform emotion analysis or complex learner assessment.
+""".strip()
+
+PROGRESS_REVIEWER_PROMPT_ZH = """
+你是 AI Developer Learning Planner 的进度复盘器。
+
+复盘某一天的学习进度。只返回 JSON，结构必须完全如下：
+{
+  "completedTasks": ["string"],
+  "unfinishedTasks": ["string"],
+  "blockers": ["string"],
+  "impact": "none|minor|medium|major",
+  "suggestion": "string"
+}
+
+规则：
+- 不要包含 markdown 代码块或解释性正文。
+- completedTasks、unfinishedTasks、blockers 和 suggestion 必须使用简体中文。
+- completedTasks 和 unfinishedTasks 应是简洁任务标题或摘要。
+- blockers 只包含用户或任务状态中的具体阻塞。
+- impact 必须是 none、minor、medium、major 之一。
+- 只有大多数任务未完成或阻塞阻止进度时才使用 major。
+- suggestion 要对明天可执行，但不要重写计划。
+- 不要做情绪分析或复杂学习者评估。
 """.strip()
 
 
@@ -65,7 +89,14 @@ def review_progress_with_model(request: ProgressReviewRequest) -> ProgressReview
         json={
             "model": PROFILE_ANALYZER_MODEL,
             "messages": [
-                {"role": "system", "content": PROGRESS_REVIEWER_PROMPT},
+                {
+                    "role": "system",
+                    "content": prompt_for(
+                        request.responseLanguage,
+                        PROGRESS_REVIEWER_PROMPT_ZH,
+                        PROGRESS_REVIEWER_PROMPT_EN,
+                    ),
+                },
                 {
                     "role": "user",
                     "content": json.dumps(
@@ -82,6 +113,7 @@ def review_progress_with_model(request: ProgressReviewRequest) -> ProgressReview
                                 item.model_dump() for item in request.unfinishedTasks
                             ],
                             "blockers": request.blockers,
+                            "responseLanguage": request.responseLanguage,
                         },
                         ensure_ascii=False,
                     ),
@@ -111,21 +143,37 @@ def review_progress_with_mock(request: ProgressReviewRequest) -> ProgressReviewR
     )
 
     if impact == "none":
-        suggestion = "Good progress today. Keep tomorrow focused on the next planned slice."
+        suggestion = (
+            "今天进展顺利。明天继续聚焦下一个计划切片。"
+            if is_zh(request.responseLanguage)
+            else "Good progress today. Keep tomorrow focused on the next planned slice."
+        )
     elif impact == "minor":
         suggestion = (
-            "Carry the unfinished item into tomorrow's warm-up, then continue with the "
-            "highest-priority planned task."
+            "把未完成项放到明天热身环节，然后继续最高优先级计划任务。"
+            if is_zh(request.responseLanguage)
+            else (
+                "Carry the unfinished item into tomorrow's warm-up, then continue with the "
+                "highest-priority planned task."
+            )
         )
     elif impact == "medium":
         suggestion = (
-            "Start tomorrow by unblocking or finishing the incomplete work before adding "
-            "new scope."
+            "明天先解除阻塞或完成未完成工作，再增加新的范围。"
+            if is_zh(request.responseLanguage)
+            else (
+                "Start tomorrow by unblocking or finishing the incomplete work before adding "
+                "new scope."
+            )
         )
     else:
         suggestion = (
-            "Reduce tomorrow's scope, resolve the main blocker first, and keep only one "
-            "high-priority implementation task."
+            "缩小明天范围，先解决主要阻塞，只保留一个高优先级实现任务。"
+            if is_zh(request.responseLanguage)
+            else (
+                "Reduce tomorrow's scope, resolve the main blocker first, and keep only one "
+                "high-priority implementation task."
+            )
         )
 
     return ProgressReviewResponse(

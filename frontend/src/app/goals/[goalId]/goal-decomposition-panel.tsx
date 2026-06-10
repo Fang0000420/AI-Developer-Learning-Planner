@@ -11,14 +11,16 @@ import {
 import { useRouter } from "next/navigation";
 import type { ApiErrorResponse, GoalDecomposition } from "@/lib/goals";
 import { getPriorityClasses } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 
 type GoalDecompositionPanelProps = {
   goalId: number;
   initialDecomposition: GoalDecomposition | null;
   initialError?: string | null;
+  locale: Locale;
 };
 
-function getErrorMessage(error: ApiErrorResponse) {
+function getErrorMessage(error: ApiErrorResponse, locale: Locale) {
   if (error.errors) {
     const firstError = Object.values(error.errors)[0];
     if (firstError) {
@@ -26,13 +28,17 @@ function getErrorMessage(error: ApiErrorResponse) {
     }
   }
 
-  return error.message || "Goal decomposition failed.";
+  return (
+    error.message ||
+    (locale === "zh" ? "目标拆解失败。" : "Goal decomposition failed.")
+  );
 }
 
 export function GoalDecompositionPanel({
   goalId,
   initialDecomposition,
   initialError = null,
+  locale,
 }: GoalDecompositionPanelProps) {
   const router = useRouter();
   const [decomposition, setDecomposition] = useState<GoalDecomposition | null>(
@@ -57,7 +63,7 @@ export function GoalDecompositionPanel({
         | ApiErrorResponse;
 
       if (!response.ok) {
-        setError(getErrorMessage(payload as ApiErrorResponse));
+        setError(getErrorMessage(payload as ApiErrorResponse, locale));
         return;
       }
 
@@ -67,7 +73,9 @@ export function GoalDecompositionPanel({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Goal decomposition failed.",
+          : locale === "zh"
+            ? "目标拆解失败。"
+            : "Goal decomposition failed.",
       );
     } finally {
       setIsGenerating(false);
@@ -75,12 +83,20 @@ export function GoalDecompositionPanel({
   }
 
   const statusLabel = isGenerating
-    ? "Generating"
+    ? locale === "zh"
+      ? "生成中"
+      : "Generating"
     : error
-      ? "Failed"
+      ? locale === "zh"
+        ? "失败"
+        : "Failed"
       : decomposition
-        ? "Ready"
-        : "Not generated";
+        ? locale === "zh"
+          ? "就绪"
+          : "Ready"
+        : locale === "zh"
+          ? "未生成"
+          : "Not generated";
 
   return (
     <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
@@ -92,7 +108,7 @@ export function GoalDecompositionPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-950">
-                Goal Decomposition
+                {locale === "zh" ? "目标拆解" : "Goal Decomposition"}
               </h2>
               <span className="inline-flex h-7 items-center gap-1 rounded-md bg-slate-100 px-2 text-xs font-semibold text-slate-600">
                 {isGenerating ? (
@@ -109,8 +125,9 @@ export function GoalDecompositionPanel({
               </span>
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Break the saved main goal into concrete sub-goals with execution
-              priority.
+              {locale === "zh"
+                ? "把已保存主目标拆成带执行优先级的具体子目标。"
+                : "Break the saved main goal into concrete sub-goals with execution priority."}
             </p>
           </div>
         </div>
@@ -126,14 +143,20 @@ export function GoalDecompositionPanel({
           ) : (
             <Sparkles aria-hidden="true" className="size-4" />
           )}
-          {decomposition ? "Regenerate" : "Generate"}
+          {decomposition
+            ? locale === "zh"
+              ? "重新生成"
+              : "Regenerate"
+            : locale === "zh"
+              ? "生成"
+              : "Generate"}
         </button>
       </div>
 
       {error ? (
         <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm font-semibold text-rose-950">
-            Unable to decompose goal.
+            {locale === "zh" ? "无法拆解目标。" : "Unable to decompose goal."}
           </p>
           <p className="mt-2 text-sm leading-6 text-rose-700">{error}</p>
         </div>
@@ -171,8 +194,9 @@ export function GoalDecompositionPanel({
         </ol>
       ) : (
         <p className="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-          Generate a decomposition to save the latest Goal Decomposer result in
-          the agent run history.
+          {locale === "zh"
+            ? "生成目标拆解后，会把最新 Goal Decomposer 结果保存到 Agent 运行历史。"
+            : "Generate a decomposition to save the latest Goal Decomposer result in the agent run history."}
         </p>
       )}
     </section>

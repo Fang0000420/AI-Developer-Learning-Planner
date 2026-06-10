@@ -10,68 +10,17 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import { dictionaries } from "@/lib/i18n";
+import { getCurrentLocale } from "@/lib/i18n-server";
 import { BackendHealthCard } from "./backend-health-card";
 
-const statusCards = [
-  {
-    label: "Active goal",
-    value: "Saved flow",
-    detail: "Goals persist through Spring Boot and feed the agent chain.",
-    icon: Target,
-  },
-  {
-    label: "Plan window",
-    value: "14 or 21 days",
-    detail: "Plan generation stores learning plans and daily tasks.",
-    icon: CalendarDays,
-  },
-  {
-    label: "Today",
-    value: "Adaptive",
-    detail: "Progress review can adjust the next day's task list.",
-    icon: Clock3,
-  },
-];
+const statusIcons = [Target, CalendarDays, Clock3];
+const quickActionIcons = [Plus, Target, FolderKanban, ClipboardList];
 
-const quickActions = [
-  {
-    title: "Create Goal",
-    description:
-      "Capture background, target role, time budget, and plan cycle.",
-    href: "/goals/new",
-    icon: Plus,
-  },
-  {
-    title: "Goal Library",
-    description: "Browse saved goals and open backend-backed goal details.",
-    href: "/goals",
-    icon: Target,
-  },
-  {
-    title: "View Plan",
-    description: "Review the generated learning roadmap and project direction.",
-    href: "/plans",
-    icon: FolderKanban,
-  },
-  {
-    title: "Today Tasks",
-    description: "Work through daily tasks and prepare progress notes.",
-    href: "/tasks/today",
-    icon: ClipboardList,
-  },
-];
+export default async function Home() {
+  const locale = await getCurrentLocale();
+  const t = dictionaries[locale];
 
-const workflowSteps = [
-  { label: "Profile analysis", state: "Ready" },
-  { label: "Goal decomposition", state: "Ready" },
-  { label: "Skill gap review", state: "Ready" },
-  { label: "Project recommendation", state: "Ready" },
-  { label: "Daily plan", state: "Ready" },
-  { label: "Progress review", state: "Ready" },
-  { label: "Plan adjustment", state: "Ready" },
-];
-
-export default function Home() {
   return (
     <main className="flex-1 bg-background text-foreground">
       <section className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
@@ -81,15 +30,13 @@ export default function Home() {
               <div className="max-w-3xl">
                 <p className="inline-flex h-8 items-center gap-2 rounded-md bg-emerald-50 px-3 text-sm font-medium text-emerald-700">
                   <Sparkles aria-hidden="true" className="size-4" />
-                  Day 15 demo flow
+                  {t.home.badge}
                 </p>
                 <h1 className="mt-4 text-3xl font-semibold text-slate-950">
-                  Build an adaptive AI learning plan
+                  {t.home.title}
                 </h1>
                 <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-                  Use this workspace to create a learning goal, inspect the
-                  generated plan, submit daily progress, and verify the next day
-                  adjusted task list.
+                  {t.home.description}
                 </p>
               </div>
 
@@ -98,13 +45,13 @@ export default function Home() {
                 href="/goals/new"
               >
                 <Plus aria-hidden="true" className="size-4" />
-                New Goal
+                {t.common.newGoal}
               </Link>
             </div>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {statusCards.map((card) => {
-                const Icon = card.icon;
+              {t.home.statusCards.map((card, index) => {
+                const Icon = statusIcons[index];
 
                 return (
                   <article
@@ -138,14 +85,16 @@ export default function Home() {
                 className="text-lg font-semibold text-slate-950"
                 id="quick-actions-title"
               >
-                Workspace Entry Points
+                {t.home.quickTitle}
               </h2>
-              <span className="text-sm text-slate-500">MVP flow</span>
+              <span className="text-sm text-slate-500">
+                {t.home.quickSubtitle}
+              </span>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
+              {t.home.quickActions.map((action, index) => {
+                const Icon = quickActionIcons[index];
 
                 return (
                   <Link
@@ -176,12 +125,12 @@ export default function Home() {
         </div>
 
         <aside className="flex flex-col gap-6">
-          <BackendHealthCard />
+          <BackendHealthCard locale={locale} />
 
           <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-slate-950">
-                MVP Progress
+                {t.home.progressTitle}
               </h2>
               <CheckCircle2
                 aria-hidden="true"
@@ -189,16 +138,16 @@ export default function Home() {
               />
             </div>
             <div className="mt-5 space-y-4">
-              {workflowSteps.map((step, index) => (
-                <div className="flex gap-3" key={step.label}>
+              {t.home.workflow.map((step, index) => (
+                <div className="flex gap-3" key={step}>
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-sm font-semibold text-slate-700">
                     {index + 1}
                   </span>
                   <div>
-                    <p className="text-sm font-medium text-slate-950">
-                      {step.label}
+                    <p className="text-sm font-medium text-slate-950">{step}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {t.common.ready}
                     </p>
-                    <p className="mt-1 text-sm text-slate-500">{step.state}</p>
                   </div>
                 </div>
               ))}
@@ -206,17 +155,16 @@ export default function Home() {
           </section>
 
           <section className="rounded-md border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
-            <h2 className="text-base font-semibold">Next Step</h2>
+            <h2 className="text-base font-semibold">{t.home.nextTitle}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Create a goal, run the demo chain from the goal detail page, open
-              Day 1 tasks, and submit progress with one unfinished task.
+              {t.home.nextDescription}
             </p>
             <Link
               className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-200"
               href="/goals/new"
             >
               <Plus aria-hidden="true" className="size-4" />
-              Open Goal Form
+              {t.common.openGoalForm}
             </Link>
           </section>
         </aside>

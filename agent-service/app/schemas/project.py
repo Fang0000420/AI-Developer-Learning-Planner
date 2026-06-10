@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.goal import SubGoal
 from app.schemas.skill_gap import SkillGap
+from app.services.language import ResponseLanguage
 
 
 class ProjectRecommendRequest(BaseModel):
@@ -13,6 +14,7 @@ class ProjectRecommendRequest(BaseModel):
     skillGaps: list[SkillGap] = Field(default_factory=list)
     durationDays: int = Field(gt=0)
     dailyAvailableHours: float | None = Field(default=None, ge=0)
+    responseLanguage: ResponseLanguage = "zh"
 
 
 class ProjectRecommendResponse(BaseModel):

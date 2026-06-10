@@ -39,6 +39,10 @@ public class Goal {
     private Integer durationDays;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "response_language", nullable = false, length = 10)
+    private ResponseLanguage responseLanguage = ResponseLanguage.zh;
+
+    @Enumerated(EnumType.STRING)
     @Column(length = 50)
     private GoalStatus status = GoalStatus.ACTIVE;
 
@@ -61,6 +65,9 @@ public class Goal {
     void onCreate() {
         if (status == null) {
             status = GoalStatus.ACTIVE;
+        }
+        if (responseLanguage == null) {
+            responseLanguage = ResponseLanguage.zh;
         }
         if (updatedAt == null) {
             updatedAt = LocalDateTime.now();
@@ -106,6 +113,14 @@ public class Goal {
 
     public void setDurationDays(Integer durationDays) {
         this.durationDays = durationDays;
+    }
+
+    public ResponseLanguage getResponseLanguage() {
+        return responseLanguage;
+    }
+
+    public void setResponseLanguage(ResponseLanguage responseLanguage) {
+        this.responseLanguage = responseLanguage == null ? ResponseLanguage.zh : responseLanguage;
     }
 
     public GoalStatus getStatus() {

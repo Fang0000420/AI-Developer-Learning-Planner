@@ -29,6 +29,8 @@ public record GoalCreateRequest(
         @AllowedGoalDurationDays
         Integer durationDays,
 
+        ResponseLanguage responseLanguage,
+
         @NotNull(message = "Daily available hours is required.")
         @DecimalMin(value = "0.5", message = "Daily available hours must be at least 0.5.")
         @DecimalMax(value = "12.0", message = "Daily available hours cannot exceed 12.")

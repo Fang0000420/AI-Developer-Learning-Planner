@@ -1,14 +1,18 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
+    PIP_TRUSTED_HOST=mirrors.aliyun.com \
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=10
 
 WORKDIR /app
 
-COPY pyproject.toml .
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+
 COPY app ./app
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .
 
 EXPOSE 8000
 

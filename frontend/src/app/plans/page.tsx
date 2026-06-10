@@ -11,11 +11,15 @@ import {
 } from "lucide-react";
 import { fetchBackendPlans } from "@/lib/backend-plans";
 import { formatGoalDate, formatMinutes } from "@/lib/goals";
+import { dictionaries } from "@/lib/i18n";
+import { getCurrentLocale } from "@/lib/i18n-server";
 import { PlanRowActions } from "./plan-row-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlansPage() {
+  const locale = await getCurrentLocale();
+  const t = dictionaries[locale];
   const { data: plans, error } = await fetchBackendPlans();
 
   return (
@@ -28,18 +32,19 @@ export default async function PlansPage() {
               href="/"
             >
               <ArrowLeft aria-hidden="true" className="size-4" />
-              Dashboard
+              {t.common.dashboard}
             </Link>
             <p className="mt-5 inline-flex h-8 items-center gap-2 rounded-md bg-emerald-50 px-3 text-sm font-medium text-emerald-700">
               <ListChecks aria-hidden="true" className="size-4" />
-              Learning plans
+              {locale === "zh" ? "学习计划" : "Learning plans"}
             </p>
             <h1 className="mt-4 text-3xl font-semibold text-slate-950">
-              Generated Plans
+              {locale === "zh" ? "已生成计划" : "Generated Plans"}
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-              Review saved learning plans and open a plan to inspect its daily
-              tasks, estimated time, and deliverables.
+              {locale === "zh"
+                ? "查看已保存的学习计划，并打开计划检查每日任务、预计时间和交付物。"
+                : "Review saved learning plans and open a plan to inspect its daily tasks, estimated time, and deliverables."}
             </p>
           </div>
 
@@ -48,17 +53,17 @@ export default async function PlansPage() {
             href="/goals"
           >
             <Target aria-hidden="true" className="size-4" />
-            Open Goals
+            {locale === "zh" ? "打开目标" : "Open Goals"}
           </Link>
         </div>
 
         {error ? (
           <section className="rounded-md border border-rose-200 bg-rose-50 p-5">
             <h2 className="text-base font-semibold text-rose-950">
-              Plans unavailable
+              {locale === "zh" ? "计划不可用" : "Plans unavailable"}
             </h2>
             <p className="mt-2 text-sm leading-6 text-rose-700">
-              {error.message || "The backend plans API did not respond."}
+              {error.message || t.common.backendError}
             </p>
           </section>
         ) : plans.length === 0 ? (
@@ -67,19 +72,19 @@ export default async function PlansPage() {
               <ListChecks aria-hidden="true" className="size-6" />
             </span>
             <h2 className="mt-5 text-xl font-semibold text-slate-950">
-              No plans yet
+              {locale === "zh" ? "还没有计划" : "No plans yet"}
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">
-              Generate a learning plan from a goal after profile analysis, goal
-              decomposition, skill gap analysis, and project recommendation are
-              ready.
+              {locale === "zh"
+                ? "当能力画像、目标拆解、技能差距分析和项目推荐准备好后，从目标生成学习计划。"
+                : "Generate a learning plan from a goal after profile analysis, goal decomposition, skill gap analysis, and project recommendation are ready."}
             </p>
             <Link
               className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
               href="/goals"
             >
               <Plus aria-hidden="true" className="size-4" />
-              Choose Goal
+              {locale === "zh" ? "选择目标" : "Choose Goal"}
             </Link>
           </section>
         ) : (
@@ -104,21 +109,30 @@ export default async function PlansPage() {
                                 : "bg-emerald-50 text-emerald-700 ring-emerald-200"
                             } group-hover:bg-white`}
                           >
-                            {plan.status === "PAUSED" ? "Paused" : "Active"}
+                            {plan.status === "PAUSED"
+                              ? locale === "zh"
+                                ? "已暂停"
+                                : "Paused"
+                              : locale === "zh"
+                                ? "进行中"
+                                : "Active"}
                           </span>
                           <span className="text-sm text-slate-500">
-                            Plan #{plan.id}
+                            {locale === "zh" ? "计划 #" : "Plan #"}
+                            {plan.id}
                           </span>
                           <span className="text-sm text-slate-500">
-                            Goal #{plan.goalId}
+                            {t.common.goalId}
+                            {plan.goalId}
                           </span>
                         </div>
                         <h2 className="mt-3 text-lg font-semibold text-slate-950">
                           {plan.planTitle}
                         </h2>
                         <p className="mt-2 text-sm leading-6 text-slate-600">
-                          {plan.dayCount} saved days with {plan.taskCount}{" "}
-                          tasks.
+                          {locale === "zh"
+                            ? `${plan.dayCount} 天，${plan.taskCount} 个任务。`
+                            : `${plan.dayCount} saved days with ${plan.taskCount} tasks.`}
                         </p>
                       </div>
 
@@ -129,16 +143,16 @@ export default async function PlansPage() {
                               aria-hidden="true"
                               className="size-4"
                             />
-                            Cycle
+                            {t.common.cycle}
                           </div>
                           <p className="mt-2 text-sm font-semibold text-slate-950">
-                            {plan.durationDays} days
+                            {plan.durationDays} {t.common.days}
                           </p>
                         </div>
                         <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
                           <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                             <ListChecks aria-hidden="true" className="size-4" />
-                            Tasks
+                            {locale === "zh" ? "任务" : "Tasks"}
                           </div>
                           <p className="mt-2 text-sm font-semibold text-slate-950">
                             {plan.taskCount}
@@ -147,19 +161,19 @@ export default async function PlansPage() {
                         <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
                           <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                             <Clock3 aria-hidden="true" className="size-4" />
-                            Time
+                            {locale === "zh" ? "时间" : "Time"}
                           </div>
                           <p className="mt-2 text-sm font-semibold text-slate-950">
-                            {formatMinutes(plan.totalEstimatedMinutes)}
+                            {formatMinutes(plan.totalEstimatedMinutes, locale)}
                           </p>
                         </div>
                         <div className="rounded-md bg-slate-50 p-3 group-hover:bg-white">
                           <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
                             <ArrowRight aria-hidden="true" className="size-4" />
-                            Created
+                            {t.common.created}
                           </div>
                           <p className="mt-2 text-sm font-semibold text-slate-950">
-                            {formatGoalDate(plan.createdAt)}
+                            {formatGoalDate(plan.createdAt, locale)}
                           </p>
                         </div>
                       </div>
@@ -172,9 +186,9 @@ export default async function PlansPage() {
                       href={`/plans/${plan.id}/today`}
                     >
                       <CalendarCheck aria-hidden="true" className="size-4" />
-                      Today
+                      {t.nav.today}
                     </Link>
-                    <PlanRowActions plan={plan} />
+                    <PlanRowActions locale={locale} plan={plan} />
                   </div>
                 </div>
               </article>

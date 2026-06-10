@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 public record ProfileAnalyzeRequest(
         String background,
         String goal,
-        BigDecimal dailyAvailableHours
+        BigDecimal dailyAvailableHours,
+        String responseLanguage
 ) {
 }

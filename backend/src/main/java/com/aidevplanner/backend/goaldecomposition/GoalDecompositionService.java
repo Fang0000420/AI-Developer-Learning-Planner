@@ -100,7 +100,8 @@ public class GoalDecompositionService {
         User user = goal.getUser();
         return new GoalDecomposeRequest(
                 firstPresent(goal.getTitle(), "Untitled learning goal"),
-                firstPresent(user.getBackground(), goal.getDescription(), null)
+                firstPresent(user.getBackground(), goal.getDescription(), null),
+                goal.getResponseLanguage().name()
         );
     }
 

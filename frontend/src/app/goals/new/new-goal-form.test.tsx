@@ -21,7 +21,7 @@ describe("NewGoalForm", () => {
 
   test("shows validation errors for an incomplete goal", async () => {
     const user = userEvent.setup();
-    render(<NewGoalForm />);
+    render(<NewGoalForm locale="en" />);
 
     await user.click(screen.getByRole("button", { name: /create goal/i }));
 
@@ -52,7 +52,7 @@ describe("NewGoalForm", () => {
         ok: false,
       }),
     );
-    render(<NewGoalForm />);
+    render(<NewGoalForm locale="en" />);
 
     await user.type(
       screen.getByLabelText(/technical background/i),

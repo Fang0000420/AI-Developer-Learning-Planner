@@ -14,13 +14,14 @@ from app.schemas.skill_gap import (
     SkillGapAnalyzeRequest,
     SkillGapAnalyzeResponse,
 )
+from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
 
-SKILL_GAP_ANALYZER_PROMPT = """
+SKILL_GAP_ANALYZER_PROMPT_EN = """
 You are the Skill Gap Analyzer for AI Developer Learning Planner.
 
 Compare the learner's current profile with the decomposed goal. Return JSON
@@ -45,6 +46,32 @@ Rules:
   basic, intermediate, advanced, or production-ready.
 - priority must be exactly one of: high, medium, low.
 - Use weaknesses and high-priority sub-goals to decide urgency.
+""".strip()
+
+SKILL_GAP_ANALYZER_PROMPT_ZH = """
+你是 AI Developer Learning Planner 的技能差距分析器。
+
+比较学习者当前画像和已拆解目标。只返回 JSON，结构必须完全如下：
+{
+  "skillGaps": [
+    {
+      "skill": "string",
+      "currentLevel": "string",
+      "targetLevel": "string",
+      "priority": "high | medium | low",
+      "reason": "string"
+    }
+  ]
+}
+
+规则：
+- 不要包含 markdown 代码块或解释性正文。
+- 所有自然语言字段值必须使用简体中文。
+- 至少生成 4 个技能差距。
+- 聚焦能驱动项目计划的开发者实践能力。
+- currentLevel 和 targetLevel 使用简短标签。
+- priority 必须是 high、medium、low 之一。
+- 根据 weaknesses 和高优先级 subGoals 判断紧急程度。
 """.strip()
 
 
@@ -76,7 +103,14 @@ def analyze_skill_gap_with_model(
         json={
             "model": PROFILE_ANALYZER_MODEL,
             "messages": [
-                {"role": "system", "content": SKILL_GAP_ANALYZER_PROMPT},
+                {
+                    "role": "system",
+                    "content": prompt_for(
+                        request.responseLanguage,
+                        SKILL_GAP_ANALYZER_PROMPT_ZH,
+                        SKILL_GAP_ANALYZER_PROMPT_EN,
+                    ),
+                },
                 {
                     "role": "user",
                     "content": json.dumps(
@@ -86,6 +120,7 @@ def analyze_skill_gap_with_model(
                             "strengths": request.strengths,
                             "weaknesses": request.weaknesses,
                             "subGoals": [item.model_dump() for item in request.subGoals],
+                            "responseLanguage": request.responseLanguage,
                         },
                         ensure_ascii=False,
                     ),
@@ -107,6 +142,43 @@ def analyze_skill_gap_with_model(
 def analyze_skill_gap_with_mock(
     request: SkillGapAnalyzeRequest,
 ) -> SkillGapAnalyzeResponse:
+    if is_zh(request.responseLanguage):
+        return SkillGapAnalyzeResponse(
+            skillGaps=[
+                SkillGap(
+                    skill="AI Agent 工作流设计",
+                    currentLevel="基础",
+                    targetLevel="可用于生产",
+                    priority="high",
+                    reason="目标需要把复杂工作拆成可靠的 Agent 步骤，但当前画像尚未体现这类深度。",
+                ),
+                SkillGap(
+                    skill="结构化 LLM 输出校验",
+                    currentLevel="入门",
+                    targetLevel="中级",
+                    priority="high",
+                    reason="画像、拆解和计划结果都需要严格 schema、校验和恢复路径才能驱动 MVP。",
+                ),
+                SkillGap(
+                    skill="全栈规划链路集成",
+                    currentLevel="基础",
+                    targetLevel="中级",
+                    priority="medium",
+                    reason=(
+                        "学习者需要把 Agent 输出接入后端持久化和 UI 流程，"
+                        f"支撑目标「{request.mainGoal}」。"
+                    ),
+                ),
+                SkillGap(
+                    skill="评估与迭代闭环",
+                    currentLevel="入门",
+                    targetLevel="中级",
+                    priority="medium",
+                    reason="每日学习计划需要结合进度、质量信号和用户反馈持续调整。",
+                ),
+            ]
+        )
+
     return SkillGapAnalyzeResponse(
         skillGaps=[
             SkillGap(

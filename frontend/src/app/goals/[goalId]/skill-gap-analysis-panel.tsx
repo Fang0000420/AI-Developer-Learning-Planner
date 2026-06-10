@@ -11,14 +11,16 @@ import {
 import { useRouter } from "next/navigation";
 import type { ApiErrorResponse, SkillGapAnalysis } from "@/lib/goals";
 import { getPriorityClasses } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 
 type SkillGapAnalysisPanelProps = {
   goalId: number;
   initialError?: string | null;
   initialSkillGapAnalysis: SkillGapAnalysis | null;
+  locale: Locale;
 };
 
-function getErrorMessage(error: ApiErrorResponse) {
+function getErrorMessage(error: ApiErrorResponse, locale: Locale) {
   if (error.errors) {
     const firstError = Object.values(error.errors)[0];
     if (firstError) {
@@ -26,13 +28,17 @@ function getErrorMessage(error: ApiErrorResponse) {
     }
   }
 
-  return error.message || "Skill gap analysis failed.";
+  return (
+    error.message ||
+    (locale === "zh" ? "技能差距分析失败。" : "Skill gap analysis failed.")
+  );
 }
 
 export function SkillGapAnalysisPanel({
   goalId,
   initialError = null,
   initialSkillGapAnalysis,
+  locale,
 }: SkillGapAnalysisPanelProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(initialError);
@@ -53,7 +59,7 @@ export function SkillGapAnalysisPanel({
         | ApiErrorResponse;
 
       if (!response.ok) {
-        setError(getErrorMessage(payload as ApiErrorResponse));
+        setError(getErrorMessage(payload as ApiErrorResponse, locale));
         return;
       }
 
@@ -63,7 +69,9 @@ export function SkillGapAnalysisPanel({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Skill gap analysis failed.",
+          : locale === "zh"
+            ? "技能差距分析失败。"
+            : "Skill gap analysis failed.",
       );
     } finally {
       setIsGenerating(false);
@@ -71,12 +79,20 @@ export function SkillGapAnalysisPanel({
   }
 
   const statusLabel = isGenerating
-    ? "Generating"
+    ? locale === "zh"
+      ? "生成中"
+      : "Generating"
     : error
-      ? "Failed"
+      ? locale === "zh"
+        ? "失败"
+        : "Failed"
       : skillGapAnalysis
-        ? "Ready"
-        : "Not generated";
+        ? locale === "zh"
+          ? "就绪"
+          : "Ready"
+        : locale === "zh"
+          ? "未生成"
+          : "Not generated";
 
   return (
     <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
@@ -88,7 +104,7 @@ export function SkillGapAnalysisPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-950">
-                Skill Gap Analysis
+                {locale === "zh" ? "技能差距分析" : "Skill Gap Analysis"}
               </h2>
               <span className="inline-flex h-7 items-center gap-1 rounded-md bg-slate-100 px-2 text-xs font-semibold text-slate-600">
                 {isGenerating ? (
@@ -105,8 +121,9 @@ export function SkillGapAnalysisPanel({
               </span>
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Compare the saved profile and decomposed goal to identify the
-              skills that need the most attention.
+              {locale === "zh"
+                ? "比较已保存画像和拆解目标，识别最需要关注的技能。"
+                : "Compare the saved profile and decomposed goal to identify the skills that need the most attention."}
             </p>
           </div>
         </div>
@@ -122,14 +139,22 @@ export function SkillGapAnalysisPanel({
           ) : (
             <Sparkles aria-hidden="true" className="size-4" />
           )}
-          {skillGapAnalysis ? "Regenerate" : "Generate"}
+          {skillGapAnalysis
+            ? locale === "zh"
+              ? "重新生成"
+              : "Regenerate"
+            : locale === "zh"
+              ? "生成"
+              : "Generate"}
         </button>
       </div>
 
       {error ? (
         <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm font-semibold text-rose-950">
-            Unable to analyze skill gaps.
+            {locale === "zh"
+              ? "无法分析技能差距。"
+              : "Unable to analyze skill gaps."}
           </p>
           <p className="mt-2 text-sm leading-6 text-rose-700">{error}</p>
         </div>
@@ -141,11 +166,21 @@ export function SkillGapAnalysisPanel({
             <table className="min-w-[760px] divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                 <tr>
-                  <th className="w-[190px] px-4 py-3">Skill</th>
-                  <th className="w-[130px] px-4 py-3">Current</th>
-                  <th className="w-[150px] px-4 py-3">Target</th>
-                  <th className="w-[110px] px-4 py-3">Priority</th>
-                  <th className="px-4 py-3">Reason</th>
+                  <th className="w-[190px] px-4 py-3">
+                    {locale === "zh" ? "技能" : "Skill"}
+                  </th>
+                  <th className="w-[130px] px-4 py-3">
+                    {locale === "zh" ? "当前" : "Current"}
+                  </th>
+                  <th className="w-[150px] px-4 py-3">
+                    {locale === "zh" ? "目标" : "Target"}
+                  </th>
+                  <th className="w-[110px] px-4 py-3">
+                    {locale === "zh" ? "优先级" : "Priority"}
+                  </th>
+                  <th className="px-4 py-3">
+                    {locale === "zh" ? "原因" : "Reason"}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
@@ -183,8 +218,9 @@ export function SkillGapAnalysisPanel({
         </div>
       ) : (
         <p className="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-          Generate a skill gap analysis after the profile and decomposition are
-          available to get the clearest priorities.
+          {locale === "zh"
+            ? "画像和目标拆解可用后生成技能差距分析，以获得更清晰的优先级。"
+            : "Generate a skill gap analysis after the profile and decomposition are available to get the clearest priorities."}
         </p>
       )}
     </section>

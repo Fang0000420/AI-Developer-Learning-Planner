@@ -4,12 +4,14 @@ import { useState } from "react";
 import { LoaderCircle, Pause, Play, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ApiErrorResponse, Goal, GoalStatus } from "@/lib/goals";
+import type { Locale } from "@/lib/i18n";
 
 type GoalRowActionsProps = {
   goal: Goal;
+  locale: Locale;
 };
 
-function getErrorMessage(error: ApiErrorResponse) {
+function getErrorMessage(error: ApiErrorResponse, locale: Locale) {
   if (error.errors) {
     const firstError = Object.values(error.errors)[0];
     if (firstError) {
@@ -17,10 +19,13 @@ function getErrorMessage(error: ApiErrorResponse) {
     }
   }
 
-  return error.message || "Goal operation failed.";
+  return (
+    error.message ||
+    (locale === "zh" ? "目标操作失败。" : "Goal operation failed.")
+  );
 }
 
-export function GoalRowActions({ goal }: GoalRowActionsProps) {
+export function GoalRowActions({ goal, locale }: GoalRowActionsProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<
@@ -39,6 +44,7 @@ export function GoalRowActions({ goal }: GoalRowActionsProps) {
           title: goal.title,
           description: goal.description,
           durationDays: goal.durationDays,
+          responseLanguage: goal.responseLanguage ?? "zh",
           status: nextStatus,
           dailyAvailableHours: goal.dailyAvailableHours ?? 2,
         }),
@@ -50,7 +56,7 @@ export function GoalRowActions({ goal }: GoalRowActionsProps) {
       const payload = (await response.json()) as Goal | ApiErrorResponse;
 
       if (!response.ok) {
-        setError(getErrorMessage(payload as ApiErrorResponse));
+        setError(getErrorMessage(payload as ApiErrorResponse, locale));
         return;
       }
 
@@ -59,7 +65,9 @@ export function GoalRowActions({ goal }: GoalRowActionsProps) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Goal operation failed.",
+          : locale === "zh"
+            ? "目标操作失败。"
+            : "Goal operation failed.",
       );
     } finally {
       setPendingAction(null);
@@ -67,7 +75,11 @@ export function GoalRowActions({ goal }: GoalRowActionsProps) {
   }
 
   async function deleteGoal() {
-    if (!window.confirm(`Delete goal #${goal.id}?`)) {
+    if (
+      !window.confirm(
+        locale === "zh" ? `删除目标 #${goal.id}？` : `Delete goal #${goal.id}?`,
+      )
+    ) {
       return;
     }
 
@@ -81,7 +93,7 @@ export function GoalRowActions({ goal }: GoalRowActionsProps) {
 
       if (!response.ok) {
         const payload = (await response.json()) as ApiErrorResponse;
-        setError(getErrorMessage(payload));
+        setError(getErrorMessage(payload, locale));
         return;
       }
 
@@ -90,7 +102,9 @@ export function GoalRowActions({ goal }: GoalRowActionsProps) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Goal operation failed.",
+          : locale === "zh"
+            ? "目标操作失败。"
+            : "Goal operation failed.",
       );
     } finally {
       setPendingAction(null);
@@ -113,13 +127,19 @@ export function GoalRowActions({ goal }: GoalRowActionsProps) {
           ) : (
             <Pause aria-hidden="true" className="size-4" />
           )}
-          {isPaused ? "Activate" : "Pause"}
+          {isPaused
+            ? locale === "zh"
+              ? "激活"
+              : "Activate"
+            : locale === "zh"
+              ? "暂停"
+              : "Pause"}
         </button>
         <button
           className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-rose-200 bg-white text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-rose-300"
           disabled={pendingAction !== null}
           onClick={deleteGoal}
-          title="Delete goal"
+          title={locale === "zh" ? "删除目标" : "Delete goal"}
           type="button"
         >
           {pendingAction === "delete" ? (

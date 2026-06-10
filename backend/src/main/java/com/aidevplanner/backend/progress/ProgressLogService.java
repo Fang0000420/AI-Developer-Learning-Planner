@@ -96,6 +96,7 @@ public class ProgressLogService {
         String userFeedback = request.userFeedback().trim();
 
         ProgressReviewAgentRequest reviewRequest = buildReviewRequest(
+                plan,
                 request.dayIndex(),
                 dayTasks,
                 userFeedback,
@@ -108,7 +109,7 @@ public class ProgressLogService {
         ProgressReviewAgentResponse reviewResponse;
 
         try {
-            reviewResponse = normalizeReviewResponse(progressReviewerClient.review(reviewRequest));
+            reviewResponse = normalizeReviewResponse(progressReviewerClient.review(reviewRequest), plan);
             String outputJson = writeJson(reviewResponse);
             AgentRun reviewRun = new AgentRun(
                     plan.getUser(),
@@ -153,7 +154,7 @@ public class ProgressLogService {
         PlanAdjustAgentResponse adjustResponse;
 
         try {
-            adjustResponse = normalizeAdjustResponse(planAdjusterClient.adjust(adjustRequest));
+            adjustResponse = normalizeAdjustResponse(planAdjusterClient.adjust(adjustRequest), plan);
             applyPlanAdjustment(
                     plan,
                     targetDayIndex,
@@ -252,6 +253,7 @@ public class ProgressLogService {
     }
 
     private ProgressReviewAgentRequest buildReviewRequest(
+            LearningPlan plan,
             Integer dayIndex,
             List<DailyTask> dayTasks,
             String userFeedback,
@@ -265,7 +267,8 @@ public class ProgressLogService {
                 userFeedback,
                 selectTasks(dayTasks, completedTaskIds),
                 selectTasks(dayTasks, unfinishedTaskIds),
-                blockers
+                blockers,
+                plan.getGoal().getResponseLanguage().name()
         );
     }
 
@@ -316,7 +319,8 @@ public class ProgressLogService {
                 allPlanTasks.stream()
                         .filter(task -> targetDayIndex.equals(task.getDayIndex()))
                         .map(this::toAdjustTask)
-                        .toList()
+                        .toList(),
+                plan.getGoal().getResponseLanguage().name()
         );
     }
 
@@ -352,23 +356,31 @@ public class ProgressLogService {
         );
     }
 
-    private ProgressReviewAgentResponse normalizeReviewResponse(ProgressReviewAgentResponse response) {
+    private ProgressReviewAgentResponse normalizeReviewResponse(
+            ProgressReviewAgentResponse response,
+            LearningPlan plan
+    ) {
+        boolean zh = isZh(plan);
         return new ProgressReviewAgentResponse(
                 cleanList(response.completedTasks()),
                 cleanList(response.unfinishedTasks()),
                 cleanList(response.blockers()),
                 normalizeImpact(response.impact()),
-                firstPresent(response.suggestion(), "Review today's blockers and keep tomorrow focused.")
+                firstPresent(
+                        response.suggestion(),
+                        zh ? "复盘今天的阻塞，并让明天保持聚焦。" : "Review today's blockers and keep tomorrow focused."
+                )
         );
     }
 
-    private PlanAdjustAgentResponse normalizeAdjustResponse(PlanAdjustAgentResponse response) {
+    private PlanAdjustAgentResponse normalizeAdjustResponse(PlanAdjustAgentResponse response, LearningPlan plan) {
+        boolean zh = isZh(plan);
         if (response == null) {
             return new PlanAdjustAgentResponse(
                     List.of(),
                     List.of(),
                     List.of(),
-                    "No plan adjustment was returned."
+                    zh ? "未返回计划调整结果。" : "No plan adjustment was returned."
             );
         }
 
@@ -377,21 +389,34 @@ public class ProgressLogService {
                 response.movedTasks() == null ? List.of() : response.movedTasks().stream()
                         .map(task -> new PlanMovedTaskResponse(
                                 task.taskId(),
-                                firstPresent(task.title(), "Moved task"),
+                                firstPresent(task.title(), zh ? "移动任务" : "Moved task"),
                                 positiveOrDefault(task.fromDayIndex(), 1),
                                 positiveOrDefault(task.toDayIndex(), 1),
-                                firstPresent(task.reason(), "The task was moved because it was unfinished.")
+                                firstPresent(
+                                        task.reason(),
+                                        zh ? "该任务因未完成而移动。" : "The task was moved because it was unfinished."
+                                )
                         ))
                         .toList(),
                 response.splitTasks() == null ? List.of() : response.splitTasks().stream()
                         .map(task -> new PlanSplitTaskResponse(
                                 task.sourceTaskId(),
-                                firstPresent(task.sourceTitle(), "Split task"),
+                                firstPresent(task.sourceTitle(), zh ? "拆分任务" : "Split task"),
                                 task.parts() == null ? List.of() : task.parts(),
-                                firstPresent(task.reason(), "The task was split into smaller next-day parts.")
+                                firstPresent(
+                                        task.reason(),
+                                        zh
+                                                ? "该任务被拆分成下一天更小的部分。"
+                                                : "The task was split into smaller next-day parts."
+                                )
                         ))
                         .toList(),
-                firstPresent(response.reason(), "Tomorrow's plan was adjusted based on today's progress.")
+                firstPresent(
+                        response.reason(),
+                        zh
+                                ? "明天计划已根据今天的进度进行调整。"
+                                : "Tomorrow's plan was adjusted based on today's progress."
+                )
         );
     }
 
@@ -413,7 +438,7 @@ public class ProgressLogService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         List<DailyTask> newTasks = new ArrayList<>();
         int nextOrder = nextTaskOrder(allPlanTasks, newTasks, targetDayIndex);
-        String targetTheme = targetDayTheme(allPlanTasks, targetDayIndex);
+        String targetTheme = targetDayTheme(plan, allPlanTasks, targetDayIndex);
 
         for (PlanSplitTaskResponse splitTask : adjustResponse.splitTasks()) {
             if (splitTask.sourceTaskId() == null || !unfinishedTaskIds.contains(splitTask.sourceTaskId())) {
@@ -451,7 +476,7 @@ public class ProgressLogService {
                 continue;
             }
             task.setStatus(DailyTaskStatus.SKIPPED);
-            String title = "Carry over: " + task.getTitle();
+            String title = (isZh(plan) ? "结转：" : "Carry over: ") + task.getTitle();
             if (hasTaskWithTitle(allPlanTasks, newTasks, targetDayIndex, title)) {
                 continue;
             }
@@ -620,13 +645,13 @@ public class ProgressLogService {
         return existingMax + newTasks.size() + 1;
     }
 
-    private String targetDayTheme(List<DailyTask> allPlanTasks, Integer targetDayIndex) {
+    private String targetDayTheme(LearningPlan plan, List<DailyTask> allPlanTasks, Integer targetDayIndex) {
         return allPlanTasks.stream()
                 .filter(task -> targetDayIndex.equals(task.getDayIndex()))
                 .map(DailyTask::getDayTheme)
                 .filter(value -> value != null && !value.isBlank())
                 .findFirst()
-                .orElse("Adjusted Day " + targetDayIndex);
+                .orElse(isZh(plan) ? "调整后的第 " + targetDayIndex + " 天" : "Adjusted Day " + targetDayIndex);
     }
 
     private DailyTask findTask(List<DailyTask> tasks, Long taskId) {
@@ -666,6 +691,12 @@ public class ProgressLogService {
             }
         }
         return "";
+    }
+
+    private boolean isZh(LearningPlan plan) {
+        return plan != null
+                && plan.getGoal() != null
+                && "zh".equalsIgnoreCase(plan.getGoal().getResponseLanguage().name());
     }
 
     private Integer positiveOrDefault(Integer value, Integer defaultValue) {

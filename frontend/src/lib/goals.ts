@@ -1,5 +1,6 @@
 export type GoalStatus = "ACTIVE" | "COMPLETED" | "PAUSED" | "CANCELLED";
 export type LearningPlanStatus = "ACTIVE" | "PAUSED";
+export type ResponseLanguage = "zh" | "en";
 
 export type Goal = {
   id: number;
@@ -7,6 +8,7 @@ export type Goal = {
   title: string;
   description: string | null;
   durationDays: number;
+  responseLanguage: ResponseLanguage;
   status: GoalStatus;
   dailyAvailableHours: number | null;
   createdAt: string | null;
@@ -223,9 +225,24 @@ export type GoalCreatePayload = {
   description: string;
   durationDays: number;
   dailyAvailableHours: number;
+  responseLanguage: ResponseLanguage;
 };
 
-export function getGoalStatusLabel(status: GoalStatus) {
+export function getGoalStatusLabel(
+  status: GoalStatus,
+  locale: ResponseLanguage = "en",
+) {
+  if (locale === "zh") {
+    const labels: Record<GoalStatus, string> = {
+      ACTIVE: "进行中",
+      CANCELLED: "已取消",
+      COMPLETED: "已完成",
+      PAUSED: "已暂停",
+    };
+
+    return labels[status];
+  }
+
   const labels: Record<GoalStatus, string> = {
     ACTIVE: "Active",
     CANCELLED: "Cancelled",
@@ -247,12 +264,15 @@ export function getGoalStatusClasses(status: GoalStatus) {
   return classes[status];
 }
 
-export function formatGoalDate(value: string | null) {
+export function formatGoalDate(
+  value: string | null,
+  locale: ResponseLanguage = "en",
+) {
   if (!value) {
-    return "Not recorded";
+    return locale === "zh" ? "未记录" : "Not recorded";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
@@ -261,26 +281,31 @@ export function formatGoalDate(value: string | null) {
   }).format(new Date(value));
 }
 
-export function formatDailyHours(value: number | null) {
+export function formatDailyHours(
+  value: number | null,
+  locale: ResponseLanguage = "en",
+) {
   if (value === null) {
-    return "Not set";
+    return locale === "zh" ? "未设置" : "Not set";
   }
 
-  return `${value} hours`;
+  return locale === "zh" ? `${value} 小时` : `${value} hours`;
 }
 
-export function formatMinutes(value: number) {
+export function formatMinutes(value: number, locale: ResponseLanguage = "en") {
   if (value < 60) {
-    return `${value} min`;
+    return locale === "zh" ? `${value} 分钟` : `${value} min`;
   }
 
   const hours = Math.floor(value / 60);
   const minutes = value % 60;
   if (minutes === 0) {
-    return `${hours} hr`;
+    return locale === "zh" ? `${hours} 小时` : `${hours} hr`;
   }
 
-  return `${hours} hr ${minutes} min`;
+  return locale === "zh"
+    ? `${hours} 小时 ${minutes} 分钟`
+    : `${hours} hr ${minutes} min`;
 }
 
 export function getPriorityClasses(priority: Priority) {
@@ -293,7 +318,21 @@ export function getPriorityClasses(priority: Priority) {
   return classes[priority];
 }
 
-export function getDailyTaskStatusLabel(status: DailyTaskStatus) {
+export function getDailyTaskStatusLabel(
+  status: DailyTaskStatus,
+  locale: ResponseLanguage = "en",
+) {
+  if (locale === "zh") {
+    const labels: Record<DailyTaskStatus, string> = {
+      DONE: "已完成",
+      IN_PROGRESS: "进行中",
+      PENDING: "待开始",
+      SKIPPED: "已跳过",
+    };
+
+    return labels[status];
+  }
+
   const labels: Record<DailyTaskStatus, string> = {
     DONE: "Done",
     IN_PROGRESS: "In progress",
@@ -315,7 +354,21 @@ export function getDailyTaskStatusClasses(status: DailyTaskStatus) {
   return classes[status];
 }
 
-export function getProgressImpactLabel(impact: ProgressImpact) {
+export function getProgressImpactLabel(
+  impact: ProgressImpact,
+  locale: ResponseLanguage = "en",
+) {
+  if (locale === "zh") {
+    const labels: Record<ProgressImpact, string> = {
+      major: "严重影响",
+      medium: "中等影响",
+      minor: "轻微影响",
+      none: "无影响",
+    };
+
+    return labels[impact];
+  }
+
   const labels: Record<ProgressImpact, string> = {
     major: "Major impact",
     medium: "Medium impact",

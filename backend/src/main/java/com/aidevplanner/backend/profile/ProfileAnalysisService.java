@@ -107,7 +107,12 @@ public class ProfileAnalysisService {
                 ? BigDecimal.ONE
                 : user.getDailyAvailableHours();
 
-        return new ProfileAnalyzeRequest(background, goal.getTitle(), dailyAvailableHours);
+        return new ProfileAnalyzeRequest(
+                background,
+                goal.getTitle(),
+                dailyAvailableHours,
+                goal.getResponseLanguage().name()
+        );
     }
 
     private void ensureCanAccessGoal(Long goalId) {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogIn, UserPlus } from "lucide-react";
 import type { ApiErrorResponse } from "@/lib/goals";
+import { dictionaries, type Locale } from "@/lib/i18n";
 
 type Mode = "login" | "register";
 
@@ -12,7 +13,12 @@ function errorMessage(payload: ApiErrorResponse, fallback: string) {
   return firstError || payload.message || fallback;
 }
 
-export function AuthForm() {
+type AuthFormProps = {
+  locale: Locale;
+};
+
+export function AuthForm({ locale }: AuthFormProps) {
+  const t = dictionaries[locale].auth;
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [username, setUsername] = useState("");
@@ -38,9 +44,7 @@ export function AuthForm() {
     const payload = await response.json();
 
     if (!response.ok) {
-      setError(
-        errorMessage(payload as ApiErrorResponse, "Authentication failed."),
-      );
+      setError(errorMessage(payload as ApiErrorResponse, t.failed));
       setIsSubmitting(false);
       return;
     }
@@ -60,12 +64,10 @@ export function AuthForm() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-950">
-            {isLogin ? "Sign in" : "Create account"}
+            {isLogin ? t.signIn : t.createAccount}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {isLogin
-              ? "Continue your learning planner workspace."
-              : "Create a planner account for your own goals and plans."}
+            {isLogin ? t.loginDescription : t.registerDescription}
           </p>
         </div>
         <span className="flex size-10 items-center justify-center rounded-md bg-slate-950 text-white">
@@ -81,7 +83,7 @@ export function AuthForm() {
           onClick={() => setMode("login")}
           type="button"
         >
-          Sign in
+          {t.signIn}
         </button>
         <button
           className={`rounded px-3 py-2 text-sm font-medium ${
@@ -90,12 +92,12 @@ export function AuthForm() {
           onClick={() => setMode("register")}
           type="button"
         >
-          Register
+          {t.register}
         </button>
       </div>
 
       <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-        Username
+        {t.username}
         <input
           className="h-11 rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-slate-950"
           maxLength={100}
@@ -108,7 +110,7 @@ export function AuthForm() {
 
       {!isLogin ? (
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-          Email
+          {t.email}
           <input
             className="h-11 rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-slate-950"
             maxLength={255}
@@ -120,7 +122,7 @@ export function AuthForm() {
       ) : null}
 
       <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-        Password
+        {t.password}
         <input
           className="h-11 rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-slate-950"
           maxLength={100}
@@ -144,7 +146,7 @@ export function AuthForm() {
         type="submit"
       >
         <Icon aria-hidden="true" className="size-4" />
-        {isSubmitting ? "Working..." : isLogin ? "Sign in" : "Register"}
+        {isSubmitting ? t.working : isLogin ? t.signIn : t.register}
       </button>
     </form>
   );

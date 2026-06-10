@@ -114,7 +114,8 @@ public class SkillGapAnalysisService {
                 profile == null ? List.of() : copyList(profile.getCurrentSkills()),
                 profile == null ? List.of() : copyList(profile.getStrengths()),
                 profile == null ? List.of() : copyList(profile.getWeaknesses()),
-                latestSubGoals(goal.getId())
+                latestSubGoals(goal.getId()),
+                goal.getResponseLanguage().name()
         );
     }
 

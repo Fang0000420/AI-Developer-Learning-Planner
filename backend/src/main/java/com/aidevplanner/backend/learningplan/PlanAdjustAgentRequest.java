@@ -9,6 +9,7 @@ public record PlanAdjustAgentRequest(
         List<PlanAdjustTaskPayload> todayTasks,
         PlanAdjustReviewPayload progressReview,
         List<PlanAdjustTaskPayload> unfinishedTasks,
-        List<PlanAdjustTaskPayload> nextDayTasks
+        List<PlanAdjustTaskPayload> nextDayTasks,
+        String responseLanguage
 ) {
 }
