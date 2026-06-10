@@ -72,7 +72,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 启动与验收
 
-当前仓库处于 Day 18 日志与可观测性阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 requestId 日志和错误分类重试。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；已配置真实模型时，网络、超时、429、5xx 和模型输出格式问题会先重试，重试耗尽后才 fallback，401、403、404、400 等配置或权限问题会直接报错。
+当前仓库处于 Day 19 测试与 CI 阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 requestId 日志和错误分类重试。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；已配置真实模型时，网络、超时、429、5xx 和模型输出格式问题会先重试，重试耗尽后才 fallback，401、403、404、400 等配置或权限问题会直接报错。
 
 默认验收环境为服务器 `/home/AI-Developer-Learning-Planner`。启动或重启服务前，先在项目根目录加载 `.env`：
 
@@ -106,6 +106,33 @@ cd frontend
 npm run build
 npm run start:server
 ```
+
+## 测试与 CI
+
+服务器验收默认在 `/home/AI-Developer-Learning-Planner` 执行。后端需要 Java 17；如果当前 shell 的 `JAVA_HOME` 不是 Java 17，应先切换到服务器的 Java 17 路径。
+
+```bash
+# 后端
+cd backend
+mvn test
+
+# Agent 服务
+cd ../agent-service
+source .venv/bin/activate
+pytest
+ruff check .
+
+# 前端
+cd ../frontend
+npm ci
+npm test
+npm run lint
+npm run typecheck
+npm run format:check
+npm run build
+```
+
+GitHub Actions 工作流位于 `.github/workflows/ci.yml`，会在 PR 和 `main` 分支 push 时分别运行 backend、agent-service 和 frontend 三组检查；backend job 会启动 PostgreSQL 16 和 Redis 7 service。
 
 ## 工程约定
 

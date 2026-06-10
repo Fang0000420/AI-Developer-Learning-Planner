@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ai_planner_test
+          POSTGRES_PASSWORD: ai_planner_dev_password
+          POSTGRES_USER: ai_planner
+        options: >-
+          --health-cmd "pg_isready -U ai_planner -d ai_planner_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Test backend
+        env:
+          SPRING_DATASOURCE_PASSWORD: ai_planner_dev_password
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ai_planner_test
+          SPRING_DATASOURCE_USERNAME: ai_planner
+        run: mvn test
+
+  agent-service:
+    name: Agent Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      - name: Lint agent service
+        run: ruff check .
+
+      - name: Test agent service
+        env:
+          DEEPSEEK_API_KEY: ""
+        run: pytest
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Test frontend
+        run: npm test
+
+      - name: Typecheck frontend
+        run: npm run typecheck
+
+      - name: Check frontend formatting
+        run: npm run format:check
+
+      - name: Build frontend
+        env:
+          NEXT_PUBLIC_BACKEND_API_BASE_URL: http://localhost:8080
+        run: npm run build
