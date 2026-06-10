@@ -8,6 +8,8 @@ import {
   Plus,
   Target,
 } from "lucide-react";
+import { authDisplayFromCookies } from "@/lib/backend-auth";
+import { AuthStatus } from "./auth-status";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,18 +17,19 @@ export const metadata: Metadata = {
   description: "Frontend workspace for the AI learning planner MVP.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const auth = await authDisplayFromCookies();
   const navigationItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/goals", label: "Goals", icon: Target },
     { href: "/goals/new", label: "New Goal", icon: Plus },
     { href: "/plans", label: "Plans", icon: ListChecks },
     { href: "/tasks/today", label: "Today", icon: CalendarCheck },
-    { href: "/login", label: "Login", icon: LogIn },
+    ...(auth ? [] : [{ href: "/login", label: "Login", icon: LogIn }]),
   ];
 
   return (
@@ -63,6 +66,11 @@ export default function RootLayout({
                     </li>
                   );
                 })}
+                {auth ? (
+                  <li>
+                    <AuthStatus username={auth.username} />
+                  </li>
+                ) : null}
               </ul>
             </nav>
           </div>

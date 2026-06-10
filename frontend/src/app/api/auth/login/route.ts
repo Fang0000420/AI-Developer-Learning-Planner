@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { AUTH_COOKIE_NAME, authCookieAttributes } from "@/lib/backend-auth";
+import {
+  AUTH_COOKIE_NAME,
+  AUTH_USERNAME_COOKIE_NAME,
+  authCookieAttributes,
+} from "@/lib/backend-auth";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 import type { AuthResponse } from "@/lib/auth";
 
@@ -27,6 +31,11 @@ export async function POST(request: Request) {
         AUTH_COOKIE_NAME,
         auth.token,
         authCookieAttributes(),
+      );
+      nextResponse.cookies.set(
+        AUTH_USERNAME_COOKIE_NAME,
+        auth.username,
+        authCookieAttributes(undefined, true),
       );
     }
 
