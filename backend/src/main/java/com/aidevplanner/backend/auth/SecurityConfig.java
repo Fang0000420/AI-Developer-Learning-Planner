@@ -52,7 +52,7 @@ public class SecurityConfig {
                             "timestamp", Instant.now().toString()
                     ));
                 })
-        )
+        );
         jwtAuthenticationFilter.ifAvailable(filter ->
                 http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
         );
