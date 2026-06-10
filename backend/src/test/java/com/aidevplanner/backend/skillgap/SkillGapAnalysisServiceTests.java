@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.skillgap;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -37,6 +38,9 @@ class SkillGapAnalysisServiceTests {
     private AgentRunRepository agentRunRepository;
 
     @Mock
+    private AuthenticatedUserService authenticatedUserService;
+
+    @Mock
     private GoalRepository goalRepository;
 
     @Mock
@@ -51,6 +55,7 @@ class SkillGapAnalysisServiceTests {
     void setUp() {
         skillGapAnalysisService = new SkillGapAnalysisService(
                 agentRunRepository,
+                authenticatedUserService,
                 goalRepository,
                 new ObjectMapper(),
                 skillGapAnalyzerClient,

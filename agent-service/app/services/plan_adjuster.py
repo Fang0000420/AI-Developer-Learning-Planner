@@ -17,6 +17,7 @@ from app.schemas.plan import (
     PlanMovedTask,
     PlanSplitTask,
 )
+from app.services.model_retry import retry_model_call
 
 PLAN_ADJUSTER_PROMPT = """
 You are the Plan Adjuster for AI Developer Learning Planner.
@@ -83,7 +84,7 @@ class PlanAdjusterError(RuntimeError):
 def adjust_plan(request: PlanAdjustRequest) -> PlanAdjustResponse:
     if DEEPSEEK_API_KEY:
         try:
-            return adjust_plan_with_model(request)
+            return retry_model_call(lambda: adjust_plan_with_model(request))
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
             return adjust_plan_with_mock(request)
 

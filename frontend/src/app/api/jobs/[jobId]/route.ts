@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authHeadersFromRequest } from "@/lib/backend-auth";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 
 export const dynamic = "force-dynamic";
@@ -36,12 +37,13 @@ async function proxyJsonResponse(response: Response) {
   return NextResponse.json(payload, { status: response.status });
 }
 
-export async function GET(_request: Request, { params }: JobRouteProps) {
+export async function GET(request: Request, { params }: JobRouteProps) {
   const { jobId } = await params;
 
   try {
     const response = await fetch(`${getBackendBaseUrl()}/api/jobs/${jobId}`, {
       cache: "no-store",
+      headers: authHeadersFromRequest(request),
     });
 
     return proxyJsonResponse(response);

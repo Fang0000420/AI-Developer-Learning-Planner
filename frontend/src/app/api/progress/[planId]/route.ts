@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authHeadersFromRequest } from "@/lib/backend-auth";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
       `${getBackendBaseUrl()}/api/progress/${planId}${url.search}`,
       {
         cache: "no-store",
+        headers: authHeadersFromRequest(request),
       },
     );
 

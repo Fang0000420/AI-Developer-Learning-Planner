@@ -5,7 +5,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import com.aidevplanner.backend.user.User;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -34,6 +37,10 @@ public class AsyncJob {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -44,9 +51,14 @@ public class AsyncJob {
     }
 
     public AsyncJob(UUID id, AsyncJobType jobType, String inputJson) {
+        this(id, jobType, inputJson, null);
+    }
+
+    public AsyncJob(UUID id, AsyncJobType jobType, String inputJson, User user) {
         this.id = id;
         this.jobType = jobType;
         this.inputJson = inputJson;
+        this.user = user;
         this.status = AsyncJobStatus.PENDING;
     }
 
@@ -72,6 +84,10 @@ public class AsyncJob {
 
     public String getErrorMessage() {
         return errorMessage;
+    }
+
+    public User getUser() {
+        return user;
     }
 
     public LocalDateTime getCreatedAt() {

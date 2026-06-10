@@ -11,6 +11,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.profile import ProfileAnalyzeRequest, ProfileAnalyzeResponse
+from app.services.model_retry import retry_model_call
 
 PROFILE_ANALYZER_PROMPT = """
 You are the Profile Analyzer for AI Developer Learning Planner.
@@ -37,7 +38,7 @@ class ProfileAnalyzerError(RuntimeError):
 def analyze_profile(request: ProfileAnalyzeRequest) -> ProfileAnalyzeResponse:
     if DEEPSEEK_API_KEY:
         try:
-            return analyze_profile_with_model(request)
+            return retry_model_call(lambda: analyze_profile_with_model(request))
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
             raise ProfileAnalyzerError("Profile analyzer model response was invalid.") from exc
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authHeadersFromRequest } from "@/lib/backend-auth";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +33,11 @@ async function proxyJsonResponse(response: Response) {
   return NextResponse.json(payload, { status: response.status });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const response = await fetch(`${getBackendBaseUrl()}/api/plans`, {
       cache: "no-store",
+      headers: authHeadersFromRequest(request),
     });
 
     return proxyJsonResponse(response);

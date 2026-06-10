@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.goaldecomposition;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -21,17 +22,20 @@ public class GoalDecompositionService {
     static final String AGENT_NAME = "Goal Decomposer";
 
     private final AgentRunRepository agentRunRepository;
+    private final AuthenticatedUserService authenticatedUserService;
     private final GoalDecomposerClient goalDecomposerClient;
     private final GoalRepository goalRepository;
     private final ObjectMapper objectMapper;
 
     public GoalDecompositionService(
             AgentRunRepository agentRunRepository,
+            AuthenticatedUserService authenticatedUserService,
             GoalDecomposerClient goalDecomposerClient,
             GoalRepository goalRepository,
             ObjectMapper objectMapper
     ) {
         this.agentRunRepository = agentRunRepository;
+        this.authenticatedUserService = authenticatedUserService;
         this.goalDecomposerClient = goalDecomposerClient;
         this.goalRepository = goalRepository;
         this.objectMapper = objectMapper;
@@ -39,9 +43,7 @@ public class GoalDecompositionService {
 
     @Transactional(readOnly = true)
     public GoalDecompositionResponse getLatestDecomposition(Long goalId) {
-        if (!goalRepository.existsById(goalId)) {
-            throw new ResourceNotFoundException("Goal", goalId);
-        }
+        ensureCanAccessGoal(goalId);
 
         return agentRunRepository
                 .findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
@@ -57,6 +59,7 @@ public class GoalDecompositionService {
     public GoalDecompositionResponse decomposeGoal(Long goalId) {
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
         GoalDecomposeRequest request = buildRequest(goal);
         String inputJson = writeJson(request);
         long startedAt = System.nanoTime();
@@ -99,6 +102,26 @@ public class GoalDecompositionService {
                 firstPresent(goal.getTitle(), "Untitled learning goal"),
                 firstPresent(user.getBackground(), goal.getDescription(), null)
         );
+    }
+
+    private void ensureCanAccessGoal(Long goalId) {
+        if (authenticatedUserService.currentUserId().isEmpty()) {
+            if (!goalRepository.existsById(goalId)) {
+                throw new ResourceNotFoundException("Goal", goalId);
+            }
+            return;
+        }
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
+    }
+
+    private void ensureCurrentUserOwns(Goal goal) {
+        authenticatedUserService.currentUserId().ifPresent(currentUserId -> {
+            if (!goal.getUser().getId().equals(currentUserId)) {
+                throw new ResourceNotFoundException("Goal", goal.getId());
+            }
+        });
     }
 
     private GoalDecompositionResponse toResponse(AgentRun agentRun) {

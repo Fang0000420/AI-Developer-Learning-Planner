@@ -15,6 +15,7 @@ from app.schemas.skill_gap import (
     SkillGapAnalyzeRequest,
     SkillGapAnalyzeResponse,
 )
+from app.services.model_retry import retry_model_call
 
 SKILL_GAP_ANALYZER_PROMPT = """
 You are the Skill Gap Analyzer for AI Developer Learning Planner.
@@ -51,7 +52,7 @@ class SkillGapAnalyzerError(RuntimeError):
 def analyze_skill_gap(request: SkillGapAnalyzeRequest) -> SkillGapAnalyzeResponse:
     if DEEPSEEK_API_KEY:
         try:
-            return analyze_skill_gap_with_model(request)
+            return retry_model_call(lambda: analyze_skill_gap_with_model(request))
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
             return analyze_skill_gap_with_mock(request)
 

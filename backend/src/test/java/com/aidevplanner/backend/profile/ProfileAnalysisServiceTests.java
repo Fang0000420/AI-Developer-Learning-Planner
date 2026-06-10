@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.profile;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -33,6 +34,9 @@ class ProfileAnalysisServiceTests {
     private AgentRunRepository agentRunRepository;
 
     @Mock
+    private AuthenticatedUserService authenticatedUserService;
+
+    @Mock
     private GoalRepository goalRepository;
 
     @Mock
@@ -47,6 +51,7 @@ class ProfileAnalysisServiceTests {
     void setUp() {
         profileAnalysisService = new ProfileAnalysisService(
                 agentRunRepository,
+                authenticatedUserService,
                 goalRepository,
                 new ObjectMapper(),
                 profileAnalyzerClient,

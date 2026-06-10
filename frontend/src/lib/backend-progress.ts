@@ -1,3 +1,4 @@
+import { authHeadersFromCookies } from "./backend-auth";
 import { getBackendBaseUrl } from "./backend-url";
 import type { ApiErrorResponse, ProgressLog } from "./goals";
 
@@ -55,6 +56,7 @@ export async function fetchBackendProgressLogs(
       `${getBackendBaseUrl()}/api/progress/${planId}${query ? `?${query}` : ""}`,
       {
         cache: "no-store",
+        headers: await authHeadersFromCookies(),
       },
     );
     const payload = await parseJson(response);

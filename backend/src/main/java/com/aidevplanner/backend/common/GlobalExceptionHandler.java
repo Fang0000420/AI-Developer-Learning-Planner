@@ -1,12 +1,14 @@
 package com.aidevplanner.backend.common;
 
 import com.aidevplanner.backend.agent.AgentServiceException;
+import com.aidevplanner.backend.auth.DuplicateUserException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -107,6 +109,26 @@ public class GlobalExceptionHandler {
                 Map.of("agentService", exception.getMessage())
         );
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
+    }
+
+    @ExceptionHandler(DuplicateUserException.class)
+    ResponseEntity<ApiErrorResponse> handleDuplicateUser(DuplicateUserException exception) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "CONFLICT",
+                exception.getMessage(),
+                Map.of("auth", exception.getMessage())
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException exception) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "UNAUTHORIZED",
+                "Invalid username or password.",
+                Map.of("auth", "Invalid username or password.")
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
     private String extractLastPathSegment(String propertyPath) {

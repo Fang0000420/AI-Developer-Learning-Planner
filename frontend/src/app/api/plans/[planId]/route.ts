@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authHeadersFromRequest } from "@/lib/backend-auth";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
     const planId = getPlanId(request);
     const response = await fetch(`${getBackendBaseUrl()}/api/plans/${planId}`, {
       cache: "no-store",
+      headers: authHeadersFromRequest(request),
     });
 
     return proxyJsonResponse(response);
@@ -58,6 +60,7 @@ export async function PUT(request: Request) {
       body: await request.text(),
       cache: "no-store",
       headers: {
+        ...authHeadersFromRequest(request),
         "content-type":
           request.headers.get("content-type") ?? "application/json",
       },
@@ -75,6 +78,7 @@ export async function DELETE(request: Request) {
     const planId = getPlanId(request);
     const response = await fetch(`${getBackendBaseUrl()}/api/plans/${planId}`, {
       cache: "no-store",
+      headers: authHeadersFromRequest(request),
       method: "DELETE",
     });
 

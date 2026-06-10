@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.goal;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.user.User;
 import com.aidevplanner.backend.user.UserRepository;
@@ -25,6 +26,9 @@ class GoalServiceTests {
 
     @Mock
     private GoalRepository goalRepository;
+
+    @Mock
+    private AuthenticatedUserService authenticatedUserService;
 
     @Mock
     private UserRepository userRepository;

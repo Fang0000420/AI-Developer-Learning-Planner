@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authHeadersFromRequest } from "@/lib/backend-auth";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
       body,
       cache: "no-store",
       headers: {
+        ...authHeadersFromRequest(request),
         "Content-Type": "application/json",
       },
       method: "POST",

@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.progress;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -40,6 +41,7 @@ public class ProgressLogService {
     static final String PLAN_ADJUSTER_AGENT_NAME = "Plan Adjuster";
 
     private final AgentRunRepository agentRunRepository;
+    private final AuthenticatedUserService authenticatedUserService;
     private final DailyTaskRepository dailyTaskRepository;
     private final LearningPlanRepository learningPlanRepository;
     private final ObjectMapper objectMapper;
@@ -49,6 +51,7 @@ public class ProgressLogService {
 
     public ProgressLogService(
             AgentRunRepository agentRunRepository,
+            AuthenticatedUserService authenticatedUserService,
             DailyTaskRepository dailyTaskRepository,
             LearningPlanRepository learningPlanRepository,
             ObjectMapper objectMapper,
@@ -57,6 +60,7 @@ public class ProgressLogService {
             ProgressReviewerClient progressReviewerClient
     ) {
         this.agentRunRepository = agentRunRepository;
+        this.authenticatedUserService = authenticatedUserService;
         this.dailyTaskRepository = dailyTaskRepository;
         this.learningPlanRepository = learningPlanRepository;
         this.objectMapper = objectMapper;
@@ -69,6 +73,7 @@ public class ProgressLogService {
     public ProgressLogResponse submitProgress(ProgressSubmitRequest request) {
         LearningPlan plan = learningPlanRepository.findById(request.planId())
                 .orElseThrow(() -> new ResourceNotFoundException("Learning plan", request.planId()));
+        ensureCurrentUserOwns(plan);
         List<DailyTask> dayTasks =
                 dailyTaskRepository.findByPlanIdAndDayIndexOrderByTaskOrderAsc(
                         request.planId(),
@@ -198,16 +203,44 @@ public class ProgressLogService {
 
     @Transactional(readOnly = true)
     public List<ProgressLogResponse> listProgress(Long planId, Integer dayIndex) {
-        if (!learningPlanRepository.existsById(planId)) {
-            throw new ResourceNotFoundException("Learning plan", planId);
-        }
+        ensureCanReadPlan(planId);
 
-        List<ProgressLog> logs = dayIndex == null
-                ? progressLogRepository.findByPlanIdOrderByCreatedAtDesc(planId)
-                : progressLogRepository.findByPlanIdAndDayIndexOrderByCreatedAtDesc(planId, dayIndex);
+        Long currentUserId = authenticatedUserService.currentUserId().orElse(null);
+        List<ProgressLog> logs;
+        if (currentUserId == null) {
+            logs = dayIndex == null
+                    ? progressLogRepository.findByPlanIdOrderByCreatedAtDesc(planId)
+                    : progressLogRepository.findByPlanIdAndDayIndexOrderByCreatedAtDesc(planId, dayIndex);
+        } else {
+            logs = dayIndex == null
+                    ? progressLogRepository.findByPlanIdAndUserIdOrderByCreatedAtDesc(planId, currentUserId)
+                    : progressLogRepository.findByPlanIdAndUserIdAndDayIndexOrderByCreatedAtDesc(
+                            planId,
+                            currentUserId,
+                            dayIndex
+                    );
+        }
         return logs.stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private void ensureCanReadPlan(Long planId) {
+        Long currentUserId = authenticatedUserService.currentUserId().orElse(null);
+        boolean exists = currentUserId == null
+                ? learningPlanRepository.existsById(planId)
+                : learningPlanRepository.existsByIdAndUserId(planId, currentUserId);
+        if (!exists) {
+            throw new ResourceNotFoundException("Learning plan", planId);
+        }
+    }
+
+    private void ensureCurrentUserOwns(LearningPlan plan) {
+        authenticatedUserService.currentUserId().ifPresent(currentUserId -> {
+            if (!plan.getUser().getId().equals(currentUserId)) {
+                throw new ResourceNotFoundException("Learning plan", plan.getId());
+            }
+        });
     }
 
     private ProgressReviewAgentRequest buildReviewRequest(

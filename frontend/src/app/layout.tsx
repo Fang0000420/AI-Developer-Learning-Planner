@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   LayoutDashboard,
   ListChecks,
+  LogIn,
   Plus,
   Target,
 } from "lucide-react";
@@ -25,6 +26,7 @@ export default function RootLayout({
     { href: "/goals/new", label: "New Goal", icon: Plus },
     { href: "/plans", label: "Plans", icon: ListChecks },
     { href: "/tasks/today", label: "Today", icon: CalendarCheck },
+    { href: "/login", label: "Login", icon: LogIn },
   ];
 
   return (

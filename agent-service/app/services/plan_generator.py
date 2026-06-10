@@ -12,6 +12,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.plan import PlanDay, PlanGenerateRequest, PlanGenerateResponse, PlanTask
+from app.services.model_retry import retry_model_call
 
 PLAN_GENERATOR_PROMPT = """
 You are the Plan Generator for AI Developer Learning Planner.
@@ -59,7 +60,7 @@ class PlanGeneratorError(RuntimeError):
 def generate_plan(request: PlanGenerateRequest) -> PlanGenerateResponse:
     if DEEPSEEK_API_KEY:
         try:
-            return generate_plan_with_model(request)
+            return retry_model_call(lambda: generate_plan_with_model(request))
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
             return generate_plan_with_mock(request)
 

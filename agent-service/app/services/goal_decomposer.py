@@ -11,6 +11,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.goal import GoalDecomposeRequest, GoalDecomposeResponse, SubGoal
+from app.services.model_retry import retry_model_call
 
 GOAL_DECOMPOSER_PROMPT = """
 You are the Goal Decomposer for AI Developer Learning Planner.
@@ -44,7 +45,7 @@ class GoalDecomposerError(RuntimeError):
 def decompose_goal(request: GoalDecomposeRequest) -> GoalDecomposeResponse:
     if DEEPSEEK_API_KEY:
         try:
-            return decompose_goal_with_model(request)
+            return retry_model_call(lambda: decompose_goal_with_model(request))
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
             raise GoalDecomposerError("Goal decomposer model response was invalid.") from exc
 

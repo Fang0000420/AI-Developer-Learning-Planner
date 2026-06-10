@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.learningplan;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -35,6 +36,7 @@ public class LearningPlanService {
     private static final String SKILL_GAP_ANALYZER_AGENT_NAME = "Skill Gap Analyzer";
 
     private final AgentRunRepository agentRunRepository;
+    private final AuthenticatedUserService authenticatedUserService;
     private final DailyTaskRepository dailyTaskRepository;
     private final GoalRepository goalRepository;
     private final LearningPlanRepository learningPlanRepository;
@@ -44,6 +46,7 @@ public class LearningPlanService {
 
     public LearningPlanService(
             AgentRunRepository agentRunRepository,
+            AuthenticatedUserService authenticatedUserService,
             DailyTaskRepository dailyTaskRepository,
             GoalRepository goalRepository,
             LearningPlanRepository learningPlanRepository,
@@ -52,6 +55,7 @@ public class LearningPlanService {
             SkillProfileRepository skillProfileRepository
     ) {
         this.agentRunRepository = agentRunRepository;
+        this.authenticatedUserService = authenticatedUserService;
         this.dailyTaskRepository = dailyTaskRepository;
         this.goalRepository = goalRepository;
         this.learningPlanRepository = learningPlanRepository;
@@ -62,7 +66,10 @@ public class LearningPlanService {
 
     @Transactional(readOnly = true)
     public List<LearningPlanSummaryResponse> listPlans() {
-        return learningPlanRepository.findAllByOrderByCreatedAtDesc().stream()
+        List<LearningPlan> plans = authenticatedUserService.currentUserId()
+                .map(learningPlanRepository::findByUserIdOrderByCreatedAtDesc)
+                .orElseGet(learningPlanRepository::findAllByOrderByCreatedAtDesc);
+        return plans.stream()
                 .map(plan -> toSummaryResponse(
                         plan,
                         dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(plan.getId())
@@ -72,8 +79,7 @@ public class LearningPlanService {
 
     @Transactional(readOnly = true)
     public LearningPlanResponse getPlan(Long planId) {
-        LearningPlan plan = learningPlanRepository.findById(planId)
-                .orElseThrow(() -> new ResourceNotFoundException("Learning plan", planId));
+        LearningPlan plan = findPlan(planId);
         List<DailyTask> tasks = dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(planId);
         return toResponse(plan, tasks);
     }
@@ -98,8 +104,7 @@ public class LearningPlanService {
 
     @Transactional
     public LearningPlanResponse updatePlanStatus(Long planId, LearningPlanUpdateRequest request) {
-        LearningPlan plan = learningPlanRepository.findById(planId)
-                .orElseThrow(() -> new ResourceNotFoundException("Learning plan", planId));
+        LearningPlan plan = findPlan(planId);
         plan.setStatus(request.status());
         List<DailyTask> tasks = dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(planId);
         return toResponse(plan, tasks);
@@ -123,22 +128,39 @@ public class LearningPlanService {
 
     @Transactional
     public void deletePlan(Long planId) {
-        if (!learningPlanRepository.existsById(planId)) {
-            throw new ResourceNotFoundException("Learning plan", planId);
+        if (authenticatedUserService.currentUserId().isEmpty()) {
+            if (!learningPlanRepository.existsById(planId)) {
+                throw new ResourceNotFoundException("Learning plan", planId);
+            }
+            learningPlanRepository.deleteById(planId);
+            return;
         }
+        findPlan(planId);
         learningPlanRepository.deleteById(planId);
     }
 
     private void ensurePlanExists(Long planId) {
-        if (!learningPlanRepository.existsById(planId)) {
+        Long currentUserId = authenticatedUserService.currentUserId().orElse(null);
+        boolean exists = currentUserId == null
+                ? learningPlanRepository.existsById(planId)
+                : learningPlanRepository.existsByIdAndUserId(planId, currentUserId);
+        if (!exists) {
             throw new ResourceNotFoundException("Learning plan", planId);
         }
+    }
+
+    private LearningPlan findPlan(Long planId) {
+        LearningPlan plan = learningPlanRepository.findById(planId)
+                .orElseThrow(() -> new ResourceNotFoundException("Learning plan", planId));
+        ensureCurrentUserOwns(plan);
+        return plan;
     }
 
     @Transactional(noRollbackFor = AgentServiceException.class)
     public LearningPlanResponse generatePlan(Long goalId) {
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
         PlanGenerateAgentRequest request = buildRequest(goal);
         String inputJson = writeJson(request);
         long startedAt = System.nanoTime();
@@ -184,6 +206,22 @@ public class LearningPlanService {
             ));
             throw exception;
         }
+    }
+
+    private void ensureCurrentUserOwns(LearningPlan plan) {
+        authenticatedUserService.currentUserId().ifPresent(currentUserId -> {
+            if (!plan.getUser().getId().equals(currentUserId)) {
+                throw new ResourceNotFoundException("Learning plan", plan.getId());
+            }
+        });
+    }
+
+    private void ensureCurrentUserOwns(Goal goal) {
+        authenticatedUserService.currentUserId().ifPresent(currentUserId -> {
+            if (!goal.getUser().getId().equals(currentUserId)) {
+                throw new ResourceNotFoundException("Goal", goal.getId());
+            }
+        });
     }
 
     private PlanGenerateAgentRequest buildRequest(Goal goal) {

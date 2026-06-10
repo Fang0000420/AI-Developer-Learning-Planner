@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.projectrecommendation;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -38,6 +39,9 @@ class ProjectRecommendationServiceTests {
     private AgentRunRepository agentRunRepository;
 
     @Mock
+    private AuthenticatedUserService authenticatedUserService;
+
+    @Mock
     private GoalRepository goalRepository;
 
     @Mock
@@ -52,6 +56,7 @@ class ProjectRecommendationServiceTests {
     void setUp() {
         projectRecommendationService = new ProjectRecommendationService(
                 agentRunRepository,
+                authenticatedUserService,
                 goalRepository,
                 new ObjectMapper(),
                 projectRecommenderClient,

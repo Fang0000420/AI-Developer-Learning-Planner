@@ -1,3 +1,4 @@
+import { authHeadersFromCookies } from "./backend-auth";
 import { getBackendBaseUrl } from "./backend-url";
 import type {
   ApiErrorResponse,
@@ -51,6 +52,7 @@ export async function fetchBackendGoals(): Promise<BackendResult<Goal[]>> {
   try {
     const response = await fetch(`${getBackendBaseUrl()}/api/goals`, {
       cache: "no-store",
+      headers: await authHeadersFromCookies(),
     });
     const payload = await parseJson(response);
 
@@ -82,6 +84,7 @@ export async function fetchBackendGoal(
   try {
     const response = await fetch(`${getBackendBaseUrl()}/api/goals/${goalId}`, {
       cache: "no-store",
+      headers: await authHeadersFromCookies(),
     });
     const payload = await parseJson(response);
 
@@ -117,6 +120,7 @@ export async function fetchBackendGoalProfile(
       `${getBackendBaseUrl()}/api/goals/${goalId}/profile`,
       {
         cache: "no-store",
+        headers: await authHeadersFromCookies(),
       },
     );
 
@@ -161,6 +165,7 @@ export async function fetchBackendGoalDecomposition(
       `${getBackendBaseUrl()}/api/goals/${goalId}/decomposition`,
       {
         cache: "no-store",
+        headers: await authHeadersFromCookies(),
       },
     );
 
@@ -205,6 +210,7 @@ export async function fetchBackendSkillGapAnalysis(
       `${getBackendBaseUrl()}/api/goals/${goalId}/skill-gap`,
       {
         cache: "no-store",
+        headers: await authHeadersFromCookies(),
       },
     );
 
@@ -249,6 +255,7 @@ export async function fetchBackendProjectRecommendation(
       `${getBackendBaseUrl()}/api/goals/${goalId}/project-recommendation`,
       {
         cache: "no-store",
+        headers: await authHeadersFromCookies(),
       },
     );
 

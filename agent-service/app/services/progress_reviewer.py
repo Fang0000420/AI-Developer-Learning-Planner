@@ -11,6 +11,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.progress import ProgressReviewRequest, ProgressReviewResponse
+from app.services.model_retry import retry_model_call
 
 PROGRESS_REVIEWER_PROMPT = """
 You are the Progress Reviewer for AI Developer Learning Planner.
@@ -42,7 +43,7 @@ class ProgressReviewerError(RuntimeError):
 def review_progress(request: ProgressReviewRequest) -> ProgressReviewResponse:
     if DEEPSEEK_API_KEY:
         try:
-            return review_progress_with_model(request)
+            return retry_model_call(lambda: review_progress_with_model(request))
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
             return review_progress_with_mock(request)
 

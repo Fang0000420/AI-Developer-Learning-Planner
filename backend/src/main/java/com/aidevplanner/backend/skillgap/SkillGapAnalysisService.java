@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.skillgap;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -26,6 +27,7 @@ public class SkillGapAnalysisService {
     private static final String GOAL_DECOMPOSER_AGENT_NAME = "Goal Decomposer";
 
     private final AgentRunRepository agentRunRepository;
+    private final AuthenticatedUserService authenticatedUserService;
     private final GoalRepository goalRepository;
     private final ObjectMapper objectMapper;
     private final SkillGapAnalyzerClient skillGapAnalyzerClient;
@@ -33,12 +35,14 @@ public class SkillGapAnalysisService {
 
     public SkillGapAnalysisService(
             AgentRunRepository agentRunRepository,
+            AuthenticatedUserService authenticatedUserService,
             GoalRepository goalRepository,
             ObjectMapper objectMapper,
             SkillGapAnalyzerClient skillGapAnalyzerClient,
             SkillProfileRepository skillProfileRepository
     ) {
         this.agentRunRepository = agentRunRepository;
+        this.authenticatedUserService = authenticatedUserService;
         this.goalRepository = goalRepository;
         this.objectMapper = objectMapper;
         this.skillGapAnalyzerClient = skillGapAnalyzerClient;
@@ -47,9 +51,7 @@ public class SkillGapAnalysisService {
 
     @Transactional(readOnly = true)
     public SkillGapAnalysisResponse getLatestSkillGapAnalysis(Long goalId) {
-        if (!goalRepository.existsById(goalId)) {
-            throw new ResourceNotFoundException("Goal", goalId);
-        }
+        ensureCanAccessGoal(goalId);
 
         return agentRunRepository
                 .findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
@@ -65,6 +67,7 @@ public class SkillGapAnalysisService {
     public SkillGapAnalysisResponse analyzeSkillGap(Long goalId) {
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
         SkillGapAnalyzeRequest request = buildRequest(goal);
         String inputJson = writeJson(request);
         long startedAt = System.nanoTime();
@@ -113,6 +116,26 @@ public class SkillGapAnalysisService {
                 profile == null ? List.of() : copyList(profile.getWeaknesses()),
                 latestSubGoals(goal.getId())
         );
+    }
+
+    private void ensureCanAccessGoal(Long goalId) {
+        if (authenticatedUserService.currentUserId().isEmpty()) {
+            if (!goalRepository.existsById(goalId)) {
+                throw new ResourceNotFoundException("Goal", goalId);
+            }
+            return;
+        }
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
+    }
+
+    private void ensureCurrentUserOwns(Goal goal) {
+        authenticatedUserService.currentUserId().ifPresent(currentUserId -> {
+            if (!goal.getUser().getId().equals(currentUserId)) {
+                throw new ResourceNotFoundException("Goal", goal.getId());
+            }
+        });
     }
 
     private List<SubGoalResponse> latestSubGoals(Long goalId) {

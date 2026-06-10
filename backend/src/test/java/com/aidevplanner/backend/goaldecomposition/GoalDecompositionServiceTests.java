@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.goaldecomposition;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -34,6 +35,9 @@ class GoalDecompositionServiceTests {
     private AgentRunRepository agentRunRepository;
 
     @Mock
+    private AuthenticatedUserService authenticatedUserService;
+
+    @Mock
     private GoalDecomposerClient goalDecomposerClient;
 
     @Mock
@@ -45,6 +49,7 @@ class GoalDecompositionServiceTests {
     void setUp() {
         goalDecompositionService = new GoalDecompositionService(
                 agentRunRepository,
+                authenticatedUserService,
                 goalDecomposerClient,
                 goalRepository,
                 new ObjectMapper()

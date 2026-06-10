@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.goal;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.user.User;
 import com.aidevplanner.backend.user.UserRepository;
@@ -18,10 +19,16 @@ public class GoalService {
     private static final String DEFAULT_PASSWORD_HASH = "not-used";
 
     private final GoalRepository goalRepository;
+    private final AuthenticatedUserService authenticatedUserService;
     private final UserRepository userRepository;
 
-    public GoalService(GoalRepository goalRepository, UserRepository userRepository) {
+    public GoalService(
+            GoalRepository goalRepository,
+            AuthenticatedUserService authenticatedUserService,
+            UserRepository userRepository
+    ) {
         this.goalRepository = goalRepository;
+        this.authenticatedUserService = authenticatedUserService;
         this.userRepository = userRepository;
     }
 
@@ -39,6 +46,11 @@ public class GoalService {
 
     @Transactional(readOnly = true)
     public List<GoalResponse> listGoals(Long userId, GoalStatus status) {
+        Long currentUserId = authenticatedUserService.currentUserId().orElse(null);
+        if (currentUserId != null) {
+            userId = currentUserId;
+        }
+
         List<Goal> goals;
         if (userId != null && status != null) {
             goals = goalRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status);
@@ -83,11 +95,26 @@ public class GoalService {
     }
 
     private Goal findGoal(Long goalId) {
-        return goalRepository.findById(goalId)
+        Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        authenticatedUserService.currentUserId().ifPresent(currentUserId -> {
+            if (!goal.getUser().getId().equals(currentUserId)) {
+                throw new ResourceNotFoundException("Goal", goalId);
+            }
+        });
+        return goal;
     }
 
     private User resolveUser(Long userId) {
+        Long currentUserId = authenticatedUserService.currentUserId().orElse(null);
+        if (currentUserId != null) {
+            if (userId != null && !userId.equals(currentUserId)) {
+                throw new ResourceNotFoundException("User", userId);
+            }
+            return userRepository.findById(currentUserId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", currentUserId));
+        }
+
         if (userId != null) {
             return userRepository.findById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User", userId));

@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.projectrecommendation;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -29,6 +30,7 @@ public class ProjectRecommendationService {
     private static final String SKILL_GAP_ANALYZER_AGENT_NAME = "Skill Gap Analyzer";
 
     private final AgentRunRepository agentRunRepository;
+    private final AuthenticatedUserService authenticatedUserService;
     private final GoalRepository goalRepository;
     private final ObjectMapper objectMapper;
     private final ProjectRecommenderClient projectRecommenderClient;
@@ -36,12 +38,14 @@ public class ProjectRecommendationService {
 
     public ProjectRecommendationService(
             AgentRunRepository agentRunRepository,
+            AuthenticatedUserService authenticatedUserService,
             GoalRepository goalRepository,
             ObjectMapper objectMapper,
             ProjectRecommenderClient projectRecommenderClient,
             SkillProfileRepository skillProfileRepository
     ) {
         this.agentRunRepository = agentRunRepository;
+        this.authenticatedUserService = authenticatedUserService;
         this.goalRepository = goalRepository;
         this.objectMapper = objectMapper;
         this.projectRecommenderClient = projectRecommenderClient;
@@ -50,9 +54,7 @@ public class ProjectRecommendationService {
 
     @Transactional(readOnly = true)
     public ProjectRecommendationResponse getLatestProjectRecommendation(Long goalId) {
-        if (!goalRepository.existsById(goalId)) {
-            throw new ResourceNotFoundException("Goal", goalId);
-        }
+        ensureCanAccessGoal(goalId);
 
         return agentRunRepository
                 .findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
@@ -68,6 +70,7 @@ public class ProjectRecommendationService {
     public ProjectRecommendationResponse recommendProject(Long goalId) {
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
         ProjectRecommendRequest request = buildRequest(goal);
         String inputJson = writeJson(request);
         long startedAt = System.nanoTime();
@@ -119,6 +122,26 @@ public class ProjectRecommendationService {
                 goal.getDurationDays(),
                 goal.getUser().getDailyAvailableHours()
         );
+    }
+
+    private void ensureCanAccessGoal(Long goalId) {
+        if (authenticatedUserService.currentUserId().isEmpty()) {
+            if (!goalRepository.existsById(goalId)) {
+                throw new ResourceNotFoundException("Goal", goalId);
+            }
+            return;
+        }
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
+    }
+
+    private void ensureCurrentUserOwns(Goal goal) {
+        authenticatedUserService.currentUserId().ifPresent(currentUserId -> {
+            if (!goal.getUser().getId().equals(currentUserId)) {
+                throw new ResourceNotFoundException("Goal", goal.getId());
+            }
+        });
     }
 
     private List<SubGoalResponse> latestSubGoals(Long goalId) {

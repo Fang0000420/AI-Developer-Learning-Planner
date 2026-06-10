@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.profile;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -22,6 +23,7 @@ public class ProfileAnalysisService {
     static final String AGENT_NAME = "Profile Analyzer";
 
     private final AgentRunRepository agentRunRepository;
+    private final AuthenticatedUserService authenticatedUserService;
     private final GoalRepository goalRepository;
     private final ObjectMapper objectMapper;
     private final ProfileAnalyzerClient profileAnalyzerClient;
@@ -29,12 +31,14 @@ public class ProfileAnalysisService {
 
     public ProfileAnalysisService(
             AgentRunRepository agentRunRepository,
+            AuthenticatedUserService authenticatedUserService,
             GoalRepository goalRepository,
             ObjectMapper objectMapper,
             ProfileAnalyzerClient profileAnalyzerClient,
             SkillProfileRepository skillProfileRepository
     ) {
         this.agentRunRepository = agentRunRepository;
+        this.authenticatedUserService = authenticatedUserService;
         this.goalRepository = goalRepository;
         this.objectMapper = objectMapper;
         this.profileAnalyzerClient = profileAnalyzerClient;
@@ -43,9 +47,7 @@ public class ProfileAnalysisService {
 
     @Transactional(readOnly = true)
     public SkillProfileResponse getLatestProfile(Long goalId) {
-        if (!goalRepository.existsById(goalId)) {
-            throw new ResourceNotFoundException("Goal", goalId);
-        }
+        ensureCanAccessGoal(goalId);
 
         return skillProfileRepository.findFirstByGoalIdOrderByCreatedAtDesc(goalId)
                 .map(SkillProfileResponse::from)
@@ -56,6 +58,7 @@ public class ProfileAnalysisService {
     public SkillProfileResponse analyzeGoal(Long goalId) {
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
         ProfileAnalyzeRequest request = buildRequest(goal);
         String inputJson = writeJson(request);
         long startedAt = System.nanoTime();
@@ -105,6 +108,26 @@ public class ProfileAnalysisService {
                 : user.getDailyAvailableHours();
 
         return new ProfileAnalyzeRequest(background, goal.getTitle(), dailyAvailableHours);
+    }
+
+    private void ensureCanAccessGoal(Long goalId) {
+        if (authenticatedUserService.currentUserId().isEmpty()) {
+            if (!goalRepository.existsById(goalId)) {
+                throw new ResourceNotFoundException("Goal", goalId);
+            }
+            return;
+        }
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        ensureCurrentUserOwns(goal);
+    }
+
+    private void ensureCurrentUserOwns(Goal goal) {
+        authenticatedUserService.currentUserId().ifPresent(currentUserId -> {
+            if (!goal.getUser().getId().equals(currentUserId)) {
+                throw new ResourceNotFoundException("Goal", goal.getId());
+            }
+        });
     }
 
     private SkillProfile toSkillProfile(Goal goal, ProfileAnalyzeResponse response) {

@@ -1,3 +1,4 @@
+import { authHeadersFromCookies } from "./backend-auth";
 import { getBackendBaseUrl } from "./backend-url";
 import type {
   ApiErrorResponse,
@@ -51,6 +52,7 @@ export async function fetchBackendPlan(
   try {
     const response = await fetch(`${getBackendBaseUrl()}/api/plans/${planId}`, {
       cache: "no-store",
+      headers: await authHeadersFromCookies(),
     });
     const payload = await parseJson(response);
 
@@ -82,6 +84,7 @@ export async function fetchBackendPlans(): Promise<
   try {
     const response = await fetch(`${getBackendBaseUrl()}/api/plans`, {
       cache: "no-store",
+      headers: await authHeadersFromCookies(),
     });
     const payload = await parseJson(response);
 
@@ -119,6 +122,7 @@ export async function fetchBackendPlanDayTasks(
       `${getBackendBaseUrl()}/api/plans/${planId}/tasks/today?${searchParams.toString()}`,
       {
         cache: "no-store",
+        headers: await authHeadersFromCookies(),
       },
     );
     const payload = await parseJson(response);

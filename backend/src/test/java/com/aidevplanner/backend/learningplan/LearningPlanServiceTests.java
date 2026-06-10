@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.learningplan;
 
+import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -38,6 +39,9 @@ class LearningPlanServiceTests {
     private AgentRunRepository agentRunRepository;
 
     @Mock
+    private AuthenticatedUserService authenticatedUserService;
+
+    @Mock
     private DailyTaskRepository dailyTaskRepository;
 
     @Mock
@@ -58,6 +62,7 @@ class LearningPlanServiceTests {
     void setUp() {
         learningPlanService = new LearningPlanService(
                 agentRunRepository,
+                authenticatedUserService,
                 dailyTaskRepository,
                 goalRepository,
                 learningPlanRepository,

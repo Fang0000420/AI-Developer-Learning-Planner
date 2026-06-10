@@ -11,6 +11,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.project import ProjectRecommendRequest, ProjectRecommendResponse
+from app.services.model_retry import retry_model_call
 
 PROJECT_RECOMMENDER_PROMPT = """
 You are the Project Recommender for AI Developer Learning Planner.
@@ -45,7 +46,7 @@ class ProjectRecommenderError(RuntimeError):
 def recommend_project(request: ProjectRecommendRequest) -> ProjectRecommendResponse:
     if DEEPSEEK_API_KEY:
         try:
-            return recommend_project_with_model(request)
+            return retry_model_call(lambda: recommend_project_with_model(request))
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
             return recommend_project_with_mock(request)
 
