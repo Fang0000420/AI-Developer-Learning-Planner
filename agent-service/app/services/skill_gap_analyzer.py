@@ -2,7 +2,6 @@ import json
 import re
 
 import httpx
-from pydantic import ValidationError
 
 from app.config import (
     DEEPSEEK_API_BASE_URL,
@@ -15,7 +14,11 @@ from app.schemas.skill_gap import (
     SkillGapAnalyzeRequest,
     SkillGapAnalyzeResponse,
 )
-from app.services.model_retry import retry_model_call
+from app.services.model_retry import (
+    ModelCallNonRetryableError,
+    ModelCallRetryExhaustedError,
+    retry_model_call,
+)
 
 SKILL_GAP_ANALYZER_PROMPT = """
 You are the Skill Gap Analyzer for AI Developer Learning Planner.
@@ -53,8 +56,10 @@ def analyze_skill_gap(request: SkillGapAnalyzeRequest) -> SkillGapAnalyzeRespons
     if DEEPSEEK_API_KEY:
         try:
             return retry_model_call(lambda: analyze_skill_gap_with_model(request))
-        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
+        except ModelCallRetryExhaustedError:
             return analyze_skill_gap_with_mock(request)
+        except ModelCallNonRetryableError as exc:
+            raise SkillGapAnalyzerError(f"Skill gap analyzer model call failed: {exc}") from exc
 
     return analyze_skill_gap_with_mock(request)
 

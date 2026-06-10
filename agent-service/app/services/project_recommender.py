@@ -2,7 +2,6 @@ import json
 import re
 
 import httpx
-from pydantic import ValidationError
 
 from app.config import (
     DEEPSEEK_API_BASE_URL,
@@ -11,7 +10,11 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.project import ProjectRecommendRequest, ProjectRecommendResponse
-from app.services.model_retry import retry_model_call
+from app.services.model_retry import (
+    ModelCallNonRetryableError,
+    ModelCallRetryExhaustedError,
+    retry_model_call,
+)
 
 PROJECT_RECOMMENDER_PROMPT = """
 You are the Project Recommender for AI Developer Learning Planner.
@@ -47,8 +50,10 @@ def recommend_project(request: ProjectRecommendRequest) -> ProjectRecommendRespo
     if DEEPSEEK_API_KEY:
         try:
             return retry_model_call(lambda: recommend_project_with_model(request))
-        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
+        except ModelCallRetryExhaustedError:
             return recommend_project_with_mock(request)
+        except ModelCallNonRetryableError as exc:
+            raise ProjectRecommenderError(f"Project recommender model call failed: {exc}") from exc
 
     return recommend_project_with_mock(request)
 

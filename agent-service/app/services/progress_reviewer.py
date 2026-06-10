@@ -2,7 +2,6 @@ import json
 import re
 
 import httpx
-from pydantic import ValidationError
 
 from app.config import (
     DEEPSEEK_API_BASE_URL,
@@ -11,7 +10,11 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.progress import ProgressReviewRequest, ProgressReviewResponse
-from app.services.model_retry import retry_model_call
+from app.services.model_retry import (
+    ModelCallNonRetryableError,
+    ModelCallRetryExhaustedError,
+    retry_model_call,
+)
 
 PROGRESS_REVIEWER_PROMPT = """
 You are the Progress Reviewer for AI Developer Learning Planner.
@@ -44,8 +47,10 @@ def review_progress(request: ProgressReviewRequest) -> ProgressReviewResponse:
     if DEEPSEEK_API_KEY:
         try:
             return retry_model_call(lambda: review_progress_with_model(request))
-        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
+        except ModelCallRetryExhaustedError:
             return review_progress_with_mock(request)
+        except ModelCallNonRetryableError as exc:
+            raise ProgressReviewerError(f"Progress reviewer model call failed: {exc}") from exc
 
     return review_progress_with_mock(request)
 

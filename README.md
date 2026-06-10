@@ -72,7 +72,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 启动与验收
 
-当前仓库处于 Day 18 日志与可观测性阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 retry 和 requestId 日志。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback。
+当前仓库处于 Day 18 日志与可观测性阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 requestId 日志和错误分类重试。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；已配置真实模型时，网络、超时、429、5xx 和模型输出格式问题会先重试，重试耗尽后才 fallback，401、403、404、400 等配置或权限问题会直接报错。
 
 默认验收环境为服务器 `/home/AI-Developer-Learning-Planner`。启动或重启服务前，先在项目根目录加载 `.env`：
 

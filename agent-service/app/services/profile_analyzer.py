@@ -2,7 +2,6 @@ import json
 import re
 
 import httpx
-from pydantic import ValidationError
 
 from app.config import (
     DEEPSEEK_API_BASE_URL,
@@ -11,7 +10,11 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.profile import ProfileAnalyzeRequest, ProfileAnalyzeResponse
-from app.services.model_retry import retry_model_call
+from app.services.model_retry import (
+    ModelCallNonRetryableError,
+    ModelCallRetryExhaustedError,
+    retry_model_call,
+)
 
 PROFILE_ANALYZER_PROMPT = """
 You are the Profile Analyzer for AI Developer Learning Planner.
@@ -39,8 +42,10 @@ def analyze_profile(request: ProfileAnalyzeRequest) -> ProfileAnalyzeResponse:
     if DEEPSEEK_API_KEY:
         try:
             return retry_model_call(lambda: analyze_profile_with_model(request))
-        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
-            raise ProfileAnalyzerError("Profile analyzer model response was invalid.") from exc
+        except ModelCallRetryExhaustedError:
+            return analyze_profile_with_mock(request)
+        except ModelCallNonRetryableError as exc:
+            raise ProfileAnalyzerError(f"Profile analyzer model call failed: {exc}") from exc
 
     return analyze_profile_with_mock(request)
 

@@ -2,7 +2,6 @@ import json
 import re
 
 import httpx
-from pydantic import ValidationError
 
 from app.config import (
     DEEPSEEK_API_BASE_URL,
@@ -17,7 +16,11 @@ from app.schemas.plan import (
     PlanMovedTask,
     PlanSplitTask,
 )
-from app.services.model_retry import retry_model_call
+from app.services.model_retry import (
+    ModelCallNonRetryableError,
+    ModelCallRetryExhaustedError,
+    retry_model_call,
+)
 
 PLAN_ADJUSTER_PROMPT = """
 You are the Plan Adjuster for AI Developer Learning Planner.
@@ -85,8 +88,10 @@ def adjust_plan(request: PlanAdjustRequest) -> PlanAdjustResponse:
     if DEEPSEEK_API_KEY:
         try:
             return retry_model_call(lambda: adjust_plan_with_model(request))
-        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
+        except ModelCallRetryExhaustedError:
             return adjust_plan_with_mock(request)
+        except ModelCallNonRetryableError as exc:
+            raise PlanAdjusterError(f"Plan adjuster model call failed: {exc}") from exc
 
     return adjust_plan_with_mock(request)
 

@@ -3,7 +3,6 @@ import math
 import re
 
 import httpx
-from pydantic import ValidationError
 
 from app.config import (
     DEEPSEEK_API_BASE_URL,
@@ -12,7 +11,11 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.plan import PlanDay, PlanGenerateRequest, PlanGenerateResponse, PlanTask
-from app.services.model_retry import retry_model_call
+from app.services.model_retry import (
+    ModelCallNonRetryableError,
+    ModelCallRetryExhaustedError,
+    retry_model_call,
+)
 
 PLAN_GENERATOR_PROMPT = """
 You are the Plan Generator for AI Developer Learning Planner.
@@ -61,8 +64,10 @@ def generate_plan(request: PlanGenerateRequest) -> PlanGenerateResponse:
     if DEEPSEEK_API_KEY:
         try:
             return retry_model_call(lambda: generate_plan_with_model(request))
-        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError):
+        except ModelCallRetryExhaustedError:
             return generate_plan_with_mock(request)
+        except ModelCallNonRetryableError as exc:
+            raise PlanGeneratorError(f"Plan generator model call failed: {exc}") from exc
 
     return generate_plan_with_mock(request)
 
