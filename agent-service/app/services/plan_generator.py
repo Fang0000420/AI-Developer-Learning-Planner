@@ -7,8 +7,8 @@ import httpx
 from app.config import (
     DEEPSEEK_API_BASE_URL,
     DEEPSEEK_API_KEY,
+    PLAN_GENERATOR_TIMEOUT_SECONDS,
     PROFILE_ANALYZER_MODEL,
-    PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.plan import PlanDay, PlanGenerateRequest, PlanGenerateResponse, PlanTask
 from app.services.language import is_zh, prompt_for
@@ -153,7 +153,7 @@ def generate_plan_with_model(request: PlanGenerateRequest) -> PlanGenerateRespon
             ],
             "temperature": 0.2,
         },
-        timeout=PROFILE_ANALYZER_TIMEOUT_SECONDS,
+        timeout=PLAN_GENERATOR_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
 

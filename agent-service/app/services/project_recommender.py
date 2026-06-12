@@ -124,7 +124,7 @@ def recommend_project_with_model(
             ],
             "temperature": 0.2,
         },
-        timeout=PROFILE_ANALYZER_TIMEOUT_SECONDS,
+        timeout=PROJECT_RECOMMENDER_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
 

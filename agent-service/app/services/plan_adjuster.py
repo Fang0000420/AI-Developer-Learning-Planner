@@ -180,7 +180,7 @@ def adjust_plan_with_model(request: PlanAdjustRequest) -> PlanAdjustResponse:
             ],
             "temperature": 0.2,
         },
-        timeout=PROFILE_ANALYZER_TIMEOUT_SECONDS,
+        timeout=PLAN_ADJUSTER_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
 
