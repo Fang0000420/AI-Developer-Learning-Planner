@@ -15,6 +15,7 @@ import { getCurrentLocale } from "@/lib/i18n-server";
 import { AuthStatus } from "./auth-status";
 import "./globals.css";
 import { LanguageSwitcher } from "./language-switcher";
+import { ThemeToggle } from "./theme-toggle";
 
 export const metadata: Metadata = {
   title: "AI Developer Learning Planner",
@@ -44,8 +45,8 @@ export default async function RootLayout({
       lang={locale === "zh" ? "zh-CN" : "en"}
       className="h-full antialiased"
     >
-      <body className="flex min-h-full flex-col">
-        <header className="border-b border-slate-200 bg-white">
+      <body className="flex min-h-full flex-col bg-background text-foreground transition-colors">
+        <header className="border-b border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-slate-950">
           <div className="mx-auto flex min-h-16 w-full max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <Link className="flex items-center gap-3" href="/">
               <span className="flex size-9 items-center justify-center rounded-md bg-slate-950 text-sm font-semibold text-white">
@@ -79,7 +80,10 @@ export default async function RootLayout({
                   );
                 })}
                 <li>
-                  <LanguageSwitcher locale={locale} />
+                  <div className="flex items-center gap-2">
+                    <LanguageSwitcher locale={locale} />
+                    <ThemeToggle locale={locale} />
+                  </div>
                 </li>
                 {auth ? (
                   <li>

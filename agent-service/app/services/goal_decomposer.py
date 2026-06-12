@@ -200,6 +200,7 @@ def _normalize_model_output(
         if not _has_title(normalized, fallback["title"]):
             normalized.append(fallback)
 
+    normalized = _rebalance_priorities(normalized[:8])
     return {"subGoals": normalized[:8]}
 
 
@@ -352,26 +353,72 @@ def _normalize_priority(priority: str) -> str:
     normalized = priority.strip().lower()
     aliases = {
         "h": "high",
+        "hi": "high",
         "high": "high",
+        "highest": "high",
         "critical": "high",
         "urgent": "high",
         "important": "high",
+        "higher": "high",
+        "higher priority": "high",
+        "top": "high",
         "高": "high",
+        "较高": "high",
+        "最高": "high",
         "高优先级": "high",
+        "高优": "high",
         "m": "medium",
+        "med": "medium",
         "medium": "medium",
         "moderate": "medium",
         "normal": "medium",
         "中": "medium",
+        "中等": "medium",
+        "一般": "medium",
         "中优先级": "medium",
+        "中优": "medium",
         "l": "low",
         "low": "low",
+        "lower": "low",
         "minor": "low",
         "optional": "low",
         "低": "low",
+        "较低": "low",
         "低优先级": "low",
+        "低优": "low",
     }
     return aliases.get(normalized, "medium")
+
+
+def _rebalance_priorities(items: list[dict[str, str]]) -> list[dict[str, str]]:
+    if not items:
+        return items
+
+    if any(item["priority"] != "medium" for item in items):
+        return items
+
+    total = len(items)
+    if total <= 4:
+        high_count = 2
+        low_count = 0
+    elif total <= 6:
+        high_count = 2
+        low_count = 1
+    else:
+        high_count = 3
+        low_count = 2
+
+    rebalanced: list[dict[str, str]] = []
+    for index, item in enumerate(items):
+        updated = dict(item)
+        if index < high_count:
+            updated["priority"] = "high"
+        elif index >= total - low_count:
+            updated["priority"] = "low"
+        else:
+            updated["priority"] = "medium"
+        rebalanced.append(updated)
+    return rebalanced
 
 
 def _has_title(items: list[dict[str, str]], title: str) -> bool:

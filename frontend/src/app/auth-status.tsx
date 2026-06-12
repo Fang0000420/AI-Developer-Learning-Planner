@@ -21,12 +21,12 @@ export function AuthStatus({ signOutLabel, username }: AuthStatusProps) {
   }
 
   return (
-    <div className="flex h-10 items-center gap-2 rounded-md bg-slate-50 px-3 text-sm font-medium text-slate-700">
+    <div className="flex h-10 items-center gap-2 rounded-md bg-slate-50 px-3 text-sm font-medium text-slate-700 transition-colors dark:bg-slate-900 dark:text-slate-200">
       <User aria-hidden="true" className="size-4" />
       <span className="max-w-36 truncate">{username}</span>
       <button
         aria-label={signOutLabel}
-        className="inline-flex size-7 items-center justify-center rounded text-slate-500 transition hover:bg-slate-200 hover:text-slate-950 disabled:opacity-50"
+        className="inline-flex size-7 items-center justify-center rounded text-slate-500 transition hover:bg-slate-200 hover:text-slate-950 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
         disabled={isLoggingOut}
         onClick={logout}
         type="button"

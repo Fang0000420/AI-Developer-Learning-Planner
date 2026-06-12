@@ -23,13 +23,18 @@ PROMPT_CATALOG = {
                 "把学习者的主目标拆解成适合结构化学习计划的实践子目标。只返回 JSON，不要输出 markdown 或解释。"
                 "字段名必须是 subGoals，且每个子目标包含 title、description、priority。"
                 "生成 5 到 8 个子目标，表达必须具体、行动导向，除非目标明确属于技术领域，否则优先使用领域中立的学习表达。"
+                "priority 必须真实区分轻重缓急，不要把所有子目标都设成 medium。"
+                "通常应包含少量 high、若干 medium，必要时包含 low。"
             ),
             "en": (
                 "You are the Goal Decomposer for AI Developer Learning Planner. "
                 "Break the learner's main goal into practical sub-goals for a structured "
                 "learning plan. Return JSON only with the field subGoals, and each item must "
                 "contain title, description, and priority. Generate 5 to 8 sub-goals and "
-                "prefer domain-neutral learning language unless the goal is clearly technical."
+                "prefer domain-neutral learning language unless the goal is clearly technical. "
+                "The priorities must meaningfully distinguish urgency; do not mark every "
+                "sub-goal as medium. Usually include a small number of high items, several "
+                "medium items, and low items only when appropriate."
             ),
         },
     },

@@ -109,6 +109,55 @@ def test_goal_decompose_limits_result_to_eight_items() -> None:
     assert len(normalized["subGoals"]) == 8
 
 
+def test_goal_decompose_rebalances_all_medium_priorities() -> None:
+    request = GoalDecomposeRequest(
+        mainGoal="Build an advanced agent system",
+        background="Software engineer",
+        responseLanguage="en",
+    )
+
+    normalized = goal_decomposer._normalize_model_output(
+        {
+            "goals": [
+                {
+                    "name": f"Goal {index}",
+                    "details": f"Description {index}",
+                    "priority": "medium",
+                }
+                for index in range(1, 9)
+            ]
+        },
+        request,
+    )
+
+    priorities = [item["priority"] for item in normalized["subGoals"]]
+    assert priorities[:3] == ["high", "high", "high"]
+    assert priorities[-2:] == ["low", "low"]
+
+
+def test_goal_decompose_normalizes_more_priority_aliases() -> None:
+    request = GoalDecomposeRequest(
+        mainGoal="Improve business English speaking",
+        background="Customer support specialist",
+        responseLanguage="zh",
+    )
+
+    normalized = goal_decomposer._normalize_model_output(
+        {
+            "goals": [
+                {"title": "目标一", "description": "说明一", "priority": "较高"},
+                {"title": "目标二", "description": "说明二", "priority": "中等"},
+                {"title": "目标三", "description": "说明三", "priority": "较低"},
+            ]
+        },
+        request,
+    )
+
+    assert normalized["subGoals"][0]["priority"] == "high"
+    assert normalized["subGoals"][1]["priority"] == "medium"
+    assert normalized["subGoals"][2]["priority"] == "low"
+
+
 def test_goal_decompose_falls_back_when_model_response_is_invalid(
     monkeypatch: MonkeyPatch,
 ) -> None:
