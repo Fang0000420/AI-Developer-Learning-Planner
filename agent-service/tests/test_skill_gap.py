@@ -100,6 +100,7 @@ def test_skill_gap_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) ->
         strengths=[],
         weaknesses=[],
         subGoals=[],
+        responseLanguage="en",
     )
 
     def raise_invalid_response(_request: SkillGapAnalyzeRequest) -> SkillGapAnalyzeResponse:

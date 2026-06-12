@@ -38,6 +38,7 @@ def test_project_recommend_returns_structured_stub_response(monkeypatch: MonkeyP
             ],
             "durationDays": 21,
             "dailyAvailableHours": 2,
+            "responseLanguage": "en",
         },
     )
 
@@ -118,6 +119,7 @@ def test_project_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) -> N
         mainGoal="Improve business English speaking",
         durationDays=21,
         dailyAvailableHours=2,
+        responseLanguage="en",
     )
 
     def raise_invalid_response(_request: ProjectRecommendRequest) -> ProjectRecommendResponse:
