@@ -1,72 +1,26 @@
 import json
 import re
 
-import httpx
-
 from app.config import (
-    DEEPSEEK_API_BASE_URL,
     DEEPSEEK_API_KEY,
-    PROFILE_ANALYZER_MODEL,
-    PROFILE_ANALYZER_TIMEOUT_SECONDS,
+    PROJECT_RECOMMENDER_MODEL,
+    PROJECT_RECOMMENDER_TIMEOUT_SECONDS,
 )
-from app.schemas.project import ProjectRecommendRequest, ProjectRecommendResponse
+from app.schemas.project import (
+    ProjectCandidateComparison,
+    ProjectRecommendRequest,
+    ProjectRecommendResponse,
+    ProjectRecommendationMemory,
+)
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
-from app.services.language import is_zh, prompt_for
+from app.services.deepseek_chat import chat_completion_json
+from app.services.language import is_zh
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
-
-PROJECT_RECOMMENDER_PROMPT_EN = """
-You are the Project Recommender for AI Developer Learning Planner.
-
-Recommend exactly one MVP project direction for the learner. Return JSON only,
-with this exact shape:
-{
-  "recommendedProject": "string",
-  "reason": "string",
-  "difficulty": "string",
-  "durationDays": 21,
-  "dailyTimeHours": 2,
-  "coreTechStack": ["string"],
-  "finalDeliverables": ["string"]
-}
-
-Rules:
-- Do not include markdown fences or explanatory prose.
-- Prefer the recommended project name: AI Developer Learning Planner.
-- Use the profile, sub-goals, skill gaps, durationDays, and dailyAvailableHours
-  to tailor the reason, difficulty, tech stack, and deliverables.
-- Do not include a daily implementation plan or bonus/stretch work.
-- durationDays should match the requested durationDays unless it is impossible.
-- dailyTimeHours should match dailyAvailableHours when provided.
-""".strip()
-
-PROJECT_RECOMMENDER_PROMPT_ZH = """
-你是 AI Developer Learning Planner 的项目推荐器。
-
-为学习者推荐且只推荐一个 MVP 项目方向。只返回 JSON，结构必须完全如下：
-{
-  "recommendedProject": "string",
-  "reason": "string",
-  "difficulty": "string",
-  "durationDays": 21,
-  "dailyTimeHours": 2,
-  "coreTechStack": ["string"],
-  "finalDeliverables": ["string"]
-}
-
-规则：
-- 不要包含 markdown 代码块或解释性正文。
-- 推荐项目名优先使用：AI Developer Learning Planner。
-- reason、difficulty、finalDeliverables 中的自然语言必须使用简体中文。
-- 根据 profile、subGoals、skillGaps、durationDays 和 dailyAvailableHours
-  调整推荐理由、难度、技术栈和交付物。
-- 不要包含每日实施计划或额外拓展任务。
-- durationDays 应匹配请求中的 durationDays。
-- dailyTimeHours 应在提供 dailyAvailableHours 时与其一致。
-""".strip()
+from app.services.prompt_catalog import prompt_section
 
 
 class ProjectRecommenderError(RuntimeError):
@@ -99,52 +53,143 @@ def recommend_project(
 def recommend_project_with_model(
     request: ProjectRecommendRequest,
 ) -> ProjectRecommendResponse:
-    response = httpx.post(
-        f"{DEEPSEEK_API_BASE_URL.rstrip('/')}/chat/completions",
-        headers={
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": PROFILE_ANALYZER_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": prompt_for(
-                        request.responseLanguage,
-                        PROJECT_RECOMMENDER_PROMPT_ZH,
-                        PROJECT_RECOMMENDER_PROMPT_EN,
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "mainGoal": request.mainGoal,
-                            "currentSkills": request.currentSkills,
-                            "strengths": request.strengths,
-                            "weaknesses": request.weaknesses,
-                            "subGoals": [item.model_dump() for item in request.subGoals],
-                            "skillGaps": [item.model_dump() for item in request.skillGaps],
-                            "durationDays": request.durationDays,
-                            "dailyAvailableHours": request.dailyAvailableHours,
-                            "responseLanguage": request.responseLanguage,
-                        },
-                        ensure_ascii=False,
-                    ),
-                },
-            ],
-            "temperature": 0.2,
-        },
-        timeout=PROJECT_RECOMMENDER_TIMEOUT_SECONDS,
+    summary = ProjectRecommendationMemory.model_validate(
+        chat_completion_json(
+            model=PROJECT_RECOMMENDER_MODEL,
+            messages=_summary_round_messages(request),
+            timeout_seconds=PROJECT_RECOMMENDER_TIMEOUT_SECONDS,
+            temperature=0.2,
+            max_tokens=900,
+        )
     )
-    response.raise_for_status()
-
-    body = response.json()
-    content = body["choices"][0]["message"]["content"]
-    parsed = _load_json_object(content)
+    comparison = ProjectCandidateComparison.model_validate(
+        chat_completion_json(
+            model=PROJECT_RECOMMENDER_MODEL,
+            messages=_comparison_round_messages(request, summary),
+            timeout_seconds=PROJECT_RECOMMENDER_TIMEOUT_SECONDS,
+            temperature=0.2,
+            max_tokens=1200,
+        )
+    )
+    parsed = chat_completion_json(
+        model=PROJECT_RECOMMENDER_MODEL,
+        messages=_final_round_messages(request, summary, comparison),
+        timeout_seconds=PROJECT_RECOMMENDER_TIMEOUT_SECONDS,
+        temperature=0.2,
+        max_tokens=1200,
+    )
     normalized = _normalize_model_output(parsed, request)
     return ProjectRecommendResponse.model_validate(normalized)
+
+
+def _summary_round_messages(
+    request: ProjectRecommendRequest,
+) -> list[dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": prompt_section(
+                "project_recommender",
+                "system_rules",
+                request.responseLanguage,
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                prompt_section(
+                    "project_recommender",
+                    "summary_instruction",
+                    request.responseLanguage,
+                )
+                + "\n"
+                + json.dumps(_project_context(request), ensure_ascii=False)
+            ),
+        },
+    ]
+
+
+def _comparison_round_messages(
+    request: ProjectRecommendRequest,
+    summary: ProjectRecommendationMemory,
+) -> list[dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": prompt_section(
+                "project_recommender",
+                "system_rules",
+                request.responseLanguage,
+            ),
+        },
+        {
+            "role": "assistant",
+            "content": json.dumps(summary.model_dump(), ensure_ascii=False),
+        },
+        {
+            "role": "user",
+            "content": (
+                prompt_section(
+                    "project_recommender",
+                    "comparison_instruction",
+                    request.responseLanguage,
+                )
+                + "\n"
+                + json.dumps(_project_context(request), ensure_ascii=False)
+            ),
+        },
+    ]
+
+
+def _final_round_messages(
+    request: ProjectRecommendRequest,
+    summary: ProjectRecommendationMemory,
+    comparison: ProjectCandidateComparison,
+) -> list[dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": prompt_section(
+                "project_recommender",
+                "system_rules",
+                request.responseLanguage,
+            ),
+        },
+        {
+            "role": "assistant",
+            "content": json.dumps(summary.model_dump(), ensure_ascii=False),
+        },
+        {
+            "role": "assistant",
+            "content": json.dumps(comparison.model_dump(), ensure_ascii=False),
+        },
+        {
+            "role": "user",
+            "content": (
+                prompt_section(
+                    "project_recommender",
+                    "final_instruction",
+                    request.responseLanguage,
+                )
+                + "\n"
+                + json.dumps(_project_context(request), ensure_ascii=False)
+            ),
+        },
+    ]
+
+
+def _project_context(request: ProjectRecommendRequest) -> dict[str, object]:
+    return {
+        "mainGoal": request.mainGoal,
+        "currentSkills": request.currentSkills,
+        "strengths": request.strengths,
+        "weaknesses": request.weaknesses,
+        "subGoals": [item.model_dump() for item in request.subGoals],
+        "skillGaps": [item.model_dump() for item in request.skillGaps],
+        "durationDays": request.durationDays,
+        "dailyAvailableHours": request.dailyAvailableHours,
+        "responseLanguage": request.responseLanguage,
+    }
 
 
 def recommend_project_with_mock(
@@ -153,56 +198,48 @@ def recommend_project_with_mock(
     daily_hours = _daily_hours(request)
     if is_zh(request.responseLanguage):
         return ProjectRecommendResponse(
-            recommendedProject="AI Developer Learning Planner",
+            recommendedProject=_fallback_project_title(request),
             reason=(
-                "这个项目能把学习目标落到一个具体的全栈 AI Agent MVP 中，"
-                "同时练习后端 API、FastAPI Agent 服务、结构化模型输出、"
-                "数据库持久化和面向用户的规划界面。"
+                "这条主线能把学习目标转化为持续练习、阶段性输出和可验证成果，"
+                "既方便聚焦重点，也便于根据反馈逐步调整。"
             ),
-            difficulty="中高",
+            difficulty="中等",
             durationDays=request.durationDays,
             dailyTimeHours=daily_hours,
             coreTechStack=[
-                "Spring Boot",
-                "FastAPI",
-                "DeepSeek",
-                "PostgreSQL",
-                "Next.js",
-                "Docker",
+                "关键基础",
+                "稳定练习",
+                "场景应用",
+                "反馈复盘",
             ],
             finalDeliverables=[
-                "完整 GitHub 仓库",
-                "可运行的全栈演示",
-                "PostgreSQL 中的 Agent 执行记录",
-                "README 和架构文档",
-                "可部署的服务配置",
+                "阶段性成果记录",
+                "可展示的练习输出",
+                "复盘笔记",
+                "下一阶段调整依据",
             ],
         )
 
     return ProjectRecommendResponse(
-        recommendedProject="AI Developer Learning Planner",
+        recommendedProject=_fallback_project_title(request),
         reason=(
-            "This project turns the learner's goal into a concrete full-stack AI "
-            "agent MVP, exercising backend APIs, FastAPI agent services, "
-            "structured model outputs, persistence, and a user-facing planner UI."
+            "This track turns the learner's goal into a focused path with repeatable "
+            "practice, visible outputs, and clear signals for adjustment."
         ),
-        difficulty="medium-high",
+        difficulty="medium",
         durationDays=request.durationDays,
         dailyTimeHours=daily_hours,
         coreTechStack=[
-            "Spring Boot",
-            "FastAPI",
-            "DeepSeek",
-            "PostgreSQL",
-            "Next.js",
-            "Docker",
+            "Core foundation",
+            "Consistent practice",
+            "Applied scenarios",
+            "Feedback review",
         ],
         finalDeliverables=[
-            "Complete GitHub repository",
-            "Runnable full-stack demo",
-            "Agent execution records in PostgreSQL",
-            "README and architecture documentation",
-            "Deployable service configuration",
+            "Stage progress notes",
+            "Visible practice outputs",
+            "Review summary",
+            "Refined next-step focus",
         ],
     )
 
@@ -228,7 +265,20 @@ def _normalize_model_output(
 ) -> dict[str, object]:
     nested = _find_project_object(parsed)
     return {
-        "recommendedProject": "AI Developer Learning Planner",
+        "recommendedProject": _first_string(
+            nested,
+            "recommendedProject",
+            "recommended_track",
+            "recommendedTrack",
+            "projectName",
+            "project",
+            "title",
+            "name",
+            "学习主线",
+            "主线",
+            "方向",
+        )
+        or _fallback_project_title(request),
         "reason": _first_string(
             nested,
             "reason",
@@ -238,8 +288,8 @@ def _normalize_model_output(
             "推荐理由",
         )
         or (
-            "This project is a good fit because it converts the learning goal "
-            "into a shippable AI developer workflow."
+            "This recommendation is a good fit because it turns the goal into a focused "
+            "learning path with clear practice and visible outcomes."
         ),
         "difficulty": _first_string(
             nested,
@@ -248,7 +298,7 @@ def _normalize_model_output(
             "complexity",
             "难度",
         )
-        or "medium-high",
+        or ("中等" if is_zh(request.responseLanguage) else "medium"),
         "durationDays": _first_int(
             nested,
             request.durationDays,
@@ -284,7 +334,7 @@ def _normalize_model_output(
             "outputs",
             "交付物",
         )
-        or _fallback_deliverables(),
+        or _fallback_deliverables(request),
     }
 
 
@@ -297,30 +347,44 @@ def _find_project_object(parsed: dict[str, object]) -> dict[object, object]:
 
 
 def _fallback_tech_stack(request: ProjectRecommendRequest) -> list[str]:
-    values = [
-        "Spring Boot",
-        "FastAPI",
-        "DeepSeek",
-        "PostgreSQL",
-        "Next.js",
-        "Docker",
-    ]
+    values = (
+        ["关键基础", "稳定练习", "场景应用", "反馈复盘"]
+        if is_zh(request.responseLanguage)
+        else [
+            "Core foundation",
+            "Consistent practice",
+            "Applied scenarios",
+            "Feedback review",
+        ]
+    )
     for skill_gap in request.skillGaps:
         if skill_gap.skill and skill_gap.skill not in values:
             values.append(skill_gap.skill)
-        if len(values) >= 8:
+        if len(values) >= 6:
             break
     return values
 
 
-def _fallback_deliverables() -> list[str]:
+def _fallback_deliverables(request: ProjectRecommendRequest) -> list[str]:
+    if is_zh(request.responseLanguage):
+        return [
+            "阶段性成果记录",
+            "可展示的练习输出",
+            "复盘笔记",
+            "下一阶段调整依据",
+        ]
     return [
-        "Complete GitHub repository",
-        "Runnable full-stack demo",
-        "Agent execution records in PostgreSQL",
-        "README and architecture documentation",
-        "Deployable service configuration",
+        "Stage progress notes",
+        "Visible practice outputs",
+        "Review summary",
+        "Refined next-step focus",
     ]
+
+
+def _fallback_project_title(request: ProjectRecommendRequest) -> str:
+    if is_zh(request.responseLanguage):
+        return f"{request.mainGoal} 学习主线"
+    return f"{request.mainGoal} learning track"
 
 
 def _string_list(values: dict[object, object], *keys: str) -> list[str]:

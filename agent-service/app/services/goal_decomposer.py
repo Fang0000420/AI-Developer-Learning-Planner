@@ -6,8 +6,8 @@ import httpx
 from app.config import (
     DEEPSEEK_API_BASE_URL,
     DEEPSEEK_API_KEY,
+    GOAL_DECOMPOSER_TIMEOUT_SECONDS,
     PROFILE_ANALYZER_MODEL,
-    PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.goal import GoalDecomposeRequest, GoalDecomposeResponse, SubGoal
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
@@ -21,7 +21,7 @@ from app.services.model_retry import (
 GOAL_DECOMPOSER_PROMPT_EN = """
 You are the Goal Decomposer for AI Developer Learning Planner.
 
-Decompose the learner's main goal into practical sub-goals for a developer
+Decompose the learner's main goal into practical sub-goals for a structured
 learning plan. Return JSON only, with this exact shape:
 {
   "subGoals": [
@@ -40,12 +40,13 @@ Rules:
 - Each description must explain what the learner should be able to do.
 - priority must be exactly one of: high, medium, low.
 - Use the optional background only to make the decomposition more realistic.
+- Prefer domain-neutral learning language unless the goal is clearly technical.
 """.strip()
 
 GOAL_DECOMPOSER_PROMPT_ZH = """
 你是 AI Developer Learning Planner 的目标拆解器。
 
-把学习者的主目标拆解成适合开发者学习计划的实践子目标。只返回 JSON，
+把学习者的主目标拆解成适合结构化学习计划的实践子目标。只返回 JSON，
 结构必须完全如下：
 {
   "subGoals": [
@@ -65,6 +66,7 @@ GOAL_DECOMPOSER_PROMPT_ZH = """
 - 每个 description 必须说明学习者最终应能做到什么。
 - priority 必须是 high、medium、low 之一。
 - 仅用可选背景让拆解更贴近真实情况。
+- 除非目标明确属于技术领域，否则优先使用领域中立的学习表达。
 """.strip()
 
 
@@ -125,7 +127,7 @@ def decompose_goal_with_model(request: GoalDecomposeRequest) -> GoalDecomposeRes
             ],
             "temperature": 0.2,
         },
-        timeout=PROFILE_ANALYZER_TIMEOUT_SECONDS,
+        timeout=GOAL_DECOMPOSER_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
 
@@ -142,28 +144,28 @@ def decompose_goal_with_mock(request: GoalDecomposeRequest) -> GoalDecomposeResp
             subGoals=[
                 SubGoal(
                     title="明确目标能力地图",
-                    description="把主目标拆成所需工程能力、交付物和可衡量检查点。",
+                    description="把主目标拆成关键能力、可衡量标准和阶段性检查点。",
                     priority="high",
                 ),
                 SubGoal(
-                    title="搭建核心 Agent 服务接口",
-                    description="实现带结构化请求和响应校验的 FastAPI Agent 接口。",
+                    title="建立关键基础",
+                    description="补齐支撑目标所需的基础知识、方法或常用框架。",
                     priority="high",
                 ),
                 SubGoal(
-                    title="持久化 Agent 输出",
-                    description="把 Java 后端接入 Agent 服务，并保存每次成功或失败的调用记录。",
+                    title="设计稳定练习机制",
+                    description="安排可重复执行的练习方式，让学习能持续推进。",
                     priority="high",
                 ),
                 SubGoal(
-                    title="在前端展示规划结果",
-                    description="在目标详情页展示生成结果，并覆盖加载、重试、成功和错误状态。",
+                    title="产出阶段性成果",
+                    description="用作品、演示、记录或测验证明学习成果正在形成。",
                     priority="medium",
                 ),
                 SubGoal(
-                    title="验证端到端 MVP 路径",
+                    title="复盘并调整下一阶段重点",
                     description=(
-                        f"围绕目标「{request.mainGoal}」验证 Agent、后端持久化和 UI 渲染链路。"
+                        f"围绕目标「{request.mainGoal}」根据反馈持续调整节奏、难度和重点。"
                     ),
                     priority="medium",
                 ),
@@ -175,40 +177,40 @@ def decompose_goal_with_mock(request: GoalDecomposeRequest) -> GoalDecomposeResp
             SubGoal(
                 title="Clarify the target capability map",
                 description=(
-                    "Turn the main goal into required engineering capabilities, "
-                    "expected deliverables, and measurable checkpoints."
+                    "Turn the main goal into required capabilities, measurable progress "
+                    "signals, and stage checkpoints."
                 ),
                 priority="high",
             ),
             SubGoal(
-                title="Build the core agent service interface",
+                title="Build the essential foundation",
                 description=(
-                    "Implement structured FastAPI agent endpoints with validated "
-                    "request and response schemas."
+                    "Strengthen the knowledge, methods, or baseline habits required to "
+                    "support the goal."
                 ),
                 priority="high",
             ),
             SubGoal(
-                title="Persist agent outputs in the backend",
+                title="Create a steady practice routine",
                 description=(
-                    "Connect the Java backend to the agent service and save each "
-                    "successful or failed run for auditing."
+                    "Set up repeatable practice sessions so progress can accumulate "
+                    "consistently."
                 ),
                 priority="high",
             ),
             SubGoal(
-                title="Expose the planning result in the frontend",
+                title="Produce visible evidence of progress",
                 description=(
-                    "Display generated planning artifacts on the goal detail page "
-                    "with loading, retry, success, and error states."
+                    "Create outputs, recordings, notes, demos, or assessments that show "
+                    "the skill is improving."
                 ),
                 priority="medium",
             ),
             SubGoal(
-                title="Verify the end-to-end MVP path",
+                title="Review and refine the next focus area",
                 description=(
-                    "Run focused checks from agent endpoint to backend persistence "
-                    f"and UI rendering for the goal: {request.mainGoal}."
+                    "Use feedback and results to refine the next stage for the goal: "
+                    f"{request.mainGoal}."
                 ),
                 priority="medium",
             ),

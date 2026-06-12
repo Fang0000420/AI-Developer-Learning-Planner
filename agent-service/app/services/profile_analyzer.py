@@ -21,8 +21,8 @@ from app.services.model_retry import (
 PROFILE_ANALYZER_PROMPT_EN = """
 You are the Profile Analyzer for AI Developer Learning Planner.
 
-Analyze a learner's technical background and goal. Return JSON only, with these
-exact field names:
+Analyze a learner's background, existing capabilities, and learning goal. Return
+JSON only, with these exact field names:
 - currentSkills: string[]
 - strengths: string[]
 - weaknesses: string[]
@@ -30,15 +30,17 @@ exact field names:
 
 Rules:
 - Do not include markdown fences or explanatory prose.
-- Keep each list focused and practical for an MVP learning plan.
-- Infer skills only from the user's background and goal.
-- recommendedDirection should be one concise paragraph.
+- Keep each list focused, concrete, and useful for a structured learning plan.
+- Infer capabilities only from the user's background and goal.
+- Prefer domain-neutral language unless the goal is clearly technical.
+- recommendedDirection should be one concise paragraph describing a suitable
+  learning direction.
 """.strip()
 
 PROFILE_ANALYZER_PROMPT_ZH = """
 你是 AI Developer Learning Planner 的能力画像分析器。
 
-分析学习者的技术背景和目标。只返回 JSON，字段名必须完全如下：
+分析学习者的能力背景、已有基础与学习目标。只返回 JSON，字段名必须完全如下：
 - currentSkills: string[]
 - strengths: string[]
 - weaknesses: string[]
@@ -47,8 +49,9 @@ PROFILE_ANALYZER_PROMPT_ZH = """
 规则：
 - 不要包含 markdown 代码块或解释性正文。
 - 所有字段值中的自然语言必须使用简体中文。
-- 每个列表都要聚焦 MVP 学习计划中真正实用的能力。
-- 只能根据用户背景和目标推断技能。
+- 每个列表都要聚焦结构化学习计划中真正实用的能力。
+- 只能根据用户背景和目标推断能力，不要自行补充领域设定。
+- 除非目标明确属于技术领域，否则优先使用领域中立的能力描述。
 - recommendedDirection 应是一段简洁的中文建议。
 """.strip()
 
@@ -124,45 +127,45 @@ def analyze_profile_with_mock(request: ProfileAnalyzeRequest) -> ProfileAnalyzeR
     if is_zh(request.responseLanguage):
         return ProfileAnalyzeResponse(
             currentSkills=[
-                "Python 基础",
-                "后端开发基础",
-                "REST API 设计",
+                "目标相关基础认知",
+                "已有学习经验",
+                "可迁移的实践能力",
             ],
             strengths=[
-                "学习目标清晰",
-                "每日时间投入稳定",
-                "具备软件工程基础",
+                "学习目标明确",
+                "愿意持续投入时间",
+                "具备一定自我驱动能力",
             ],
             weaknesses=[
-                "AI Agent 工作流设计",
-                "LLM 应用评估",
-                "端到端项目集成",
+                "系统化练习机制",
+                "成果验证方式",
+                "反馈与迭代节奏",
             ],
             recommendedDirection=(
-                "先构建一个 FastAPI Agent 服务，再把它接入后端流程，围绕目标"
-                f"「{request.goal}」形成可演示的完整闭环。"
+                f"围绕目标「{request.goal}」先明确关键能力要求，再建立稳定练习、"
+                "阶段性输出和复盘调整的学习闭环。"
             ),
         )
 
     return ProfileAnalyzeResponse(
         currentSkills=[
-            "Python basics",
-            "Backend development fundamentals",
-            "REST API design",
+            "Goal-related fundamentals",
+            "Existing learning experience",
+            "Transferable practical skills",
         ],
         strengths=[
             "Clear learning goal",
-            "Consistent daily time budget",
-            "Software engineering foundation",
+            "Willingness to invest time consistently",
+            "Some self-directed learning ability",
         ],
         weaknesses=[
-            "AI agent workflow design",
-            "LLM application evaluation",
-            "End-to-end project integration",
+            "Systematic practice routine",
+            "Evidence of progress",
+            "Feedback and iteration rhythm",
         ],
         recommendedDirection=(
-            "Build a FastAPI-based AI planning service first, then connect it with the "
-            f"backend workflow for the goal: {request.goal}."
+            "Clarify the capabilities required for the goal first, then build a steady "
+            f"cycle of practice, tangible outputs, and review around: {request.goal}."
         ),
     )
 

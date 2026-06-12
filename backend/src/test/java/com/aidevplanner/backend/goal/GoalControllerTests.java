@@ -46,7 +46,7 @@ class GoalControllerTests {
                                 {
                                   "title": "Build an AI Agent project",
                                   "description": "Practice production AI Agent workflows.",
-                                  "durationDays": 21,
+                                  "durationDays": 30,
                                   "responseLanguage": "en",
                                   "dailyAvailableHours": 2.0
                                 }
@@ -101,7 +101,7 @@ class GoalControllerTests {
                                 {
                                   "title": "Build an AI Agent project",
                                   "description": "Practice production AI Agent workflows.",
-                                  "durationDays": 21,
+                                  "durationDays": 30,
                                   "responseLanguage": "en",
                                   "status": "PAUSED",
                                   "dailyAvailableHours": 2.0
@@ -130,14 +130,14 @@ class GoalControllerTests {
                         .content("""
                                 {
                                   "title": "",
-                                  "durationDays": 0,
+                                  "durationDays": 6,
                                   "dailyAvailableHours": 20
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.errors.title").value("Title is required."))
-                .andExpect(jsonPath("$.errors.durationDays").value("Duration days must be 14 or 21."))
+                .andExpect(jsonPath("$.errors.durationDays").value("Duration days must be between 7 and 60."))
                 .andExpect(jsonPath("$.errors.dailyAvailableHours").value("Daily available hours cannot exceed 12."));
 
         verifyNoInteractions(goalService);
@@ -151,13 +151,13 @@ class GoalControllerTests {
                                 {
                                   "title": "Build an AI Agent project",
                                   "description": "Practice production AI Agent workflows.",
-                                  "durationDays": 30,
+                                  "durationDays": 61,
                                   "dailyAvailableHours": 2.0
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.errors.durationDays").value("Duration days must be 14 or 21."));
+                .andExpect(jsonPath("$.errors.durationDays").value("Duration days must be between 7 and 60."));
 
         verifyNoInteractions(goalService);
     }
@@ -246,7 +246,7 @@ class GoalControllerTests {
                 1L,
                 "Build an AI Agent project",
                 "Practice production AI Agent workflows.",
-                21,
+                30,
                 ResponseLanguage.zh,
                 status,
                 new BigDecimal("2.0"),

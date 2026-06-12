@@ -7,7 +7,7 @@ from app.config import (
     DEEPSEEK_API_BASE_URL,
     DEEPSEEK_API_KEY,
     PROFILE_ANALYZER_MODEL,
-    PROFILE_ANALYZER_TIMEOUT_SECONDS,
+    SKILL_GAP_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.skill_gap import (
     SkillGap,
@@ -42,11 +42,12 @@ only, with this exact shape:
 Rules:
 - Do not include markdown fences or explanatory prose.
 - Generate at least 4 skill gaps.
-- Focus on practical developer capabilities that can drive project planning.
+- Focus on the capability gaps that most directly affect progress toward the goal.
 - currentLevel and targetLevel should be short labels such as beginner,
   basic, intermediate, advanced, or production-ready.
 - priority must be exactly one of: high, medium, low.
 - Use weaknesses and high-priority sub-goals to decide urgency.
+- Prefer domain-neutral language unless the goal is clearly technical.
 """.strip()
 
 SKILL_GAP_ANALYZER_PROMPT_ZH = """
@@ -69,10 +70,11 @@ SKILL_GAP_ANALYZER_PROMPT_ZH = """
 - 不要包含 markdown 代码块或解释性正文。
 - 所有自然语言字段值必须使用简体中文。
 - 至少生成 4 个技能差距。
-- 聚焦能驱动项目计划的开发者实践能力。
+- 聚焦最直接影响目标达成的能力差距。
 - currentLevel 和 targetLevel 使用简短标签。
 - priority 必须是 high、medium、low 之一。
 - 根据 weaknesses 和高优先级 subGoals 判断紧急程度。
+- 除非目标明确属于技术领域，否则优先使用领域中立的能力描述。
 """.strip()
 
 
@@ -140,7 +142,7 @@ def analyze_skill_gap_with_model(
             ],
             "temperature": 0.2,
         },
-        timeout=PROFILE_ANALYZER_TIMEOUT_SECONDS,
+        timeout=SKILL_GAP_ANALYZER_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
 
@@ -158,35 +160,35 @@ def analyze_skill_gap_with_mock(
         return SkillGapAnalyzeResponse(
             skillGaps=[
                 SkillGap(
-                    skill="AI Agent 工作流设计",
+                    skill="目标相关基础",
                     currentLevel="基础",
-                    targetLevel="可用于生产",
+                    targetLevel="熟练",
                     priority="high",
-                    reason="目标需要把复杂工作拆成可靠的 Agent 步骤，但当前画像尚未体现这类深度。",
+                    reason="当前基础还不足以稳定支撑目标推进，需要先补齐核心认知和基本方法。",
                 ),
                 SkillGap(
-                    skill="结构化 LLM 输出校验",
+                    skill="稳定练习机制",
                     currentLevel="入门",
                     targetLevel="中级",
                     priority="high",
-                    reason="画像、拆解和计划结果都需要严格 schema、校验和恢复路径才能驱动 MVP。",
+                    reason="如果缺少固定节奏和明确练习方式，学习投入很难持续转化为进步。",
                 ),
                 SkillGap(
-                    skill="全栈规划链路集成",
+                    skill="应用与输出能力",
                     currentLevel="基础",
                     targetLevel="中级",
                     priority="medium",
                     reason=(
-                        "学习者需要把 Agent 输出接入后端持久化和 UI 流程，"
-                        f"支撑目标「{request.mainGoal}」。"
+                        "学习者需要把所学内容转化为可展示、可验证的成果，"
+                        f"以支撑目标「{request.mainGoal}」。"
                     ),
                 ),
                 SkillGap(
-                    skill="评估与迭代闭环",
+                    skill="反馈与迭代能力",
                     currentLevel="入门",
                     targetLevel="中级",
                     priority="medium",
-                    reason="每日学习计划需要结合进度、质量信号和用户反馈持续调整。",
+                    reason="学习计划需要根据实际效果、阻塞点和反馈持续微调。",
                 ),
             ]
         )
@@ -194,43 +196,43 @@ def analyze_skill_gap_with_mock(
     return SkillGapAnalyzeResponse(
         skillGaps=[
             SkillGap(
-                skill="AI agent workflow design",
+                skill="Goal-related foundation",
                 currentLevel="basic",
-                targetLevel="production-ready",
+                targetLevel="proficient",
                 priority="high",
                 reason=(
-                    "The goal requires decomposing work into reliable agent steps, "
-                    "but the current profile does not yet show agent workflow depth."
+                    "The current foundation is not yet strong enough to support steady "
+                    "progress toward the goal."
                 ),
             ),
             SkillGap(
-                skill="Structured LLM output validation",
+                skill="Consistent practice routine",
                 currentLevel="beginner",
                 targetLevel="intermediate",
                 priority="high",
                 reason=(
-                    "Profile analysis and planning outputs need strict schemas, "
-                    "validation, and recovery paths before they can drive the MVP."
+                    "Without a repeatable routine, learning effort is less likely to "
+                    "turn into measurable progress."
                 ),
             ),
             SkillGap(
-                skill="Full-stack planning integration",
+                skill="Applied performance",
                 currentLevel="basic",
                 targetLevel="intermediate",
                 priority="medium",
                 reason=(
-                    "The learner needs to connect agent outputs with backend "
-                    f"persistence and UI flows for the goal: {request.mainGoal}."
+                    "The learner needs to turn practice into visible outcomes that "
+                    f"support the goal: {request.mainGoal}."
                 ),
             ),
             SkillGap(
-                skill="Evaluation and iteration loop",
+                skill="Feedback and iteration loop",
                 currentLevel="beginner",
                 targetLevel="intermediate",
                 priority="medium",
                 reason=(
-                    "Daily learning plans should be checked against progress, "
-                    "quality signals, and user feedback."
+                    "Progress should be checked regularly so the plan can be adjusted "
+                    "based on what is working."
                 ),
             ),
         ]
@@ -388,35 +390,67 @@ def _fallback_skill_gaps(request: SkillGapAnalyzeRequest) -> list[dict[str, str]
     gaps.extend(
         [
             {
-                "skill": "Goal-specific foundation",
+                "skill": (
+                    "目标相关基础"
+                    if is_zh(request.responseLanguage)
+                    else "Goal-related foundation"
+                ),
                 "currentLevel": "beginner",
                 "targetLevel": "intermediate",
                 "priority": "high",
                 "reason": (
-                    "The learner needs enough foundation to make progress on: "
-                    f"{request.mainGoal}."
+                    f"需要补齐支撑目标「{request.mainGoal}」的基础。"
+                    if is_zh(request.responseLanguage)
+                    else (
+                        "The learner needs enough foundation to make progress on: "
+                        f"{request.mainGoal}."
+                    )
                 ),
             },
             {
-                "skill": "Structured practice routine",
+                "skill": (
+                    "稳定练习机制"
+                    if is_zh(request.responseLanguage)
+                    else "Consistent practice routine"
+                ),
                 "currentLevel": "basic",
                 "targetLevel": "intermediate",
                 "priority": "medium",
-                "reason": "A stable practice routine turns the goal into repeatable daily work.",
+                "reason": (
+                    "稳定的练习机制能把目标转化为可持续的日常投入。"
+                    if is_zh(request.responseLanguage)
+                    else "A stable practice routine turns the goal into repeatable daily work."
+                ),
             },
             {
-                "skill": "Feedback and evaluation",
+                "skill": (
+                    "反馈与评估"
+                    if is_zh(request.responseLanguage)
+                    else "Feedback and evaluation"
+                ),
                 "currentLevel": "beginner",
                 "targetLevel": "intermediate",
                 "priority": "medium",
-                "reason": "Progress needs regular checks so the plan can be adjusted.",
+                "reason": (
+                    "需要定期检查学习效果，才能及时调整计划。"
+                    if is_zh(request.responseLanguage)
+                    else "Progress needs regular checks so the plan can be adjusted."
+                ),
             },
             {
-                "skill": "Applied output practice",
+                "skill": (
+                    "应用与输出"
+                    if is_zh(request.responseLanguage)
+                    else "Applied output practice"
+                ),
                 "currentLevel": "basic",
                 "targetLevel": "intermediate",
                 "priority": "low",
-                "reason": "The learner needs concrete outputs that prove the skill is improving.",
+                "reason": (
+                    "需要用具体成果证明能力正在提升。"
+                    if is_zh(request.responseLanguage)
+                    else "The learner needs concrete outputs that prove the skill is improving."
+                ),
             },
         ]
     )

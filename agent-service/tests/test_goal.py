@@ -14,8 +14,8 @@ def test_goal_decompose_returns_structured_stub_response(monkeypatch: MonkeyPatc
     response = client.post(
         "/agent/goal/decompose",
         json={
-            "mainGoal": "Build AI agent apps",
-            "background": "Backend developer",
+            "mainGoal": "Improve business English speaking",
+            "background": "Customer support specialist",
         },
     )
 
@@ -41,23 +41,23 @@ def test_goal_decompose_rejects_empty_goal() -> None:
 
 def test_goal_decompose_normalizes_model_aliases() -> None:
     request = GoalDecomposeRequest(
-        mainGoal="Build AI agent apps",
-        background="Backend developer",
+        mainGoal="Improve business English speaking",
+        background="Customer support specialist",
     )
     normalized = goal_decomposer._normalize_model_output(
         {
             "goals": [
                 {
-                    "name": "Design the agent workflow",
-                    "details": "Map the user journey into reliable agent steps.",
+                    "name": "Build a daily speaking routine",
+                    "details": "Practice short speaking drills with feedback every day.",
                     "urgency": "urgent",
                 },
                 {
-                    "目标": "Implement structured outputs",
-                    "说明": "Validate every model response before persistence.",
+                    "目标": "整理高频商务表达",
+                    "说明": "收集并反复练习工作中常用的关键表达方式。",
                     "优先级": "高",
                 },
-                "Create the frontend review page",
+                "Record one short speaking sample each week",
             ]
         },
         request,
@@ -65,12 +65,12 @@ def test_goal_decompose_normalizes_model_aliases() -> None:
 
     assert len(normalized["subGoals"]) >= 5
     assert normalized["subGoals"][0] == {
-        "title": "Design the agent workflow",
-        "description": "Map the user journey into reliable agent steps.",
+        "title": "Build a daily speaking routine",
+        "description": "Practice short speaking drills with feedback every day.",
         "priority": "high",
     }
     assert normalized["subGoals"][1]["priority"] == "high"
-    assert normalized["subGoals"][2]["title"] == "Create the frontend review page"
+    assert normalized["subGoals"][2]["title"] == "Record one short speaking sample each week"
 
 
 def test_goal_decompose_falls_back_when_model_response_is_invalid(
@@ -85,10 +85,11 @@ def test_goal_decompose_falls_back_when_model_response_is_invalid(
 
     response = goal_decomposer.decompose_goal(
         GoalDecomposeRequest(
-            mainGoal="Build AI agent apps",
-            background="Backend developer",
+            mainGoal="Improve business English speaking",
+            background="Customer support specialist",
         )
     )
 
     assert len(response.subGoals) >= 5
     assert response.subGoals[0].priority == "high"
+    assert "FastAPI" not in response.subGoals[0].description

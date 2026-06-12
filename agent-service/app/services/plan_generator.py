@@ -2,97 +2,28 @@ import json
 import math
 import re
 
-import httpx
-
 from app.config import (
-    DEEPSEEK_API_BASE_URL,
     DEEPSEEK_API_KEY,
+    PLAN_GENERATOR_MODEL,
     PLAN_GENERATOR_TIMEOUT_SECONDS,
-    PROFILE_ANALYZER_MODEL,
 )
-from app.schemas.plan import PlanDay, PlanGenerateRequest, PlanGenerateResponse, PlanTask
+from app.schemas.plan import (
+    PlanDay,
+    PlanGenerateChunkResponse,
+    PlanGenerateRequest,
+    PlanGenerateResponse,
+    PlanGenerationMemory,
+    PlanTask,
+)
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
-from app.services.language import is_zh, prompt_for
+from app.services.deepseek_chat import chat_completion_json
+from app.services.language import is_zh
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
-
-PLAN_GENERATOR_PROMPT_EN = """
-You are the Plan Generator for AI Developer Learning Planner.
-
-Create a complete 14-day or 21-day learning and building plan. Return JSON only,
-with this exact shape:
-{
-  "planTitle": "string",
-  "durationDays": 14,
-  "days": [
-    {
-      "dayIndex": 1,
-      "theme": "string",
-      "tasks": [
-        {
-          "title": "string",
-          "description": "string",
-          "estimatedMinutes": 60,
-          "type": "learning|build|review|setup|test|deploy|documentation",
-          "deliverable": "string",
-          "priority": "high|medium|low"
-        }
-      ]
-    }
-  ]
-}
-
-Rules:
-- Do not include markdown fences or explanatory prose.
-- durationDays must match the requested durationDays.
-- days must contain exactly one entry for every day from 1 to durationDays.
-- Each day should have 2 or 3 focused tasks.
-- The total estimatedMinutes for each day must not exceed dailyAvailableHours * 60.
-- Every task must have title, description, estimatedMinutes, type, deliverable,
-  and priority.
-- The plan must build toward the recommended project and final deliverables.
-- Keep tasks concrete, shippable, and suitable for an MVP.
-""".strip()
-
-PLAN_GENERATOR_PROMPT_ZH = """
-你是 AI Developer Learning Planner 的计划生成器。
-
-创建完整的 14 天或 21 天学习与项目构建计划。只返回 JSON，结构必须完全如下：
-{
-  "planTitle": "string",
-  "durationDays": 14,
-  "days": [
-    {
-      "dayIndex": 1,
-      "theme": "string",
-      "tasks": [
-        {
-          "title": "string",
-          "description": "string",
-          "estimatedMinutes": 60,
-          "type": "learning|build|review|setup|test|deploy|documentation",
-          "deliverable": "string",
-          "priority": "high|medium|low"
-        }
-      ]
-    }
-  ]
-}
-
-规则：
-- 不要包含 markdown 代码块或解释性正文。
-- planTitle、theme、title、description、deliverable 必须使用简体中文。
-- durationDays 必须匹配请求中的 durationDays。
-- days 必须从 1 到 durationDays 每天一项。
-- 每天应有 2 或 3 个聚焦任务。
-- 每天 total estimatedMinutes 不得超过 dailyAvailableHours * 60。
-- 每个任务必须包含 title、description、estimatedMinutes、type、deliverable 和 priority。
-- 计划必须逐步走向推荐项目和最终交付物。
-- 任务必须具体、可交付，并适合 MVP。
-""".strip()
+from app.services.prompt_catalog import prompt_section
 
 
 class PlanGeneratorError(RuntimeError):
@@ -123,57 +54,211 @@ def generate_plan(
 
 
 def generate_plan_with_model(request: PlanGenerateRequest) -> PlanGenerateResponse:
-    response = httpx.post(
-        f"{DEEPSEEK_API_BASE_URL.rstrip('/')}/chat/completions",
-        headers={
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": PROFILE_ANALYZER_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": prompt_for(
-                        request.responseLanguage,
-                        PLAN_GENERATOR_PROMPT_ZH,
-                        PLAN_GENERATOR_PROMPT_EN,
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "mainGoal": request.mainGoal,
-                            "currentSkills": request.currentSkills,
-                            "strengths": request.strengths,
-                            "weaknesses": request.weaknesses,
-                            "subGoals": [item.model_dump() for item in request.subGoals],
-                            "skillGaps": [item.model_dump() for item in request.skillGaps],
-                            "recommendedProject": request.recommendedProject,
-                            "projectReason": request.projectReason,
-                            "difficulty": request.difficulty,
-                            "coreTechStack": request.coreTechStack,
-                            "finalDeliverables": request.finalDeliverables,
-                            "durationDays": request.durationDays,
-                            "dailyAvailableHours": request.dailyAvailableHours,
-                            "responseLanguage": request.responseLanguage,
-                        },
-                        ensure_ascii=False,
-                    ),
-                },
-            ],
-            "temperature": 0.2,
-        },
-        timeout=PLAN_GENERATOR_TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
+    days: list[dict[str, object]] = []
+    memory = PlanGenerationMemory()
+    plan_title = ""
+    previous_chunk: dict[str, object] | None = None
+    chunk_size = 2
+    daily_limit = _daily_minutes_limit(request)
 
-    body = response.json()
-    content = body["choices"][0]["message"]["content"]
-    parsed = _load_json_object(content)
-    normalized = _normalize_model_output(parsed, request)
-    return PlanGenerateResponse.model_validate(normalized)
+    for start_day in range(1, request.durationDays + 1, chunk_size):
+        end_day = min(request.durationDays, start_day + chunk_size - 1)
+        try:
+            chunk_response = retry_model_call(
+                lambda start_day=start_day, end_day=end_day, previous_chunk=previous_chunk, memory=memory:
+                _generate_plan_chunk(
+                    request,
+                    start_day,
+                    end_day,
+                    previous_chunk,
+                    memory,
+                )
+            )
+        except ModelCallRetryExhaustedError:
+            while len(days) < request.durationDays:
+                days.append(
+                    _build_mock_day(len(days) + 1, request, daily_limit).model_dump()
+                )
+            break
+
+        normalized_chunk = _normalize_plan_chunk(chunk_response, request, start_day, end_day)
+        if not plan_title:
+            plan_title = normalized_chunk.planTitle
+        days.extend(day.model_dump() for day in normalized_chunk.days)
+        memory = normalized_chunk.memory
+        previous_chunk = normalized_chunk.model_dump()
+
+    while len(days) < request.durationDays:
+        days.append(_build_mock_day(len(days) + 1, request, daily_limit).model_dump())
+
+    response = {
+        "planTitle": plan_title
+        or _default_plan_title(request),
+        "durationDays": request.durationDays,
+        "days": days[: request.durationDays],
+    }
+    return PlanGenerateResponse.model_validate(response)
+
+
+def _generate_plan_chunk(
+    request: PlanGenerateRequest,
+    start_day: int,
+    end_day: int,
+    previous_chunk: dict[str, object] | None,
+    memory: PlanGenerationMemory,
+) -> dict[str, object]:
+    parsed = chat_completion_json(
+        model=PLAN_GENERATOR_MODEL,
+        messages=_plan_generation_messages(
+            request,
+            start_day,
+            end_day,
+            previous_chunk,
+            memory,
+        ),
+        timeout_seconds=PLAN_GENERATOR_TIMEOUT_SECONDS,
+        temperature=0.2,
+        max_tokens=2200,
+    )
+    return _load_json_object(json.dumps(parsed, ensure_ascii=False))
+
+
+def _plan_generation_messages(
+    request: PlanGenerateRequest,
+    start_day: int,
+    end_day: int,
+    previous_chunk: dict[str, object] | None,
+    memory: PlanGenerationMemory,
+) -> list[dict[str, str]]:
+    global_context = {
+        "mainGoal": request.mainGoal,
+        "currentSkills": request.currentSkills,
+        "strengths": request.strengths,
+        "weaknesses": request.weaknesses,
+        "subGoals": [item.model_dump() for item in request.subGoals],
+        "skillGaps": [item.model_dump() for item in request.skillGaps],
+        "recommendedProject": request.recommendedProject,
+        "projectReason": request.projectReason,
+        "difficulty": request.difficulty,
+        "coreTechStack": request.coreTechStack,
+        "finalDeliverables": request.finalDeliverables,
+        "durationDays": request.durationDays,
+        "dailyAvailableHours": request.dailyAvailableHours,
+        "responseLanguage": request.responseLanguage,
+    }
+    messages = [
+        {
+            "role": "system",
+            "content": prompt_section("plan_generator", "system_rules", request.responseLanguage),
+        },
+        {
+            "role": "user",
+            "content": (
+                prompt_section(
+                    "plan_generator",
+                    "global_context_instruction",
+                    request.responseLanguage,
+                )
+                + "\n"
+                + json.dumps(global_context, ensure_ascii=False)
+            ),
+        },
+    ]
+    if previous_chunk is not None:
+        messages.append(
+            {
+                "role": "assistant",
+                "content": json.dumps(previous_chunk, ensure_ascii=False),
+            }
+        )
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                prompt_section(
+                    "plan_generator",
+                    "memory_instruction",
+                    request.responseLanguage,
+                )
+                + "\n"
+                + json.dumps(
+                    {
+                        "previousMemory": memory.model_dump(),
+                        "previousChunk": previous_chunk,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+                + prompt_section(
+                    "plan_generator",
+                    "round_instruction",
+                    request.responseLanguage,
+                ).format(start_day=start_day, end_day=end_day)
+            ),
+        }
+    )
+    return messages
+
+
+def _normalize_plan_chunk(
+    parsed: dict[str, object],
+    request: PlanGenerateRequest,
+    start_day: int,
+    end_day: int,
+) -> PlanGenerateChunkResponse:
+    nested = _find_plan_object(parsed)
+    raw_days = _raw_days(nested)
+    daily_limit = _daily_minutes_limit(request)
+    expected_indexes = list(range(start_day, end_day + 1))
+    normalized_days = [
+        PlanDay.model_validate(
+            _normalize_day(
+                item,
+                expected_indexes[index],
+                request,
+                daily_limit,
+            )
+        )
+        for index, item in enumerate(raw_days[: len(expected_indexes)])
+        if isinstance(item, dict)
+    ]
+    while len(normalized_days) < len(expected_indexes):
+        normalized_days.append(
+            _build_mock_day(expected_indexes[len(normalized_days)], request, daily_limit)
+        )
+
+    raw_memory = nested.get("memory")
+    if not isinstance(raw_memory, dict):
+        raw_memory = parsed.get("memory")
+    memory = _normalize_plan_memory(raw_memory, expected_indexes, normalized_days)
+
+    return PlanGenerateChunkResponse(
+        planTitle=_first_string(
+            nested,
+            "planTitle",
+            "plan_title",
+            "title",
+            "name",
+        )
+        or _default_plan_title(request),
+        days=normalized_days,
+        memory=memory,
+    )
+
+
+def _normalize_plan_memory(
+    raw_memory: dict[object, object] | None,
+    expected_indexes: list[int],
+    days: list[PlanDay],
+) -> PlanGenerationMemory:
+    values = raw_memory if isinstance(raw_memory, dict) else {}
+    return PlanGenerationMemory(
+        completedDayIndexes=_int_list(values.get("completedDayIndexes")) or expected_indexes,
+        establishedThemes=_string_list_from_value(values.get("establishedThemes"))
+        or [day.theme for day in days],
+        carryForwardConstraints=_string_list_from_value(values.get("carryForwardConstraints")),
+        nextFocusHints=_string_list_from_value(values.get("nextFocusHints")),
+    )
 
 
 def generate_plan_with_mock(request: PlanGenerateRequest) -> PlanGenerateResponse:
@@ -183,11 +268,7 @@ def generate_plan_with_mock(request: PlanGenerateRequest) -> PlanGenerateRespons
         for day_index in range(1, request.durationDays + 1)
     ]
     return PlanGenerateResponse(
-        planTitle=(
-            f"{request.durationDays} 天 {request.recommendedProject} 构建计划"
-            if is_zh(request.responseLanguage)
-            else f"{request.durationDays}-Day {request.recommendedProject} Build Plan"
-        ),
+        planTitle=_default_plan_title(request),
         durationDays=request.durationDays,
         days=days,
     )
@@ -200,21 +281,21 @@ def _build_mock_day(
 ) -> PlanDay:
     if is_zh(request.responseLanguage):
         phases = [
-            ("基础", "明确需求、架构和本地环境。"),
-            ("后端", "实现 Spring Boot API、持久化和校验。"),
-            ("Agent", "构建 FastAPI Agent 接口和结构化输出处理。"),
-            ("前端", "创建 Next.js 工作流和可用的规划视图。"),
-            ("集成", "连接服务并验证完整学习闭环。"),
-            ("收尾", "补充文档、测试，并准备可运行演示。"),
+            ("认知建立", "明确目标要求、限制条件和当前基础。"),
+            ("基础训练", "围绕关键能力做聚焦练习并补齐短板。"),
+            ("场景应用", "把所学内容应用到接近真实场景的任务中。"),
+            ("输出验证", "通过作品、测验、演示或记录验证进展。"),
+            ("复盘强化", "整理反馈、修正方法并强化薄弱环节。"),
+            ("巩固迁移", "巩固成果并迁移到更完整的应用场景。"),
         ]
     else:
         phases = [
-            ("Foundation", "Clarify requirements, architecture, and local setup."),
-            ("Backend", "Implement Spring Boot APIs, persistence, and validation."),
-            ("Agent", "Build FastAPI agent endpoints and structured output handling."),
-            ("Frontend", "Create the Next.js workflow and useful planner views."),
-            ("Integration", "Connect services and verify the full learning loop."),
-            ("Polish", "Document, test, and prepare a runnable demo."),
+            ("Orientation", "Clarify the goal, constraints, and current foundation."),
+            ("Foundation", "Build the core knowledge and practice habits needed for progress."),
+            ("Application", "Apply the learning in tasks that resemble real scenarios."),
+            ("Validation", "Use outputs, checks, or demonstrations to verify progress."),
+            ("Review", "Reflect on feedback and reinforce weak areas."),
+            ("Transfer", "Consolidate gains and extend them into broader situations."),
         ]
     phase_index = min(
         len(phases) - 1,
@@ -227,44 +308,44 @@ def _build_mock_day(
     if is_zh(request.responseLanguage):
         tasks = [
             PlanTask(
-                title=f"梳理第 {day_index} 天的 {focus} 范围",
-                description="先复盘目标上下文、相关技能差距和预期交付物，再开始改代码。",
+                title=f"梳理第 {day_index} 天的 {focus} 学习重点",
+                description="先复盘目标、相关差距和预期成果，再明确今天最重要的学习任务。",
                 estimatedMinutes=task_minutes[0],
-                type="learning",
-                deliverable=f"第 {day_index} 天范围说明",
+                type="learn",
+                deliverable=f"第 {day_index} 天学习重点说明",
                 priority="high",
             ),
             PlanTask(
-                title=f"构建 {focus}",
-                description=f"实现 {request.recommendedProject} 中能推进今日主题的最小可用切片。",
+                title=f"练习并应用 {focus}",
+                description=f"围绕今日主题完成一个可验证的小练习或实际应用任务，推进目标达成。",
                 estimatedMinutes=task_minutes[1],
-                type="build",
-                deliverable=f"可运行的 {focus} 切片",
+                type="practice",
+                deliverable=f"{focus} 阶段成果",
                 priority="high",
             ),
         ]
     else:
         tasks = [
             PlanTask(
-                title=f"Map Day {day_index} scope for {focus}",
+                title=f"Map Day {day_index} learning focus for {focus}",
                 description=(
-                    "Review the current goal context, relevant skill gaps, and expected "
-                    "deliverables before changing code."
+                    "Review the goal, relevant gaps, and expected outcomes before deciding "
+                    "what matters most today."
                 ),
                 estimatedMinutes=task_minutes[0],
-                type="learning",
-                deliverable=f"Day {day_index} scope notes",
+                type="learn",
+                deliverable=f"Day {day_index} focus notes",
                 priority="high",
             ),
             PlanTask(
-                title=f"Build {focus}",
+                title=f"Practice and apply {focus}",
                 description=(
-                    f"Implement the smallest useful slice of {request.recommendedProject} "
-                    "that advances today's theme."
+                    "Complete a small but verifiable exercise or applied task that moves "
+                    "today's theme forward."
                 ),
                 estimatedMinutes=task_minutes[1],
-                type="build",
-                deliverable=f"Working {focus} slice",
+                type="practice",
+                deliverable=f"{focus} progress artifact",
                 priority="high",
             ),
         ]
@@ -278,11 +359,11 @@ def _build_mock_day(
                     else f"Verify and record Day {day_index} progress"
                 ),
                 description=(
-                    "运行聚焦检查，记录缺口，并写下下一天需要继续的内容。"
+                    "回看今天的结果，记录有效做法、仍有缺口的地方，以及明天要继续的内容。"
                     if is_zh(request.responseLanguage)
                     else (
-                        "Run focused checks, capture gaps, and write down what should "
-                        "continue on the next day."
+                        "Review today's results, capture what worked, note the remaining "
+                        "gaps, and write down what should continue tomorrow."
                     )
                 ),
                 estimatedMinutes=task_minutes[2],
@@ -310,7 +391,14 @@ def _focus_for_day(day_index: int, request: PlanGenerateRequest) -> str:
         return request.skillGaps[(day_index - 1) % len(request.skillGaps)].skill
     if request.coreTechStack:
         return request.coreTechStack[(day_index - 1) % len(request.coreTechStack)]
-    return "planner MVP capability"
+    return "学习重点" if is_zh(request.responseLanguage) else "learning focus"
+
+
+def _default_plan_title(request: PlanGenerateRequest) -> str:
+    track_title = request.recommendedProject or request.mainGoal
+    if is_zh(request.responseLanguage):
+        return f"{request.durationDays} 天 {track_title} 学习计划"
+    return f"{request.durationDays}-Day {track_title} Learning Plan"
 
 
 def _task_minutes(daily_limit: int) -> list[int]:
@@ -366,11 +454,7 @@ def _normalize_model_output(
             "title",
             "name",
         )
-        or (
-            f"{request.durationDays} 天 {request.recommendedProject} 构建计划"
-            if is_zh(request.responseLanguage)
-            else f"{request.durationDays}-Day {request.recommendedProject} Build Plan"
-        ),
+        or _default_plan_title(request),
         "durationDays": request.durationDays,
         "days": normalized_days,
     }
@@ -406,9 +490,9 @@ def _normalize_day(
         "dayIndex": day_index,
         "theme": _first_string(value, "theme", "focus", "title")
         or (
-            f"第 {day_index} 天实现"
+            f"第 {day_index} 天学习安排"
             if is_zh(request.responseLanguage)
-            else f"Day {day_index} implementation"
+            else f"Day {day_index} learning plan"
         ),
         "tasks": _fit_tasks_to_limit(tasks, daily_limit),
     }
@@ -433,14 +517,14 @@ def _normalize_task(
         or ("聚焦任务" if is_zh(request.responseLanguage) else "Focused task"),
         "description": _first_string(value, "description", "details", "content")
         or (
-            "完成计划中的学习和实现工作。"
+            "完成计划中的学习、练习或应用任务。"
             if is_zh(request.responseLanguage)
-            else "Complete the planned learning and implementation work."
+            else "Complete the planned learning, practice, or application work."
         ),
         "estimatedMinutes": min(minutes, daily_limit),
-        "type": _first_string(value, "type", "category", "kind") or "build",
+        "type": _first_string(value, "type", "category", "kind") or "practice",
         "deliverable": _first_string(value, "deliverable", "output", "artifact")
-        or ("可工作的阶段产物" if is_zh(request.responseLanguage) else "Working progress artifact"),
+        or ("阶段性学习产物" if is_zh(request.responseLanguage) else "Progress artifact"),
         "priority": _normalize_priority(
             _first_string(value, "priority", "urgency", "importance") or "medium"
         ),
@@ -496,6 +580,34 @@ def _raw_tasks(values: dict[object, object]) -> list[object]:
         if isinstance(value, list):
             return value
     return []
+
+
+def _string_list_from_value(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str) and value.strip():
+        return [
+            item.strip()
+            for item in re.split(r"[,，;；\n]", value)
+            if item.strip()
+        ]
+    return []
+
+
+def _int_list(value: object) -> list[int]:
+    if not isinstance(value, list):
+        return []
+    parsed: list[int] = []
+    for item in value:
+        if isinstance(item, int):
+            parsed.append(max(1, item))
+        elif isinstance(item, float):
+            parsed.append(max(1, int(item)))
+        elif isinstance(item, str):
+            match = re.search(r"\d+", item)
+            if match:
+                parsed.append(max(1, int(match.group(0))))
+    return parsed
 
 
 def _first_string(values: dict[object, object], *keys: str) -> str:

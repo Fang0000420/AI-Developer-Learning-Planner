@@ -126,8 +126,8 @@ class LearningPlanServiceTests {
         assertThat(response.id()).isEqualTo(30L);
         assertThat(response.goalId()).isEqualTo(10L);
         assertThat(response.sourceAgentRunId()).isEqualTo(90L);
-        assertThat(response.planTitle()).isEqualTo("21-Day AI Planner MVP Plan");
-        assertThat(response.days()).hasSize(21);
+        assertThat(response.planTitle()).isEqualTo("30-Day AI Planner MVP Plan");
+        assertThat(response.days()).hasSize(30);
         assertThat(response.days().get(0).tasks()).hasSize(2);
 
         ArgumentCaptor<PlanGenerateAgentRequest> requestCaptor =
@@ -380,7 +380,7 @@ class LearningPlanServiceTests {
                           "recommendedProject": "AI Developer Learning Planner",
                           "reason": "Covers full-stack agent workflow practice.",
                           "difficulty": "medium-high",
-                          "durationDays": 21,
+                          "durationDays": 30,
                           "dailyTimeHours": 2,
                           "coreTechStack": ["Spring Boot", "FastAPI", "Next.js"],
                           "finalDeliverables": ["Complete GitHub repository", "Runnable full-stack demo"]
@@ -394,8 +394,8 @@ class LearningPlanServiceTests {
 
     private PlanGenerateAgentResponse planResponse() {
         return new PlanGenerateAgentResponse(
-                "21-Day AI Planner MVP Plan",
-                21,
+                "30-Day AI Planner MVP Plan",
+                30,
                 List.of(
                         new PlanDayAgentResponse(
                                 1,
@@ -450,9 +450,9 @@ class LearningPlanServiceTests {
                 goal.getUser(),
                 goal,
                 null,
-                "21-Day AI Planner MVP Plan",
+                "30-Day AI Planner MVP Plan",
                 21,
-                java.util.Map.of("planTitle", "21-Day AI Planner MVP Plan")
+                java.util.Map.of("planTitle", "30-Day AI Planner MVP Plan")
         );
         ReflectionTestUtils.setField(plan, "id", 30L);
         ReflectionTestUtils.setField(plan, "createdAt", LocalDateTime.of(2026, 6, 9, 13, 1));
@@ -515,7 +515,7 @@ class LearningPlanServiceTests {
         user.setDailyAvailableHours(new BigDecimal("2.0"));
         ReflectionTestUtils.setField(user, "id", 1L);
 
-        Goal goal = new Goal(user, "Build AI agent apps", 21);
+        Goal goal = new Goal(user, "Build AI agent apps", 30);
         goal.setDescription("Learn production AI agent workflows.");
         ReflectionTestUtils.setField(goal, "id", 10L);
         return goal;

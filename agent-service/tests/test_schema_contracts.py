@@ -16,59 +16,58 @@ from app.schemas.skill_gap import SkillGapAnalyzeRequest, SkillGapAnalyzeRespons
 
 def test_agent_request_schemas_accept_minimal_valid_payloads() -> None:
     sub_goal = {
-        "title": "Design agent workflow",
-        "description": "Define planner nodes.",
+        "title": "Build a daily speaking routine",
+        "description": "Practice speaking every day with feedback.",
         "priority": "high",
     }
     skill_gap = {
-        "skill": "Structured output validation",
+        "skill": "Speaking fluency",
         "currentLevel": "beginner",
         "targetLevel": "intermediate",
         "priority": "high",
-        "reason": "Required for reliable agent responses.",
+        "reason": "Required for more natural conversations.",
     }
     task = {
         "id": 1,
-        "title": "Create progress form",
-        "description": "Build the submission UI.",
+        "title": "Practice interview answers",
+        "description": "Complete one focused speaking drill.",
         "estimatedMinutes": 45,
-        "type": "build",
-        "deliverable": "Progress form",
+        "type": "practice",
+        "deliverable": "Speaking notes",
         "priority": "high",
     }
 
     assert ProfileAnalyzeRequest(
-        background="Java backend developer",
-        goal="Build AI agent applications",
+        background="Customer support specialist",
+        goal="Improve business English speaking",
         dailyAvailableHours=2,
     ).responseLanguage == "zh"
     assert ProfileAnalyzeRequest(
-        background="Java backend developer",
-        goal="Build AI agent applications",
+        background="Customer support specialist",
+        goal="Improve business English speaking",
         dailyAvailableHours=2,
         responseLanguage="en",
     ).responseLanguage == "en"
-    assert GoalDecomposeRequest(mainGoal="Build AI agent applications")
+    assert GoalDecomposeRequest(mainGoal="Improve business English speaking")
     assert SkillGapAnalyzeRequest(
-        mainGoal="Build AI agent applications",
+        mainGoal="Improve business English speaking",
         subGoals=[sub_goal],
     )
     assert ProjectRecommendRequest(
-        mainGoal="Build AI agent applications",
+        mainGoal="Improve business English speaking",
         skillGaps=[skill_gap],
         durationDays=14,
         dailyAvailableHours=2,
     )
     assert PlanGenerateRequest(
-        mainGoal="Build AI agent applications",
-        recommendedProject="AI Developer Learning Planner",
+        mainGoal="Improve business English speaking",
         durationDays=14,
         dailyAvailableHours=2,
     )
     assert ProgressReviewRequest(
         dayIndex=1,
         todayTasks=[task],
-        userFeedback="Finished backend tests.",
+        userFeedback="Finished one speaking round.",
     )
     assert PlanAdjustRequest(
         planId=30,
@@ -76,10 +75,10 @@ def test_agent_request_schemas_accept_minimal_valid_payloads() -> None:
         todayTasks=[task],
         progressReview={
             "completedTasks": [],
-            "unfinishedTasks": ["Create progress form"],
+            "unfinishedTasks": ["Practice interview answers"],
             "blockers": [],
             "impact": "minor",
-            "suggestion": "Carry the UI task into tomorrow.",
+            "suggestion": "Carry the speaking task into tomorrow.",
         },
         unfinishedTasks=[task],
         nextDayTasks=[],
@@ -88,10 +87,10 @@ def test_agent_request_schemas_accept_minimal_valid_payloads() -> None:
 
 def test_agent_response_schemas_reject_invalid_contracts() -> None:
     assert ProfileAnalyzeResponse(
-        currentSkills=["Java"],
-        strengths=["Backend APIs"],
-        weaknesses=["LLM evaluation"],
-        recommendedDirection="Build agent-backed full-stack systems.",
+        currentSkills=["Reading comprehension"],
+        strengths=["Regular learning habit"],
+        weaknesses=["Speaking fluency"],
+        recommendedDirection="Use focused speaking practice with regular review.",
     )
 
     with pytest.raises(ValidationError):
@@ -139,20 +138,20 @@ def test_agent_response_schemas_reject_invalid_contracts() -> None:
 
 def test_schema_normalizers_keep_ci_contracts_stable() -> None:
     urgent_task = PlanTask(
-        title="Fix failed build",
-        description="Repair the failing pipeline.",
+        title="Finish speaking drill",
+        description="Complete the scheduled speaking practice.",
         estimatedMinutes=30,
-        type="ci",
-        deliverable="Green build",
+        type="practice",
+        deliverable="Speaking notes",
         priority="urgent",
     )
     progress_request = ProgressReviewRequest(
         dayIndex=1,
         todayTasks=[{"id": 1, "title": "Test"}],
-        userFeedback="   Finished tests.   ",
-        blockers=["  Need server run  ", "", "   "],
+        userFeedback="   Finished one speaking round.   ",
+        blockers=["  Need example phrases  ", "", "   "],
     )
 
     assert urgent_task.priority == "high"
-    assert progress_request.userFeedback == "Finished tests."
-    assert progress_request.blockers == ["Need server run"]
+    assert progress_request.userFeedback == "Finished one speaking round."
+    assert progress_request.blockers == ["Need example phrases"]

@@ -1,9 +1,10 @@
 package com.aidevplanner.backend.goal;
 
-import com.aidevplanner.backend.common.validation.AllowedGoalDurationDays;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -26,7 +27,8 @@ public record GoalCreateRequest(
         String description,
 
         @NotNull(message = "Duration days is required.")
-        @AllowedGoalDurationDays
+        @Min(value = 7, message = "Duration days must be between 7 and 60.")
+        @Max(value = 60, message = "Duration days must be between 7 and 60.")
         Integer durationDays,
 
         ResponseLanguage responseLanguage,

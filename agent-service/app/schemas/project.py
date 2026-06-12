@@ -17,6 +17,25 @@ class ProjectRecommendRequest(BaseModel):
     responseLanguage: ResponseLanguage = "zh"
 
 
+class ProjectRecommendationMemory(BaseModel):
+    learnerSummary: list[str] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+    opportunities: list[str] = Field(default_factory=list)
+    difficultySignals: list[str] = Field(default_factory=list)
+
+
+class ProjectCandidate(BaseModel):
+    name: str = Field(min_length=1)
+    fit: str = Field(min_length=1)
+    risk: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class ProjectCandidateComparison(BaseModel):
+    candidates: list[ProjectCandidate] = Field(min_length=1, max_length=3)
+    decisionHints: list[str] = Field(default_factory=list)
+
+
 class ProjectRecommendResponse(BaseModel):
     recommendedProject: str = Field(min_length=1)
     reason: str = Field(min_length=1)

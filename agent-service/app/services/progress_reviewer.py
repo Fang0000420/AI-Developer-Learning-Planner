@@ -7,7 +7,7 @@ from app.config import (
     DEEPSEEK_API_BASE_URL,
     DEEPSEEK_API_KEY,
     PROFILE_ANALYZER_MODEL,
-    PROFILE_ANALYZER_TIMEOUT_SECONDS,
+    PROGRESS_REVIEWER_TIMEOUT_SECONDS,
 )
 from app.schemas.progress import ProgressReviewRequest, ProgressReviewResponse
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
@@ -61,6 +61,7 @@ PROGRESS_REVIEWER_PROMPT_ZH = """
 - 只有大多数任务未完成或阻塞阻止进度时才使用 major。
 - suggestion 要对明天可执行，但不要重写计划。
 - 不要做情绪分析或复杂学习者评估。
+- 建议应适用于通用学习场景，不要默认假设是软件开发任务。
 """.strip()
 
 
@@ -133,7 +134,7 @@ def review_progress_with_model(request: ProgressReviewRequest) -> ProgressReview
             ],
             "temperature": 0.2,
         },
-        timeout=PROFILE_ANALYZER_TIMEOUT_SECONDS,
+        timeout=PROGRESS_REVIEWER_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
 
@@ -156,35 +157,35 @@ def review_progress_with_mock(request: ProgressReviewRequest) -> ProgressReviewR
 
     if impact == "none":
         suggestion = (
-            "今天进展顺利。明天继续聚焦下一个计划切片。"
+            "今天进展顺利。明天继续聚焦下一个学习重点。"
             if is_zh(request.responseLanguage)
-            else "Good progress today. Keep tomorrow focused on the next planned slice."
+            else "Good progress today. Keep tomorrow focused on the next learning priority."
         )
     elif impact == "minor":
         suggestion = (
-            "把未完成项放到明天热身环节，然后继续最高优先级计划任务。"
+            "把未完成项放到明天的开头，然后继续最高优先级的学习任务。"
             if is_zh(request.responseLanguage)
             else (
-                "Carry the unfinished item into tomorrow's warm-up, then continue with the "
+                "Carry the unfinished item into the start of tomorrow, then continue with the "
                 "highest-priority planned task."
             )
         )
     elif impact == "medium":
         suggestion = (
-            "明天先解除阻塞或完成未完成工作，再增加新的范围。"
+            "明天先解除阻塞或完成未完成内容，再进入新的学习内容。"
             if is_zh(request.responseLanguage)
             else (
-                "Start tomorrow by unblocking or finishing the incomplete work before adding "
-                "new scope."
+                "Start tomorrow by unblocking or finishing the incomplete work before moving "
+                "into new content."
             )
         )
     else:
         suggestion = (
-            "缩小明天范围，先解决主要阻塞，只保留一个高优先级实现任务。"
+            "缩小明天范围，先解决主要阻塞，只保留一个高优先级重点任务。"
             if is_zh(request.responseLanguage)
             else (
                 "Reduce tomorrow's scope, resolve the main blocker first, and keep only one "
-                "high-priority implementation task."
+                "high-priority focus task."
             )
         )
 

@@ -7,6 +7,14 @@ HEALTH_STATUS = "UP"
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_API_BASE_URL = os.getenv("DEEPSEEK_API_BASE_URL", "https://api.deepseek.com")
 PROFILE_ANALYZER_MODEL = os.getenv("PROFILE_ANALYZER_MODEL", "deepseek-v4-pro")
+PLAN_GENERATOR_MODEL = os.getenv(
+    "PLAN_GENERATOR_MODEL",
+    os.getenv("PROFILE_ANALYZER_MODEL", "deepseek-v4-flash"),
+)
+PROJECT_RECOMMENDER_MODEL = os.getenv(
+    "PROJECT_RECOMMENDER_MODEL",
+    os.getenv("PROFILE_ANALYZER_MODEL", "deepseek-v4-flash"),
+)
 
 # 各服务独立超时配置，避免复杂输出服务因超时不足而降级到 mock
 PROFILE_ANALYZER_TIMEOUT_SECONDS = float(os.getenv("PROFILE_ANALYZER_TIMEOUT_SECONDS", "30"))

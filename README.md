@@ -16,7 +16,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 2. Agent 服务生成用户能力画像。
 3. 系统拆解目标并识别技能差距。
 4. Agent 服务推荐适合的学习项目方向。
-5. 系统生成 14 天或 21 天每日任务计划。
+5. 系统根据自定义计划周期生成每日任务计划；Plan Generator 在内部按 2 天一轮递进生成完整结果。
 6. 用户每天提交任务完成情况和复盘说明。
 7. Agent 服务评估当日进度，给出反馈。
 8. 系统根据反馈动态调整后续任务。
@@ -27,7 +27,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 1. 打开前端 `/login`，注册或登录一个测试用户。
 2. 进入 `New Goal` 创建目标。
-3. 推荐 demo 输入：Java 后端开发背景，有 Python 和基础 AI 使用经验，目标是在 21 天内做出 AI Developer Learning Planner，每天 2 小时。
+3. 推荐 demo 输入：Java 后端开发背景，有 Python 和基础 AI 使用经验，目标是在 30 天内做出 AI Developer Learning Planner，每天 2 小时。
 4. 在目标详情页点击侧栏 `Run to Plan`，系统会补齐能力画像、目标拆解、技能差距分析、项目推荐，并通过异步 job 生成学习计划。
 5. 打开生成的计划详情，进入 `Today` 或 Day 1 任务页。
 6. 勾选部分任务为完成、至少保留一个未完成任务，填写反馈和阻塞项后提交进度。
@@ -72,7 +72,7 @@ MVP 阶段优先跑通从目标输入到计划调整的完整链路：
 
 ## 启动与验收
 
-当前仓库处于 Day 20 Docker 部署阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 requestId 日志和错误分类重试。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；已配置真实模型时，网络、超时、429、5xx 和模型输出格式问题会先重试，重试耗尽后才 fallback，401、403、404、400 等配置或权限问题会直接报错。
+当前仓库处于 Day 20 Docker 部署阶段。`backend/` 已具备基础注册登录、JWT 鉴权、goals CRUD、Agent 编排、计划生成、每日任务、进度提交、进度复盘、计划调整、异步 job 状态接口和 Agent Runs 查询接口；`agent-service/` 已具备 profile、goal decomposition、skill gap、project recommendation、plan generation、progress review 和 plan adjustment 接口，并对真实模型调用增加 requestId 日志和错误分类重试。当前计划生成支持自定义周期，`Plan Generator` 在内部按 2 天一轮递进生成完整计划，`Project Recommender` 通过多轮记忆式推荐收敛为单个最终项目方向。未配置 `DEEPSEEK_API_KEY` 时 Agent 服务使用 mock fallback；已配置真实模型时，网络、超时、429、5xx 和模型输出格式问题会先重试，重试耗尽后才 fallback，401、403、404、400 等配置或权限问题会直接报错。
 
 默认验收环境为服务器 `/home/AI-Developer-Learning-Planner`。启动或重启服务前，先在项目根目录加载 `.env`：
 

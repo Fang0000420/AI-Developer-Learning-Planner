@@ -63,8 +63,8 @@ export function ProjectRecommendationPanel({
           getApiErrorMessage(
             payload as ApiErrorResponse,
             locale === "zh"
-              ? "项目推荐失败。"
-              : "Project recommendation failed.",
+              ? "学习主线建议生成失败。"
+              : "Learning track recommendation failed.",
           ),
         );
         return;
@@ -77,8 +77,8 @@ export function ProjectRecommendationPanel({
         requestError instanceof Error
           ? requestError.message
           : locale === "zh"
-            ? "项目推荐失败。"
-            : "Project recommendation failed.",
+            ? "学习主线建议生成失败。"
+            : "Learning track recommendation failed.",
       );
     } finally {
       setIsGenerating(false);
@@ -140,7 +140,7 @@ export function ProjectRecommendationPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-950">
-                {locale === "zh" ? "项目推荐" : "Project Recommendation"}
+                {locale === "zh" ? "学习主线建议" : "Learning Track Recommendation"}
               </h2>
               <span className="inline-flex h-7 items-center gap-1 rounded-md bg-slate-100 px-2 text-xs font-semibold text-slate-600">
                 {isGenerating ? (
@@ -158,8 +158,8 @@ export function ProjectRecommendationPanel({
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {locale === "zh"
-                ? "把画像、子目标和技能差距转化为一个具体 MVP 项目方向。"
-                : "Turn the profile, sub-goals, and skill gaps into one concrete MVP project direction."}
+                ? "把画像、子目标和技能差距转化为一个聚焦的学习主线或实践方向。"
+                : "Turn the profile, sub-goals, and skill gaps into one focused learning track or practice direction."}
             </p>
           </div>
         </div>
@@ -189,8 +189,8 @@ export function ProjectRecommendationPanel({
         <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm font-semibold text-rose-950">
             {locale === "zh"
-              ? "无法推荐项目。"
-              : "Unable to recommend a project."}
+              ? "无法生成学习主线建议。"
+              : "Unable to recommend a learning track."}
           </p>
           <p className="mt-2 text-sm leading-6 text-rose-700">{error}</p>
         </div>
@@ -238,7 +238,7 @@ export function ProjectRecommendationPanel({
             <div className="rounded-md border border-slate-200 p-5">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
                 <Layers3 aria-hidden="true" className="size-4 text-slate-500" />
-                {locale === "zh" ? "核心技术栈" : "Core Tech Stack"}
+                {locale === "zh" ? "核心聚焦领域" : "Core Focus Areas"}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {recommendation.coreTechStack.map((tech) => (
@@ -258,7 +258,7 @@ export function ProjectRecommendationPanel({
                   aria-hidden="true"
                   className="size-4 text-slate-500"
                 />
-                {locale === "zh" ? "最终交付物" : "Final Deliverables"}
+                {locale === "zh" ? "成果证明" : "Evidence of Progress"}
               </div>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
                 {recommendation.finalDeliverables.map((deliverable) => (
@@ -313,8 +313,8 @@ export function ProjectRecommendationPanel({
       ) : (
         <p className="mt-6 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
           {locale === "zh"
-            ? "技能差距可用后生成项目推荐，为下一步计划获得聚焦的构建目标。"
-            : "Generate a project recommendation after skill gaps are available to get a focused build target for the next planning step."}
+            ? "技能差距可用后生成学习主线建议，为下一步计划获得更聚焦的方向。"
+            : "Generate a learning track recommendation after skill gaps are available to get a clearer direction for the next planning step."}
         </p>
       )}
     </section>

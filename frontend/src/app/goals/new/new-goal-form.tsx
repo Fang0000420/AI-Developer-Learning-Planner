@@ -29,7 +29,11 @@ function createGoalFormSchema(locale: Locale) {
       .max(255, t.learningGoalMax),
     jobTarget: z.string().trim().min(2, t.jobTarget).max(120, t.jobTargetMax),
     dailyAvailableHours: z.number().min(0.5, t.dailyMin).max(12, t.dailyMax),
-    planCycleDays: z.enum(["14", "21"]),
+    planCycleDays: z
+      .number()
+      .int(t.planCycleInt)
+      .min(7, t.planCycleMin)
+      .max(60, t.planCycleMax),
     responseLanguage: z.enum(["zh", "en"]),
   });
 }
@@ -41,7 +45,7 @@ function defaultValues(locale: Locale): GoalFormValues {
     dailyAvailableHours: 2,
     jobTarget: "",
     learningGoal: "",
-    planCycleDays: "14",
+    planCycleDays: 14,
     responseLanguage: locale,
     technicalBackground: "",
   };
@@ -64,7 +68,7 @@ function composeGoalPayload(
     description: [
       `${locale === "zh" ? "目标方向" : "Job target"}: ${values.jobTarget.trim()}`,
     ].join("\n\n"),
-    durationDays: Number(values.planCycleDays),
+    durationDays: values.planCycleDays,
     responseLanguage: values.responseLanguage,
     technicalBackground: values.technicalBackground.trim(),
     title: values.learningGoal.trim(),
@@ -103,29 +107,32 @@ export function NewGoalForm({ locale }: NewGoalFormProps) {
     resolver: zodResolver(createGoalFormSchema(locale)),
   });
 
-  const watchedValues = useWatch({ control });
+  const watchedDailyHours = useWatch({ control, name: "dailyAvailableHours" });
+  const watchedPlanCycleDays = useWatch({ control, name: "planCycleDays" });
+  const watchedJobTarget = useWatch({ control, name: "jobTarget" });
+  const watchedResponseLanguage = useWatch({ control, name: "responseLanguage" });
 
   const summaryItems = [
     {
       icon: Clock3,
       label: locale === "zh" ? "每日时间" : "Daily time",
-      value: `${watchedValues.dailyAvailableHours || 0} ${t.common.hours}`,
+      value: `${watchedDailyHours || 0} ${t.common.hours}`,
     },
     {
       icon: CalendarDays,
       label: locale === "zh" ? "计划周期" : "Plan cycle",
-      value: `${watchedValues.planCycleDays || initialValues.planCycleDays} ${t.common.days}`,
+      value: `${watchedPlanCycleDays || initialValues.planCycleDays} ${t.common.days}`,
     },
     {
       icon: Target,
       label: locale === "zh" ? "目标方向" : "Target",
-      value: watchedValues.jobTarget || t.common.notSet,
+      value: watchedJobTarget || t.common.notSet,
     },
     {
       icon: Target,
       label: t.common.responseLanguage,
       value: responseLanguageLabel(
-        (watchedValues.responseLanguage || locale) as ResponseLanguage,
+        (watchedResponseLanguage || locale) as ResponseLanguage,
         locale,
       ),
     },
@@ -245,14 +252,15 @@ export function NewGoalForm({ locale }: NewGoalFormProps) {
               >
                 {t.newGoal.planCycle}
               </label>
-              <select
+              <input
                 className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                 id="planCycleDays"
-                {...register("planCycleDays")}
-              >
-                <option value="14">14 {t.common.days}</option>
-                <option value="21">21 {t.common.days}</option>
-              </select>
+                max="60"
+                min="7"
+                step="1"
+                type="number"
+                {...register("planCycleDays", { valueAsNumber: true })}
+              />
               <FieldError message={errors.planCycleDays?.message} />
             </div>
           </div>

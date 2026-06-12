@@ -15,14 +15,14 @@ def test_skill_gap_analyze_returns_structured_stub_response(monkeypatch: MonkeyP
     response = client.post(
         "/agent/skill-gap/analyze",
         json={
-            "mainGoal": "Build AI agent apps",
-            "currentSkills": ["Python basics", "REST APIs"],
-            "strengths": ["Backend foundation"],
-            "weaknesses": ["LLM evaluation"],
+            "mainGoal": "Improve business English speaking",
+            "currentSkills": ["Reading comprehension", "Basic vocabulary"],
+            "strengths": ["Regular reading habit"],
+            "weaknesses": ["Speaking fluency"],
             "subGoals": [
                 {
-                    "title": "Design agent workflow",
-                    "description": "Define planner nodes.",
+                    "title": "Build a daily speaking routine",
+                    "description": "Practice short speaking drills with feedback.",
                     "priority": "high",
                 }
             ],
@@ -95,7 +95,7 @@ def test_skill_gap_model_output_is_normalized_and_padded() -> None:
 
 def test_skill_gap_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) -> None:
     request = SkillGapAnalyzeRequest(
-        mainGoal="Build AI agent apps",
+        mainGoal="Improve business English speaking",
         currentSkills=[],
         strengths=[],
         weaknesses=[],
@@ -116,11 +116,12 @@ def test_skill_gap_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) ->
 
     assert len(response.skillGaps) >= 4
     assert response.skillGaps[0].priority == "high"
+    assert response.skillGaps[0].skill == "Goal-related foundation"
 
 
 def test_skill_gap_nested_dict_output_is_normalized() -> None:
     request = SkillGapAnalyzeRequest(
-        mainGoal="Build AI agent apps",
+        mainGoal="Improve business English speaking",
         currentSkills=[],
         strengths=[],
         weaknesses=[],
@@ -129,11 +130,11 @@ def test_skill_gap_nested_dict_output_is_normalized() -> None:
     parsed = {
         "data": {
             "skill_gaps": {
-                "LLM evaluation": {
+                "Speaking fluency": {
                     "current_proficiency": "1",
                     "target_level": "intermediate",
                     "urgency": "urgent",
-                    "description": "Needed to judge output quality.",
+                    "description": "Needed to respond more naturally in conversation.",
                 }
             }
         }
@@ -142,6 +143,6 @@ def test_skill_gap_nested_dict_output_is_normalized() -> None:
     normalized = skill_gap_analyzer._normalize_model_output(parsed, request)
     response = SkillGapAnalyzeResponse.model_validate(normalized)
 
-    assert response.skillGaps[0].skill == "LLM evaluation"
+    assert response.skillGaps[0].skill == "Speaking fluency"
     assert response.skillGaps[0].currentLevel == "1"
     assert response.skillGaps[0].priority == "high"

@@ -97,7 +97,7 @@ class ProjectRecommendationServiceTests {
         assertThat(response.runId()).isEqualTo(70L);
         assertThat(response.goalId()).isEqualTo(10L);
         assertThat(response.recommendedProject()).isEqualTo("AI Developer Learning Planner");
-        assertThat(response.durationDays()).isEqualTo(21);
+        assertThat(response.durationDays()).isEqualTo(30);
         assertThat(response.dailyTimeHours()).isEqualByComparingTo("2.0");
 
         ArgumentCaptor<ProjectRecommendRequest> requestCaptor =
@@ -227,7 +227,7 @@ class ProjectRecommendationServiceTests {
                           "recommendedProject": "AI Developer Learning Planner",
                           "reason": "Covers full-stack agent workflow practice.",
                           "difficulty": "medium-high",
-                          "durationDays": 21,
+                          "durationDays": 30,
                           "dailyTimeHours": 2,
                           "coreTechStack": ["Spring Boot", "FastAPI", "Next.js"],
                           "finalDeliverables": ["Complete GitHub repository", "Runnable full-stack demo"]
@@ -248,7 +248,7 @@ class ProjectRecommendationServiceTests {
         user.setDailyAvailableHours(new BigDecimal("2.0"));
         ReflectionTestUtils.setField(user, "id", 1L);
 
-        Goal goal = new Goal(user, "Build AI agent apps", 21);
+        Goal goal = new Goal(user, "Build AI agent apps", 30);
         goal.setDescription("Learn production AI agent workflows.");
         ReflectionTestUtils.setField(goal, "id", 10L);
         return goal;
@@ -270,7 +270,7 @@ class ProjectRecommendationServiceTests {
                 "AI Developer Learning Planner",
                 "Covers full-stack agent workflow practice.",
                 "medium-high",
-                21,
+                30,
                 BigDecimal.valueOf(2),
                 List.of("Spring Boot", "FastAPI", "Next.js"),
                 List.of("Complete GitHub repository", "Runnable full-stack demo")

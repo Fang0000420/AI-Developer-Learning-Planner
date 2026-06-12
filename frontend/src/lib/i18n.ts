@@ -82,7 +82,7 @@ export const dictionaries = {
         },
         {
           label: "计划窗口",
-          value: "14 或 21 天",
+          value: "7 到 60 天",
           detail: "计划生成会保存学习计划和每日任务。",
         },
         {
@@ -168,6 +168,9 @@ export const dictionaries = {
         jobTargetMax: "目标方向不能超过 120 个字符。",
         dailyMin: "每日时间至少为 0.5 小时。",
         dailyMax: "每日时间不能超过 12 小时。",
+        planCycleMin: "计划周期至少为 7 天。",
+        planCycleMax: "计划周期不能超过 60 天。",
+        planCycleInt: "计划周期必须为整数天数。",
       },
     },
     auth: {
@@ -251,7 +254,7 @@ export const dictionaries = {
         },
         {
           label: "Plan window",
-          value: "14 or 21 days",
+          value: "7 to 60 days",
           detail: "Plan generation stores learning plans and daily tasks.",
         },
         {
@@ -347,6 +350,9 @@ export const dictionaries = {
         jobTargetMax: "Job target cannot exceed 120 characters.",
         dailyMin: "Daily time must be at least 0.5 hours.",
         dailyMax: "Daily time cannot exceed 12 hours.",
+        planCycleMin: "Plan cycle must be at least 7 days.",
+        planCycleMax: "Plan cycle cannot exceed 60 days.",
+        planCycleInt: "Plan cycle must be a whole number of days.",
       },
     },
     auth: {

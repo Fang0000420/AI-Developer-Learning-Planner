@@ -36,6 +36,28 @@ class PlanDay(BaseModel):
     tasks: list[PlanTask] = Field(min_length=1)
 
 
+class PlanGenerationMemory(BaseModel):
+    completedDayIndexes: list[int] = Field(default_factory=list)
+    establishedThemes: list[str] = Field(default_factory=list)
+    carryForwardConstraints: list[str] = Field(default_factory=list)
+    nextFocusHints: list[str] = Field(default_factory=list)
+
+
+class PlanGenerateChunkResponse(BaseModel):
+    planTitle: str = Field(min_length=1)
+    days: list[PlanDay] = Field(min_length=1)
+    memory: PlanGenerationMemory = Field(default_factory=PlanGenerationMemory)
+
+    @model_validator(mode="after")
+    def validate_chunk(self) -> "PlanGenerateChunkResponse":
+        if len(self.days) > 2:
+            raise ValueError("chunk days length must not exceed 2.")
+        day_indexes = [day.dayIndex for day in self.days]
+        if len(set(day_indexes)) != len(day_indexes):
+            raise ValueError("chunk dayIndex values must be unique.")
+        return self
+
+
 class PlanGenerateRequest(BaseModel):
     mainGoal: str = Field(min_length=1)
     currentSkills: list[str] = Field(default_factory=list)
@@ -43,7 +65,7 @@ class PlanGenerateRequest(BaseModel):
     weaknesses: list[str] = Field(default_factory=list)
     subGoals: list[SubGoal] = Field(default_factory=list)
     skillGaps: list[SkillGap] = Field(default_factory=list)
-    recommendedProject: str = Field(min_length=1)
+    recommendedProject: str | None = None
     projectReason: str | None = None
     difficulty: str | None = None
     coreTechStack: list[str] = Field(default_factory=list)
@@ -55,8 +77,8 @@ class PlanGenerateRequest(BaseModel):
     @field_validator("durationDays")
     @classmethod
     def validate_supported_duration(cls, value: int) -> int:
-        if value not in {14, 21}:
-            raise ValueError("durationDays must be 14 or 21.")
+        if value < 7 or value > 60:
+            raise ValueError("durationDays must be between 7 and 60.")
         return value
 
 

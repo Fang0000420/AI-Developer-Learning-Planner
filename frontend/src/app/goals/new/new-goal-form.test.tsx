@@ -73,4 +73,72 @@ describe("NewGoalForm", () => {
     ).toBeInTheDocument();
     expect(router.push).not.toHaveBeenCalled();
   });
+
+  test("submits a custom plan cycle", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: async () => ({
+        id: 10,
+        userId: 1,
+        title: "Build production-ready AI agent applications.",
+        description: "Job target: AI Engineer",
+        durationDays: 30,
+        responseLanguage: "en",
+        status: "ACTIVE",
+        dailyAvailableHours: 2,
+        createdAt: null,
+        updatedAt: null,
+      }),
+      ok: true,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<NewGoalForm locale="en" />);
+
+    await user.type(
+      screen.getByLabelText(/technical background/i),
+      "Java backend developer with PostgreSQL experience.",
+    );
+    await user.type(
+      screen.getByLabelText(/learning goal/i),
+      "Build production-ready AI agent applications.",
+    );
+    await user.type(screen.getByLabelText(/job target/i), "AI Engineer");
+    const planCycleInput = screen.getByLabelText(/plan cycle/i);
+    await user.clear(planCycleInput);
+    await user.type(planCycleInput, "30");
+    await user.click(screen.getByRole("button", { name: /create goal/i }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/goals",
+      expect.objectContaining({
+        body: expect.stringContaining('"durationDays":30'),
+        method: "POST",
+      }),
+    );
+    expect(await screen.findByText("30 days")).toBeInTheDocument();
+    expect(router.push).toHaveBeenCalledWith("/goals/10");
+  });
+
+  test("validates custom plan cycle range", async () => {
+    const user = userEvent.setup();
+    render(<NewGoalForm locale="en" />);
+
+    await user.type(
+      screen.getByLabelText(/technical background/i),
+      "Java backend developer with PostgreSQL experience.",
+    );
+    await user.type(
+      screen.getByLabelText(/learning goal/i),
+      "Build production-ready AI agent applications.",
+    );
+    await user.type(screen.getByLabelText(/job target/i), "AI Engineer");
+    const planCycleInput = screen.getByLabelText(/plan cycle/i);
+    await user.clear(planCycleInput);
+    await user.type(planCycleInput, "6");
+    await user.click(screen.getByRole("button", { name: /create goal/i }));
+
+    expect(
+      await screen.findByText("Plan cycle must be at least 7 days."),
+    ).toBeInTheDocument();
+  });
 });

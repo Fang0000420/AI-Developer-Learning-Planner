@@ -6,8 +6,8 @@ import httpx
 from app.config import (
     DEEPSEEK_API_BASE_URL,
     DEEPSEEK_API_KEY,
+    PLAN_ADJUSTER_TIMEOUT_SECONDS,
     PROFILE_ANALYZER_MODEL,
-    PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.plan import (
     PlanAdjustRequest,
@@ -79,6 +79,7 @@ Rules:
 - Split tasks that are too large for a focused next-day session.
 - Adjust only the next day; do not rewrite the whole plan.
 - Preserve existing next-day tasks unless the unfinished work needs the first slot.
+- Keep the wording suitable for general learning tasks, not only software delivery.
 """.strip()
 
 PLAN_ADJUSTER_PROMPT_ZH = """
@@ -137,6 +138,7 @@ PLAN_ADJUSTER_PROMPT_ZH = """
 - 对于下一天难以聚焦完成的大任务，应拆分成小任务。
 - 只调整下一天，不要重写整个计划。
 - 除非未完成任务需要排到首位，否则保留已有下一天任务。
+- 表达要适用于通用学习任务，不要默认是软件开发交付。
 """.strip()
 
 
@@ -222,9 +224,9 @@ def adjust_plan_with_mock(request: PlanAdjustRequest) -> PlanAdjustResponse:
                         else f"{task.title} - part 1"
                     ),
                     description=(
-                        f"完成该任务的第一个聚焦切片：{task.description}"
+                        f"完成该任务的第一个聚焦部分：{task.description}"
                         if is_zh(request.responseLanguage)
-                        else f"Complete the first focused slice of: {task.description}"
+                        else f"Complete the first focused part of: {task.description}"
                     ),
                     estimated_minutes=part_minutes,
                     day_index=target_day,
@@ -237,9 +239,9 @@ def adjust_plan_with_mock(request: PlanAdjustRequest) -> PlanAdjustResponse:
                         else f"{task.title} - part 2"
                     ),
                     description=(
-                        f"完成剩余聚焦切片：{task.description}"
+                        f"完成该任务的剩余部分：{task.description}"
                         if is_zh(request.responseLanguage)
-                        else f"Complete the remaining focused slice of: {task.description}"
+                        else f"Complete the remaining part of: {task.description}"
                     ),
                     estimated_minutes=max(15, task.estimatedMinutes - part_minutes),
                     day_index=target_day,
@@ -251,11 +253,11 @@ def adjust_plan_with_mock(request: PlanAdjustRequest) -> PlanAdjustResponse:
                     sourceTitle=task.title,
                     parts=parts,
                     reason=(
-                        "该未完成任务较大，适合拆成下一天可聚焦完成的小切片。"
+                        "该未完成任务较大，适合拆成下一天可聚焦完成的小部分。"
                         if is_zh(request.responseLanguage)
                         else (
                             "The unfinished task is large enough to split into "
-                            "focused next-day slices."
+                            "focused next-day parts."
                         )
                     ),
                 )
@@ -427,9 +429,9 @@ def _split_list(
                             ],
                             "reason": _first_string(item, "reason")
                             or (
-                                "该任务被拆分以降低下一天范围。"
+                                "该任务被拆分以降低下一天负担。"
                                 if is_zh(request.responseLanguage)
-                                else "The task was split to reduce next-day scope."
+                                else "The task was split to reduce the next-day load."
                             ),
                         }
                     )
@@ -456,7 +458,7 @@ def _normalize_task(
         ),
         "estimatedMinutes": _first_int(item, "estimatedMinutes", "minutes", "duration")
         or 45,
-        "type": _first_string(item, "type", "category") or "build",
+        "type": _first_string(item, "type", "category") or "practice",
         "deliverable": _first_string(item, "deliverable", "output")
         or (
             "更新后的学习产物"
@@ -510,13 +512,13 @@ def _reason_for(request: PlanAdjustRequest, carried_tasks: list[PlanAdjustTask])
             if is_zh(request.responseLanguage)
             else (
                 "Tomorrow's plan was adjusted to resolve unfinished work and "
-                "blockers before new scope."
+                "blockers before new content."
             )
         )
     return (
         "明天计划已调整为先结转未完成工作，再进入新范围。"
         if is_zh(request.responseLanguage)
-        else "Tomorrow's plan was adjusted to carry over unfinished work before new scope."
+        else "Tomorrow's plan was adjusted to carry over unfinished work before new content."
     )
 
 
