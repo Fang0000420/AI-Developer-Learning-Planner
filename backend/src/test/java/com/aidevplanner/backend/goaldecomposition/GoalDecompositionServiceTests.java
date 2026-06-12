@@ -1,8 +1,10 @@
 package com.aidevplanner.backend.goaldecomposition;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentRunStatus;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.goal.Goal;
@@ -61,7 +63,7 @@ class GoalDecompositionServiceTests {
         Goal goal = goal();
         when(goalRepository.findById(10L)).thenReturn(Optional.of(goal));
         when(goalDecomposerClient.decompose(any(GoalDecomposeRequest.class)))
-                .thenReturn(goalDecomposeResponse());
+                .thenReturn(AgentClientResponse.model(goalDecomposeResponse()));
         when(agentRunRepository.save(any(AgentRun.class)))
                 .thenAnswer(invocation -> {
                     AgentRun run = invocation.getArgument(0);
@@ -87,6 +89,7 @@ class GoalDecompositionServiceTests {
         ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
         verify(agentRunRepository).save(runCaptor.capture());
         assertThat(runCaptor.getValue().getStatus()).isEqualTo(AgentRunStatus.SUCCESS);
+        assertThat(runCaptor.getValue().getResponseSource()).isEqualTo(AgentResponseSource.MODEL);
         assertThat(runCaptor.getValue().getAgentName()).isEqualTo("Goal Decomposer");
         assertThat(runCaptor.getValue().getInputJson()).contains("Build AI agent apps");
         assertThat(runCaptor.getValue().getOutputJson()).contains("subGoals");

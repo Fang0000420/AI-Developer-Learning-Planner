@@ -1,9 +1,13 @@
 package com.aidevplanner.backend.learningplan;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.agent.AgentServiceRequestHeaders;
+import com.aidevplanner.backend.agent.AgentServiceResponseHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -26,22 +30,28 @@ public class HttpPlanGeneratorClient implements PlanGeneratorClient {
     }
 
     @Override
-    public PlanGenerateAgentResponse generate(PlanGenerateAgentRequest request) {
+    public AgentClientResponse<PlanGenerateAgentResponse> generate(PlanGenerateAgentRequest request) {
         try {
-            PlanGenerateAgentResponse response = restClient.post()
+            ResponseEntity<PlanGenerateAgentResponse> responseEntity = restClient.post()
                     .uri("/agent/plan/generate")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
                     .headers(AgentServiceRequestHeaders::addTraceHeaders)
                     .body(request)
                     .retrieve()
-                    .body(PlanGenerateAgentResponse.class);
+                    .toEntity(PlanGenerateAgentResponse.class);
+            PlanGenerateAgentResponse response = responseEntity.getBody();
 
             if (response == null) {
                 throw new AgentServiceException("Plan generator returned an empty response.");
             }
 
-            return response;
+            return new AgentClientResponse<>(
+                    response,
+                    AgentResponseSource.fromHeader(
+                            responseEntity.getHeaders().getFirst(AgentServiceResponseHeaders.RESPONSE_SOURCE)
+                    )
+            );
         } catch (RestClientResponseException exception) {
             throw new AgentServiceException(buildAgentErrorMessage(exception), exception);
         } catch (RestClientException exception) {

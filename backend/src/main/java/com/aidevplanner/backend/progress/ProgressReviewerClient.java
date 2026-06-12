@@ -1,6 +1,8 @@
 package com.aidevplanner.backend.progress;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+
 public interface ProgressReviewerClient {
 
-    ProgressReviewAgentResponse review(ProgressReviewAgentRequest request);
+    AgentClientResponse<ProgressReviewAgentResponse> review(ProgressReviewAgentRequest request);
 }

@@ -1,8 +1,10 @@
 package com.aidevplanner.backend.learningplan;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentRunStatus;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.goal.Goal;
@@ -94,7 +96,7 @@ class LearningPlanServiceTests {
                 AgentRunStatus.SUCCESS
         )).thenReturn(Optional.of(skillGapRun(goal)));
         when(planGeneratorClient.generate(any(PlanGenerateAgentRequest.class)))
-                .thenReturn(planResponse());
+                .thenReturn(AgentClientResponse.model(planResponse()));
         when(agentRunRepository.save(any(AgentRun.class)))
                 .thenAnswer(invocation -> {
                     AgentRun run = invocation.getArgument(0);
@@ -143,6 +145,7 @@ class LearningPlanServiceTests {
         verify(agentRunRepository).save(runCaptor.capture());
         assertThat(runCaptor.getValue().getAgentName()).isEqualTo("Plan Generator");
         assertThat(runCaptor.getValue().getStatus()).isEqualTo(AgentRunStatus.SUCCESS);
+        assertThat(runCaptor.getValue().getResponseSource()).isEqualTo(AgentResponseSource.MODEL);
         assertThat(runCaptor.getValue().getOutputJson()).contains("planTitle");
 
         ArgumentCaptor<LearningPlan> planCaptor = ArgumentCaptor.forClass(LearningPlan.class);

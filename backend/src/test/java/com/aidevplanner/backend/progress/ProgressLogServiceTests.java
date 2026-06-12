@@ -1,8 +1,10 @@
 package com.aidevplanner.backend.progress;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentRunStatus;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.goal.Goal;
@@ -92,15 +94,15 @@ class ProgressLogServiceTests {
         when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
                 .thenReturn(tasks);
         when(progressReviewerClient.review(any(ProgressReviewAgentRequest.class)))
-                .thenReturn(new ProgressReviewAgentResponse(
+                .thenReturn(AgentClientResponse.model(new ProgressReviewAgentResponse(
                         List.of("Create progress table"),
                         List.of("Create progress form"),
                         List.of("Need server verification"),
                         "minor",
                         "Finish the UI polish before adding new scope."
-                ));
+                )));
         when(planAdjusterClient.adjust(any(PlanAdjustAgentRequest.class)))
-                .thenReturn(new PlanAdjustAgentResponse(
+                .thenReturn(AgentClientResponse.fallback(new PlanAdjustAgentResponse(
                         List.of(new PlanAdjustTaskPayload(
                                 null,
                                 2,
@@ -122,7 +124,7 @@ class ProgressLogServiceTests {
                         )),
                         List.of(),
                         "Tomorrow's plan was adjusted to carry over unfinished work."
-                ));
+                )));
         when(progressLogRepository.save(any(ProgressLog.class)))
                 .thenAnswer(invocation -> {
                     ProgressLog log = invocation.getArgument(0);
@@ -168,6 +170,8 @@ class ProgressLogServiceTests {
                 .containsExactly("Progress Reviewer", "Plan Adjuster");
         assertThat(savedRuns).extracting(AgentRun::getStatus)
                 .containsExactly(AgentRunStatus.SUCCESS, AgentRunStatus.SUCCESS);
+        assertThat(savedRuns).extracting(AgentRun::getResponseSource)
+                .containsExactly(AgentResponseSource.MODEL, AgentResponseSource.FALLBACK);
         assertThat(savedRuns.get(0).getInputJson()).contains("\"dayIndex\":1");
         assertThat(savedRuns.get(0).getOutputJson()).contains("\"impact\":\"minor\"");
         assertThat(savedRuns.get(1).getInputJson()).contains("\"currentDayIndex\":1");

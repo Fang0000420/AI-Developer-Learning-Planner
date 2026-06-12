@@ -10,6 +10,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.profile import ProfileAnalyzeRequest, ProfileAnalyzeResponse
+from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
 from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
@@ -56,16 +57,25 @@ class ProfileAnalyzerError(RuntimeError):
     pass
 
 
-def analyze_profile(request: ProfileAnalyzeRequest) -> ProfileAnalyzeResponse:
+def analyze_profile(request: ProfileAnalyzeRequest) -> AgentExecutionResult[ProfileAnalyzeResponse]:
     if DEEPSEEK_API_KEY:
         try:
-            return retry_model_call(lambda: analyze_profile_with_model(request))
+            return AgentExecutionResult(
+                payload=retry_model_call(lambda: analyze_profile_with_model(request)),
+                source=AgentResponseSource.MODEL,
+            )
         except ModelCallRetryExhaustedError:
-            return analyze_profile_with_mock(request)
+            return AgentExecutionResult(
+                payload=analyze_profile_with_mock(request),
+                source=AgentResponseSource.FALLBACK,
+            )
         except ModelCallNonRetryableError as exc:
             raise ProfileAnalyzerError(f"Profile analyzer model call failed: {exc}") from exc
 
-    return analyze_profile_with_mock(request)
+    return AgentExecutionResult(
+        payload=analyze_profile_with_mock(request),
+        source=AgentResponseSource.FALLBACK,
+    )
 
 
 def analyze_profile_with_model(request: ProfileAnalyzeRequest) -> ProfileAnalyzeResponse:

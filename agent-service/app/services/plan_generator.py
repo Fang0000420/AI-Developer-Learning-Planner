@@ -11,6 +11,7 @@ from app.config import (
     PROFILE_ANALYZER_MODEL,
 )
 from app.schemas.plan import PlanDay, PlanGenerateRequest, PlanGenerateResponse, PlanTask
+from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
 from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
@@ -98,16 +99,27 @@ class PlanGeneratorError(RuntimeError):
     pass
 
 
-def generate_plan(request: PlanGenerateRequest) -> PlanGenerateResponse:
+def generate_plan(
+    request: PlanGenerateRequest,
+) -> AgentExecutionResult[PlanGenerateResponse]:
     if DEEPSEEK_API_KEY:
         try:
-            return retry_model_call(lambda: generate_plan_with_model(request))
+            return AgentExecutionResult(
+                payload=retry_model_call(lambda: generate_plan_with_model(request)),
+                source=AgentResponseSource.MODEL,
+            )
         except ModelCallRetryExhaustedError:
-            return generate_plan_with_mock(request)
+            return AgentExecutionResult(
+                payload=generate_plan_with_mock(request),
+                source=AgentResponseSource.FALLBACK,
+            )
         except ModelCallNonRetryableError as exc:
             raise PlanGeneratorError(f"Plan generator model call failed: {exc}") from exc
 
-    return generate_plan_with_mock(request)
+    return AgentExecutionResult(
+        payload=generate_plan_with_mock(request),
+        source=AgentResponseSource.FALLBACK,
+    )
 
 
 def generate_plan_with_model(request: PlanGenerateRequest) -> PlanGenerateResponse:

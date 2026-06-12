@@ -1,6 +1,7 @@
 package com.aidevplanner.backend.profile;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -64,7 +65,8 @@ public class ProfileAnalysisService {
         long startedAt = System.nanoTime();
 
         try {
-            ProfileAnalyzeResponse response = profileAnalyzerClient.analyze(request);
+            AgentClientResponse<ProfileAnalyzeResponse> clientResponse = profileAnalyzerClient.analyze(request);
+            ProfileAnalyzeResponse response = clientResponse.payload();
             long latencyMs = elapsedMs(startedAt);
             String outputJson = writeJson(response);
             SkillProfile profile = skillProfileRepository.save(toSkillProfile(goal, response));
@@ -77,6 +79,7 @@ public class ProfileAnalysisService {
                     outputJson,
                     AgentRunStatus.SUCCESS,
                     latencyMs,
+                    clientResponse.responseSource(),
                     null
             ));
 

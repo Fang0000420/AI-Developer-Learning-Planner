@@ -1,6 +1,8 @@
 package com.aidevplanner.backend.profile;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+
 public interface ProfileAnalyzerClient {
 
-    ProfileAnalyzeResponse analyze(ProfileAnalyzeRequest request);
+    AgentClientResponse<ProfileAnalyzeResponse> analyze(ProfileAnalyzeRequest request);
 }

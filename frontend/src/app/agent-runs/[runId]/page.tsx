@@ -65,11 +65,20 @@ export default async function AgentRunDetailPage({
                   {formatGoalDate(run.createdAt, locale)}.
                 </p>
               </div>
-              <span
-                className={`inline-flex h-8 w-fit items-center rounded-md px-3 text-sm font-semibold ring-1 ${getStatusClasses(run.status)}`}
-              >
-                {run.status === "SUCCESS" ? t.success : t.failed}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex h-8 w-fit items-center rounded-md px-3 text-sm font-semibold ring-1 ${getStatusClasses(run.status)}`}
+                >
+                  {run.status === "SUCCESS" ? t.success : t.failed}
+                </span>
+                {run.responseSource ? (
+                  <span
+                    className={`inline-flex h-8 w-fit items-center rounded-md px-3 text-sm font-semibold ring-1 ${getResponseSourceClasses(run.responseSource)}`}
+                  >
+                    {getResponseSourceLabel(run.responseSource, t)}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             <section className="mt-6 grid gap-4 lg:grid-cols-4">
@@ -159,6 +168,19 @@ function getStatusClasses(status: "SUCCESS" | "FAILED") {
     : "bg-rose-50 text-rose-700 ring-rose-200";
 }
 
+function getResponseSourceClasses(source: "MODEL" | "FALLBACK") {
+  return source === "MODEL"
+    ? "bg-sky-50 text-sky-700 ring-sky-200"
+    : "bg-amber-50 text-amber-700 ring-amber-200";
+}
+
+function getResponseSourceLabel(
+  source: "MODEL" | "FALLBACK",
+  t: Record<string, string>,
+) {
+  return source === "MODEL" ? t.modelResponse : t.fallbackResponse;
+}
+
 const agentRunDetailLabels: Record<Locale, Record<string, string>> = {
   zh: {
     back: "Agent 运行记录",
@@ -169,6 +191,8 @@ const agentRunDetailLabels: Record<Locale, Record<string, string>> = {
     capturedAt: "记录于",
     success: "成功",
     failed: "失败",
+    modelResponse: "大模型返回",
+    fallbackResponse: "降级返回",
     latency: "耗时",
     goal: "目标",
     plan: "计划",
@@ -188,6 +212,8 @@ const agentRunDetailLabels: Record<Locale, Record<string, string>> = {
     capturedAt: "captured at",
     success: "Success",
     failed: "Failed",
+    modelResponse: "Model response",
+    fallbackResponse: "Fallback response",
     latency: "Latency",
     goal: "Goal",
     plan: "Plan",

@@ -9,6 +9,7 @@ public record AgentRunSummaryResponse(
         Long planId,
         String agentName,
         AgentRunStatus status,
+        AgentResponseSource responseSource,
         Long latencyMs,
         String errorMessage,
         String requestId,

@@ -1,8 +1,10 @@
 package com.aidevplanner.backend.projectrecommendation;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentRunStatus;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.goal.Goal;
@@ -81,7 +83,7 @@ class ProjectRecommendationServiceTests {
                 AgentRunStatus.SUCCESS
         )).thenReturn(Optional.of(skillGapRun(goal)));
         when(projectRecommenderClient.recommend(any(ProjectRecommendRequest.class)))
-                .thenReturn(projectRecommendResponse());
+                .thenReturn(AgentClientResponse.model(projectRecommendResponse()));
         when(agentRunRepository.save(any(AgentRun.class)))
                 .thenAnswer(invocation -> {
                     AgentRun run = invocation.getArgument(0);
@@ -111,6 +113,7 @@ class ProjectRecommendationServiceTests {
         ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
         verify(agentRunRepository).save(runCaptor.capture());
         assertThat(runCaptor.getValue().getStatus()).isEqualTo(AgentRunStatus.SUCCESS);
+        assertThat(runCaptor.getValue().getResponseSource()).isEqualTo(AgentResponseSource.MODEL);
         assertThat(runCaptor.getValue().getAgentName()).isEqualTo("Project Recommender");
         assertThat(runCaptor.getValue().getInputJson()).contains("skillGaps");
         assertThat(runCaptor.getValue().getOutputJson()).contains("recommendedProject");

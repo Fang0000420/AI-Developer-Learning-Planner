@@ -1,8 +1,10 @@
 package com.aidevplanner.backend.skillgap;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentRunStatus;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.goal.Goal;
@@ -75,7 +77,7 @@ class SkillGapAnalysisServiceTests {
                 AgentRunStatus.SUCCESS
         )).thenReturn(Optional.of(goalDecompositionRun(goal)));
         when(skillGapAnalyzerClient.analyze(any(SkillGapAnalyzeRequest.class)))
-                .thenReturn(skillGapAnalyzeResponse());
+                .thenReturn(AgentClientResponse.model(skillGapAnalyzeResponse()));
         when(agentRunRepository.save(any(AgentRun.class)))
                 .thenAnswer(invocation -> {
                     AgentRun run = invocation.getArgument(0);
@@ -103,6 +105,7 @@ class SkillGapAnalysisServiceTests {
         ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
         verify(agentRunRepository).save(runCaptor.capture());
         assertThat(runCaptor.getValue().getStatus()).isEqualTo(AgentRunStatus.SUCCESS);
+        assertThat(runCaptor.getValue().getResponseSource()).isEqualTo(AgentResponseSource.MODEL);
         assertThat(runCaptor.getValue().getAgentName()).isEqualTo("Skill Gap Analyzer");
         assertThat(runCaptor.getValue().getInputJson()).contains("currentSkills");
         assertThat(runCaptor.getValue().getOutputJson()).contains("skillGaps");

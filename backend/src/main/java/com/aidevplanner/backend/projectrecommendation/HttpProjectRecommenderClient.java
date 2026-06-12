@@ -1,9 +1,13 @@
 package com.aidevplanner.backend.projectrecommendation;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.agent.AgentServiceRequestHeaders;
+import com.aidevplanner.backend.agent.AgentServiceResponseHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -26,22 +30,28 @@ public class HttpProjectRecommenderClient implements ProjectRecommenderClient {
     }
 
     @Override
-    public ProjectRecommendResponse recommend(ProjectRecommendRequest request) {
+    public AgentClientResponse<ProjectRecommendResponse> recommend(ProjectRecommendRequest request) {
         try {
-            ProjectRecommendResponse response = restClient.post()
+            ResponseEntity<ProjectRecommendResponse> responseEntity = restClient.post()
                     .uri("/agent/project/recommend")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
                     .headers(AgentServiceRequestHeaders::addTraceHeaders)
                     .body(request)
                     .retrieve()
-                    .body(ProjectRecommendResponse.class);
+                    .toEntity(ProjectRecommendResponse.class);
+            ProjectRecommendResponse response = responseEntity.getBody();
 
             if (response == null) {
                 throw new AgentServiceException("Project recommender returned an empty response.");
             }
 
-            return response;
+            return new AgentClientResponse<>(
+                    response,
+                    AgentResponseSource.fromHeader(
+                            responseEntity.getHeaders().getFirst(AgentServiceResponseHeaders.RESPONSE_SOURCE)
+                    )
+            );
         } catch (RestClientResponseException exception) {
             throw new AgentServiceException(buildAgentErrorMessage(exception), exception);
         } catch (RestClientException exception) {

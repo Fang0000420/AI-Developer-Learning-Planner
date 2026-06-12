@@ -1,6 +1,7 @@
 package com.aidevplanner.backend.progress;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -109,7 +110,9 @@ public class ProgressLogService {
         ProgressReviewAgentResponse reviewResponse;
 
         try {
-            reviewResponse = normalizeReviewResponse(progressReviewerClient.review(reviewRequest), plan);
+            AgentClientResponse<ProgressReviewAgentResponse> reviewClientResponse =
+                    progressReviewerClient.review(reviewRequest);
+            reviewResponse = normalizeReviewResponse(reviewClientResponse.payload(), plan);
             String outputJson = writeJson(reviewResponse);
             AgentRun reviewRun = new AgentRun(
                     plan.getUser(),
@@ -119,6 +122,7 @@ public class ProgressLogService {
                     outputJson,
                     AgentRunStatus.SUCCESS,
                     elapsedMs(startedAt),
+                    reviewClientResponse.responseSource(),
                     null
             );
             reviewRun.setPlan(plan);
@@ -154,7 +158,9 @@ public class ProgressLogService {
         PlanAdjustAgentResponse adjustResponse;
 
         try {
-            adjustResponse = normalizeAdjustResponse(planAdjusterClient.adjust(adjustRequest), plan);
+            AgentClientResponse<PlanAdjustAgentResponse> adjustClientResponse =
+                    planAdjusterClient.adjust(adjustRequest);
+            adjustResponse = normalizeAdjustResponse(adjustClientResponse.payload(), plan);
             applyPlanAdjustment(
                     plan,
                     targetDayIndex,
@@ -173,6 +179,7 @@ public class ProgressLogService {
                     adjustOutputJson,
                     AgentRunStatus.SUCCESS,
                     elapsedMs(adjustStartedAt),
+                    adjustClientResponse.responseSource(),
                     null
             );
             adjustRun.setPlan(plan);

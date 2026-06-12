@@ -1,9 +1,13 @@
 package com.aidevplanner.backend.skillgap;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.agent.AgentServiceRequestHeaders;
+import com.aidevplanner.backend.agent.AgentServiceResponseHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -26,22 +30,28 @@ public class HttpSkillGapAnalyzerClient implements SkillGapAnalyzerClient {
     }
 
     @Override
-    public SkillGapAnalyzeResponse analyze(SkillGapAnalyzeRequest request) {
+    public AgentClientResponse<SkillGapAnalyzeResponse> analyze(SkillGapAnalyzeRequest request) {
         try {
-            SkillGapAnalyzeResponse response = restClient.post()
+            ResponseEntity<SkillGapAnalyzeResponse> responseEntity = restClient.post()
                     .uri("/agent/skill-gap/analyze")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
                     .headers(AgentServiceRequestHeaders::addTraceHeaders)
                     .body(request)
                     .retrieve()
-                    .body(SkillGapAnalyzeResponse.class);
+                    .toEntity(SkillGapAnalyzeResponse.class);
+            SkillGapAnalyzeResponse response = responseEntity.getBody();
 
             if (response == null) {
                 throw new AgentServiceException("Skill gap analyzer returned an empty response.");
             }
 
-            return response;
+            return new AgentClientResponse<>(
+                    response,
+                    AgentResponseSource.fromHeader(
+                            responseEntity.getHeaders().getFirst(AgentServiceResponseHeaders.RESPONSE_SOURCE)
+                    )
+            );
         } catch (RestClientResponseException exception) {
             throw new AgentServiceException(buildAgentErrorMessage(exception), exception);
         } catch (RestClientException exception) {

@@ -137,6 +137,13 @@ export default async function AgentRunsPage({
                       >
                         {run.status === "SUCCESS" ? t.success : t.failed}
                       </span>
+                      {run.responseSource ? (
+                        <span
+                          className={`inline-flex h-7 items-center rounded-md px-2 text-xs font-semibold ring-1 ${getResponseSourceClasses(run.responseSource)}`}
+                        >
+                          {getResponseSourceLabel(run.responseSource, t)}
+                        </span>
+                      ) : null}
                       <span className="text-sm text-slate-500">
                         {t.run} #{run.id}
                       </span>
@@ -215,6 +222,19 @@ function getStatusClasses(status: "SUCCESS" | "FAILED") {
     : "bg-rose-50 text-rose-700 ring-rose-200";
 }
 
+function getResponseSourceClasses(source: "MODEL" | "FALLBACK") {
+  return source === "MODEL"
+    ? "bg-sky-50 text-sky-700 ring-sky-200"
+    : "bg-amber-50 text-amber-700 ring-amber-200";
+}
+
+function getResponseSourceLabel(
+  source: "MODEL" | "FALLBACK",
+  t: Record<string, string>,
+) {
+  return source === "MODEL" ? t.modelResponse : t.fallbackResponse;
+}
+
 const agentRunsLabels: Record<Locale, Record<string, string>> = {
   zh: {
     dashboard: "工作台",
@@ -233,6 +253,8 @@ const agentRunsLabels: Record<Locale, Record<string, string>> = {
       "运行能力画像、计划生成或进度提交后，会创建可追踪的 Agent 执行记录。",
     success: "成功",
     failed: "失败",
+    modelResponse: "大模型返回",
+    fallbackResponse: "降级返回",
     run: "运行",
     goal: "目标",
     plan: "计划",
@@ -258,6 +280,8 @@ const agentRunsLabels: Record<Locale, Record<string, string>> = {
       "Run profile analysis, plan generation, or progress submission to create traceable Agent execution records.",
     success: "Success",
     failed: "Failed",
+    modelResponse: "Model response",
+    fallbackResponse: "Fallback response",
     run: "Run",
     goal: "Goal",
     plan: "Plan",

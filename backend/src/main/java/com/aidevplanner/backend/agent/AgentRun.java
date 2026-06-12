@@ -53,6 +53,10 @@ public class AgentRun {
     @Column(nullable = false, length = 50)
     private AgentRunStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "response_source", length = 30)
+    private AgentResponseSource responseSource;
+
     @Column(name = "latency_ms", nullable = false)
     private Long latencyMs;
 
@@ -78,12 +82,27 @@ public class AgentRun {
             Long latencyMs,
             String errorMessage
     ) {
+        this(user, goal, agentName, inputJson, outputJson, status, latencyMs, null, errorMessage);
+    }
+
+    public AgentRun(
+            User user,
+            Goal goal,
+            String agentName,
+            String inputJson,
+            String outputJson,
+            AgentRunStatus status,
+            Long latencyMs,
+            AgentResponseSource responseSource,
+            String errorMessage
+    ) {
         this.user = user;
         this.goal = goal;
         this.agentName = agentName;
         this.inputJson = inputJson;
         this.outputJson = outputJson;
         this.status = status;
+        this.responseSource = responseSource;
         this.latencyMs = latencyMs;
         this.errorMessage = errorMessage;
         this.requestId = ObservabilityContext.getRequestId();
@@ -123,6 +142,10 @@ public class AgentRun {
 
     public AgentRunStatus getStatus() {
         return status;
+    }
+
+    public AgentResponseSource getResponseSource() {
+        return responseSource;
     }
 
     public Long getLatencyMs() {

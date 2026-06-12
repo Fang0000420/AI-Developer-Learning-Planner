@@ -47,6 +47,7 @@ class AgentRunControllerTests {
                 .andExpect(jsonPath("$[0].planId").value(20))
                 .andExpect(jsonPath("$[0].agentName").value("Plan Generator"))
                 .andExpect(jsonPath("$[0].status").value("SUCCESS"))
+                .andExpect(jsonPath("$[0].responseSource").value("MODEL"))
                 .andExpect(jsonPath("$[0].requestId").value("req-123"));
 
         verify(agentRunQueryService).listRuns(10L, 20L, "Plan Generator");
@@ -91,6 +92,7 @@ class AgentRunControllerTests {
                 20L,
                 "Plan Generator",
                 AgentRunStatus.SUCCESS,
+                AgentResponseSource.MODEL,
                 250L,
                 null,
                 "req-123",
@@ -106,6 +108,7 @@ class AgentRunControllerTests {
                 20L,
                 "Plan Generator",
                 AgentRunStatus.SUCCESS,
+                AgentResponseSource.MODEL,
                 250L,
                 null,
                 "req-123",

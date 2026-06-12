@@ -10,6 +10,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.progress import ProgressReviewRequest, ProgressReviewResponse
+from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
 from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
@@ -67,16 +68,27 @@ class ProgressReviewerError(RuntimeError):
     pass
 
 
-def review_progress(request: ProgressReviewRequest) -> ProgressReviewResponse:
+def review_progress(
+    request: ProgressReviewRequest,
+) -> AgentExecutionResult[ProgressReviewResponse]:
     if DEEPSEEK_API_KEY:
         try:
-            return retry_model_call(lambda: review_progress_with_model(request))
+            return AgentExecutionResult(
+                payload=retry_model_call(lambda: review_progress_with_model(request)),
+                source=AgentResponseSource.MODEL,
+            )
         except ModelCallRetryExhaustedError:
-            return review_progress_with_mock(request)
+            return AgentExecutionResult(
+                payload=review_progress_with_mock(request),
+                source=AgentResponseSource.FALLBACK,
+            )
         except ModelCallNonRetryableError as exc:
             raise ProgressReviewerError(f"Progress reviewer model call failed: {exc}") from exc
 
-    return review_progress_with_mock(request)
+    return AgentExecutionResult(
+        payload=review_progress_with_mock(request),
+        source=AgentResponseSource.FALLBACK,
+    )
 
 
 def review_progress_with_model(request: ProgressReviewRequest) -> ProgressReviewResponse:

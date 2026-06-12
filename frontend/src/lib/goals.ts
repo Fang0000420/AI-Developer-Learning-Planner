@@ -193,6 +193,7 @@ export type AsyncJob<T> = {
 };
 
 export type AgentRunStatus = "SUCCESS" | "FAILED";
+export type AgentResponseSource = "MODEL" | "FALLBACK";
 
 export type AgentRunSummary = {
   id: number;
@@ -201,6 +202,7 @@ export type AgentRunSummary = {
   planId: number | null;
   agentName: string;
   status: AgentRunStatus;
+  responseSource: AgentResponseSource | null;
   latencyMs: number;
   errorMessage: string | null;
   requestId: string | null;

@@ -1,9 +1,13 @@
 package com.aidevplanner.backend.goaldecomposition;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.agent.AgentServiceRequestHeaders;
+import com.aidevplanner.backend.agent.AgentServiceResponseHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -26,22 +30,28 @@ public class HttpGoalDecomposerClient implements GoalDecomposerClient {
     }
 
     @Override
-    public GoalDecomposeResponse decompose(GoalDecomposeRequest request) {
+    public AgentClientResponse<GoalDecomposeResponse> decompose(GoalDecomposeRequest request) {
         try {
-            GoalDecomposeResponse response = restClient.post()
+            ResponseEntity<GoalDecomposeResponse> responseEntity = restClient.post()
                     .uri("/agent/goal/decompose")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
                     .headers(AgentServiceRequestHeaders::addTraceHeaders)
                     .body(request)
                     .retrieve()
-                    .body(GoalDecomposeResponse.class);
+                    .toEntity(GoalDecomposeResponse.class);
+            GoalDecomposeResponse response = responseEntity.getBody();
 
             if (response == null) {
                 throw new AgentServiceException("Goal decomposer returned an empty response.");
             }
 
-            return response;
+            return new AgentClientResponse<>(
+                    response,
+                    AgentResponseSource.fromHeader(
+                            responseEntity.getHeaders().getFirst(AgentServiceResponseHeaders.RESPONSE_SOURCE)
+                    )
+            );
         } catch (RestClientResponseException exception) {
             throw new AgentServiceException(buildAgentErrorMessage(exception), exception);
         } catch (RestClientException exception) {

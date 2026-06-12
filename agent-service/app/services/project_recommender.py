@@ -10,6 +10,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.project import ProjectRecommendRequest, ProjectRecommendResponse
+from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
 from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
@@ -72,16 +73,27 @@ class ProjectRecommenderError(RuntimeError):
     pass
 
 
-def recommend_project(request: ProjectRecommendRequest) -> ProjectRecommendResponse:
+def recommend_project(
+    request: ProjectRecommendRequest,
+) -> AgentExecutionResult[ProjectRecommendResponse]:
     if DEEPSEEK_API_KEY:
         try:
-            return retry_model_call(lambda: recommend_project_with_model(request))
+            return AgentExecutionResult(
+                payload=retry_model_call(lambda: recommend_project_with_model(request)),
+                source=AgentResponseSource.MODEL,
+            )
         except ModelCallRetryExhaustedError:
-            return recommend_project_with_mock(request)
+            return AgentExecutionResult(
+                payload=recommend_project_with_mock(request),
+                source=AgentResponseSource.FALLBACK,
+            )
         except ModelCallNonRetryableError as exc:
             raise ProjectRecommenderError(f"Project recommender model call failed: {exc}") from exc
 
-    return recommend_project_with_mock(request)
+    return AgentExecutionResult(
+        payload=recommend_project_with_mock(request),
+        source=AgentResponseSource.FALLBACK,
+    )
 
 
 def recommend_project_with_model(

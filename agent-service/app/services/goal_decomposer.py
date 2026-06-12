@@ -10,6 +10,7 @@ from app.config import (
     PROFILE_ANALYZER_TIMEOUT_SECONDS,
 )
 from app.schemas.goal import GoalDecomposeRequest, GoalDecomposeResponse, SubGoal
+from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
 from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
@@ -71,16 +72,25 @@ class GoalDecomposerError(RuntimeError):
     pass
 
 
-def decompose_goal(request: GoalDecomposeRequest) -> GoalDecomposeResponse:
+def decompose_goal(request: GoalDecomposeRequest) -> AgentExecutionResult[GoalDecomposeResponse]:
     if DEEPSEEK_API_KEY:
         try:
-            return retry_model_call(lambda: decompose_goal_with_model(request))
+            return AgentExecutionResult(
+                payload=retry_model_call(lambda: decompose_goal_with_model(request)),
+                source=AgentResponseSource.MODEL,
+            )
         except ModelCallRetryExhaustedError:
-            return decompose_goal_with_mock(request)
+            return AgentExecutionResult(
+                payload=decompose_goal_with_mock(request),
+                source=AgentResponseSource.FALLBACK,
+            )
         except ModelCallNonRetryableError as exc:
             raise GoalDecomposerError(f"Goal decomposer model call failed: {exc}") from exc
 
-    return decompose_goal_with_mock(request)
+    return AgentExecutionResult(
+        payload=decompose_goal_with_mock(request),
+        source=AgentResponseSource.FALLBACK,
+    )
 
 
 def decompose_goal_with_model(request: GoalDecomposeRequest) -> GoalDecomposeResponse:

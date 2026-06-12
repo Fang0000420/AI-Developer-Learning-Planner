@@ -1,8 +1,10 @@
 package com.aidevplanner.backend.profile;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentRunStatus;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.goal.Goal;
@@ -64,7 +66,7 @@ class ProfileAnalysisServiceTests {
         Goal goal = goal();
         when(goalRepository.findById(10L)).thenReturn(Optional.of(goal));
         when(profileAnalyzerClient.analyze(any(ProfileAnalyzeRequest.class)))
-                .thenReturn(profileAnalyzeResponse());
+                .thenReturn(AgentClientResponse.model(profileAnalyzeResponse()));
         when(skillProfileRepository.save(any(SkillProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -85,6 +87,7 @@ class ProfileAnalysisServiceTests {
         ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
         verify(agentRunRepository).save(runCaptor.capture());
         assertThat(runCaptor.getValue().getStatus()).isEqualTo(AgentRunStatus.SUCCESS);
+        assertThat(runCaptor.getValue().getResponseSource()).isEqualTo(AgentResponseSource.MODEL);
         assertThat(runCaptor.getValue().getInputJson()).contains("Build AI agent apps");
         assertThat(runCaptor.getValue().getOutputJson()).contains("recommendedDirection");
     }

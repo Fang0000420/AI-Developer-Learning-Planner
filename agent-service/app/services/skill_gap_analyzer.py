@@ -14,6 +14,7 @@ from app.schemas.skill_gap import (
     SkillGapAnalyzeRequest,
     SkillGapAnalyzeResponse,
 )
+from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
 from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
@@ -79,16 +80,27 @@ class SkillGapAnalyzerError(RuntimeError):
     pass
 
 
-def analyze_skill_gap(request: SkillGapAnalyzeRequest) -> SkillGapAnalyzeResponse:
+def analyze_skill_gap(
+    request: SkillGapAnalyzeRequest,
+) -> AgentExecutionResult[SkillGapAnalyzeResponse]:
     if DEEPSEEK_API_KEY:
         try:
-            return retry_model_call(lambda: analyze_skill_gap_with_model(request))
+            return AgentExecutionResult(
+                payload=retry_model_call(lambda: analyze_skill_gap_with_model(request)),
+                source=AgentResponseSource.MODEL,
+            )
         except ModelCallRetryExhaustedError:
-            return analyze_skill_gap_with_mock(request)
+            return AgentExecutionResult(
+                payload=analyze_skill_gap_with_mock(request),
+                source=AgentResponseSource.FALLBACK,
+            )
         except ModelCallNonRetryableError as exc:
             raise SkillGapAnalyzerError(f"Skill gap analyzer model call failed: {exc}") from exc
 
-    return analyze_skill_gap_with_mock(request)
+    return AgentExecutionResult(
+        payload=analyze_skill_gap_with_mock(request),
+        source=AgentResponseSource.FALLBACK,
+    )
 
 
 def analyze_skill_gap_with_model(

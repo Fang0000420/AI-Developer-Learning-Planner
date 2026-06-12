@@ -1,6 +1,8 @@
 package com.aidevplanner.backend.skillgap;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+
 public interface SkillGapAnalyzerClient {
 
-    SkillGapAnalyzeResponse analyze(SkillGapAnalyzeRequest request);
+    AgentClientResponse<SkillGapAnalyzeResponse> analyze(SkillGapAnalyzeRequest request);
 }

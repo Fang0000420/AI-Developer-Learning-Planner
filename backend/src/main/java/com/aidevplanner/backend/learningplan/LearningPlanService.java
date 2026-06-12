@@ -1,6 +1,7 @@
 package com.aidevplanner.backend.learningplan;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -166,8 +167,9 @@ public class LearningPlanService {
         long startedAt = System.nanoTime();
 
         try {
+            AgentClientResponse<PlanGenerateAgentResponse> clientResponse = planGeneratorClient.generate(request);
             PlanGenerateAgentResponse agentResponse =
-                    normalizeResponse(planGeneratorClient.generate(request), request);
+                    normalizeResponse(clientResponse.payload(), request);
             long latencyMs = elapsedMs(startedAt);
             String outputJson = writeJson(agentResponse);
 
@@ -179,6 +181,7 @@ public class LearningPlanService {
                     outputJson,
                     AgentRunStatus.SUCCESS,
                     latencyMs,
+                    clientResponse.responseSource(),
                     null
             ));
 

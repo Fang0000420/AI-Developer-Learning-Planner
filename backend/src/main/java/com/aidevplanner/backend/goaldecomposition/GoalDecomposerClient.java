@@ -1,6 +1,8 @@
 package com.aidevplanner.backend.goaldecomposition;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+
 public interface GoalDecomposerClient {
 
-    GoalDecomposeResponse decompose(GoalDecomposeRequest request);
+    AgentClientResponse<GoalDecomposeResponse> decompose(GoalDecomposeRequest request);
 }

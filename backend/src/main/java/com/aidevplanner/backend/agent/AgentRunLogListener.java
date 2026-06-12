@@ -16,10 +16,11 @@ public class AgentRunLogListener {
         Long planId = run.getPlan() == null ? null : run.getPlan().getId();
         if (run.getStatus() == AgentRunStatus.FAILED) {
             LOGGER.warn(
-                    "agent run recorded runId={} agentName={} status={} goalId={} planId={} latencyMs={} requestId={} error={}",
+                    "agent run recorded runId={} agentName={} status={} responseSource={} goalId={} planId={} latencyMs={} requestId={} error={}",
                     run.getId(),
                     run.getAgentName(),
                     run.getStatus(),
+                    run.getResponseSource(),
                     goalId,
                     planId,
                     run.getLatencyMs(),
@@ -29,10 +30,11 @@ public class AgentRunLogListener {
             return;
         }
         LOGGER.info(
-                "agent run recorded runId={} agentName={} status={} goalId={} planId={} latencyMs={} requestId={}",
+                "agent run recorded runId={} agentName={} status={} responseSource={} goalId={} planId={} latencyMs={} requestId={}",
                 run.getId(),
                 run.getAgentName(),
                 run.getStatus(),
+                run.getResponseSource(),
                 goalId,
                 planId,
                 run.getLatencyMs(),

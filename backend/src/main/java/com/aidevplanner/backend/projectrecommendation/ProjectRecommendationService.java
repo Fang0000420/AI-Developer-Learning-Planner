@@ -1,6 +1,7 @@
 package com.aidevplanner.backend.projectrecommendation;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -76,7 +77,8 @@ public class ProjectRecommendationService {
         long startedAt = System.nanoTime();
 
         try {
-            ProjectRecommendResponse response = normalizeResponse(projectRecommenderClient.recommend(request), goal);
+            AgentClientResponse<ProjectRecommendResponse> clientResponse = projectRecommenderClient.recommend(request);
+            ProjectRecommendResponse response = normalizeResponse(clientResponse.payload(), goal);
             long latencyMs = elapsedMs(startedAt);
             String outputJson = writeJson(response);
 
@@ -88,6 +90,7 @@ public class ProjectRecommendationService {
                     outputJson,
                     AgentRunStatus.SUCCESS,
                     latencyMs,
+                    clientResponse.responseSource(),
                     null
             ));
 

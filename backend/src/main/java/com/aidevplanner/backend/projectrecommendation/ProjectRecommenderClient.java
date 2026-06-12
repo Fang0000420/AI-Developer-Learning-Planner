@@ -1,6 +1,8 @@
 package com.aidevplanner.backend.projectrecommendation;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+
 public interface ProjectRecommenderClient {
 
-    ProjectRecommendResponse recommend(ProjectRecommendRequest request);
+    AgentClientResponse<ProjectRecommendResponse> recommend(ProjectRecommendRequest request);
 }

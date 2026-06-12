@@ -1,6 +1,7 @@
 package com.aidevplanner.backend.skillgap;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
+import com.aidevplanner.backend.agent.AgentClientResponse;
 import com.aidevplanner.backend.agent.AgentRun;
 import com.aidevplanner.backend.agent.AgentRunRepository;
 import com.aidevplanner.backend.agent.AgentRunStatus;
@@ -73,7 +74,8 @@ public class SkillGapAnalysisService {
         long startedAt = System.nanoTime();
 
         try {
-            SkillGapAnalyzeResponse response = normalizeResponse(skillGapAnalyzerClient.analyze(request));
+            AgentClientResponse<SkillGapAnalyzeResponse> clientResponse = skillGapAnalyzerClient.analyze(request);
+            SkillGapAnalyzeResponse response = normalizeResponse(clientResponse.payload());
             long latencyMs = elapsedMs(startedAt);
             String outputJson = writeJson(response);
 
@@ -85,6 +87,7 @@ public class SkillGapAnalysisService {
                     outputJson,
                     AgentRunStatus.SUCCESS,
                     latencyMs,
+                    clientResponse.responseSource(),
                     null
             ));
 

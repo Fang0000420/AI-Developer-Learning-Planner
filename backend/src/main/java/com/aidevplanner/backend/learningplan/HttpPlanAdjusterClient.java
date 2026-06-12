@@ -1,9 +1,13 @@
 package com.aidevplanner.backend.learningplan;
 
+import com.aidevplanner.backend.agent.AgentClientResponse;
+import com.aidevplanner.backend.agent.AgentResponseSource;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.agent.AgentServiceRequestHeaders;
+import com.aidevplanner.backend.agent.AgentServiceResponseHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -25,16 +29,26 @@ public class HttpPlanAdjusterClient implements PlanAdjusterClient {
     }
 
     @Override
-    public PlanAdjustAgentResponse adjust(PlanAdjustAgentRequest request) {
+    public AgentClientResponse<PlanAdjustAgentResponse> adjust(PlanAdjustAgentRequest request) {
         try {
-            return restClient.post()
+            ResponseEntity<PlanAdjustAgentResponse> responseEntity = restClient.post()
                     .uri("/agent/plan/adjust")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
                     .headers(AgentServiceRequestHeaders::addTraceHeaders)
                     .body(request)
                     .retrieve()
-                    .body(PlanAdjustAgentResponse.class);
+                    .toEntity(PlanAdjustAgentResponse.class);
+            PlanAdjustAgentResponse response = responseEntity.getBody();
+            if (response == null) {
+                throw new AgentServiceException("Plan adjuster returned an empty response.");
+            }
+            return new AgentClientResponse<>(
+                    response,
+                    AgentResponseSource.fromHeader(
+                            responseEntity.getHeaders().getFirst(AgentServiceResponseHeaders.RESPONSE_SOURCE)
+                    )
+            );
         } catch (RestClientException exception) {
             throw new AgentServiceException(
                     "Plan Adjuster request failed: " + exception.getMessage(),
