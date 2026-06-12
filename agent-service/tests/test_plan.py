@@ -194,6 +194,7 @@ def test_plan_adjust_moves_unfinished_task_to_next_day(monkeypatch: MonkeyPatch)
     assert body["movedTasks"][0]["taskId"] == 1
     assert body["movedTasks"][0]["toDayIndex"] == 2
     assert body["nextDayTasks"][0]["title"] == "Carry over: Practice interview answers"
+    assert body["nextDayTasks"][0]["dayIndex"] == 2
     assert body["reason"]
 
 
@@ -242,6 +243,65 @@ def test_plan_adjust_splits_large_unfinished_task(monkeypatch: MonkeyPatch) -> N
     assert body["splitTasks"][0]["sourceTaskId"] == 2
     assert len(body["splitTasks"][0]["parts"]) == 2
     assert sum(part["estimatedMinutes"] for part in body["splitTasks"][0]["parts"]) == 120
+    assert all(part["dayIndex"] == 3 for part in body["splitTasks"][0]["parts"])
+    assert all(part["status"] == "PENDING" for part in body["splitTasks"][0]["parts"])
+
+
+def test_plan_adjust_deduplicates_existing_next_day_task(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(plan_adjuster, "DEEPSEEK_API_KEY", "")
+
+    response = client.post(
+        "/agent/plan/adjust",
+        json={
+            "planId": 30,
+            "currentDayIndex": 1,
+            "todayTasks": [
+                {
+                    "id": 1,
+                    "title": "Practice interview answers",
+                    "description": "Complete the next round of spoken answer practice.",
+                    "estimatedMinutes": 60,
+                    "type": "practice",
+                    "deliverable": "Interview answer notes",
+                    "priority": "high",
+                }
+            ],
+            "progressReview": {
+                "impact": "minor",
+                "suggestion": "Carry unfinished work first.",
+            },
+            "unfinishedTasks": [
+                {
+                    "id": 1,
+                    "title": "Practice interview answers",
+                    "description": "Complete the next round of spoken answer practice.",
+                    "estimatedMinutes": 60,
+                    "type": "practice",
+                    "deliverable": "Interview answer notes",
+                    "priority": "high",
+                }
+            ],
+            "nextDayTasks": [
+                {
+                    "dayIndex": 2,
+                    "taskOrder": 1,
+                    "title": "Carry over: Practice interview answers",
+                    "description": "Complete the next round of spoken answer practice.",
+                    "estimatedMinutes": 60,
+                    "type": "practice",
+                    "deliverable": "Interview answer notes",
+                    "priority": "high",
+                }
+            ],
+            "responseLanguage": "en",
+        },
+    )
+
+    body = response.json()
+
+    assert response.status_code == 200
+    assert len(body["nextDayTasks"]) == 1
+    assert body["nextDayTasks"][0]["taskOrder"] == 1
 
 
 def test_plan_generate_returns_chinese_stub_response(monkeypatch: MonkeyPatch) -> None:

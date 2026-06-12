@@ -1,68 +1,17 @@
 import json
 import re
 
-import httpx
-
-from app.config import (
-    DEEPSEEK_API_BASE_URL,
-    DEEPSEEK_API_KEY,
-    PROFILE_ANALYZER_MODEL,
-    PROGRESS_REVIEWER_TIMEOUT_SECONDS,
-)
+from app.config import DEEPSEEK_API_KEY, PROFILE_ANALYZER_MODEL, PROGRESS_REVIEWER_TIMEOUT_SECONDS
 from app.schemas.progress import ProgressReviewRequest, ProgressReviewResponse
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
-from app.services.language import is_zh, prompt_for
+from app.services.deepseek_chat import chat_completion_json
+from app.services.language import is_zh
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
-
-PROGRESS_REVIEWER_PROMPT_EN = """
-You are the Progress Reviewer for AI Developer Learning Planner.
-
-Review one day of learning progress. Return JSON only, with this exact shape:
-{
-  "completedTasks": ["string"],
-  "unfinishedTasks": ["string"],
-  "blockers": ["string"],
-  "impact": "none|minor|medium|major",
-  "suggestion": "string"
-}
-
-Rules:
-- Do not include markdown fences or explanatory prose.
-- completedTasks and unfinishedTasks should be concise task titles or summaries.
-- blockers should include only concrete blockers from the user or task state.
-- impact must be exactly one of none, minor, medium, major.
-- Use major only when most tasks are unfinished or blockers prevent progress.
-- Keep suggestion actionable for tomorrow, but do not rewrite the plan.
-- Do not perform emotion analysis or complex learner assessment.
-""".strip()
-
-PROGRESS_REVIEWER_PROMPT_ZH = """
-你是 AI Developer Learning Planner 的进度复盘器。
-
-复盘某一天的学习进度。只返回 JSON，结构必须完全如下：
-{
-  "completedTasks": ["string"],
-  "unfinishedTasks": ["string"],
-  "blockers": ["string"],
-  "impact": "none|minor|medium|major",
-  "suggestion": "string"
-}
-
-规则：
-- 不要包含 markdown 代码块或解释性正文。
-- completedTasks、unfinishedTasks、blockers 和 suggestion 必须使用简体中文。
-- completedTasks 和 unfinishedTasks 应是简洁任务标题或摘要。
-- blockers 只包含用户或任务状态中的具体阻塞。
-- impact 必须是 none、minor、medium、major 之一。
-- 只有大多数任务未完成或阻塞阻止进度时才使用 major。
-- suggestion 要对明天可执行，但不要重写计划。
-- 不要做情绪分析或复杂学习者评估。
-- 建议应适用于通用学习场景，不要默认假设是软件开发任务。
-""".strip()
+from app.services.prompt_catalog import prompt_section
 
 
 class ProgressReviewerError(RuntimeError):
@@ -93,54 +42,43 @@ def review_progress(
 
 
 def review_progress_with_model(request: ProgressReviewRequest) -> ProgressReviewResponse:
-    response = httpx.post(
-        f"{DEEPSEEK_API_BASE_URL.rstrip('/')}/chat/completions",
-        headers={
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": PROFILE_ANALYZER_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": prompt_for(
-                        request.responseLanguage,
-                        PROGRESS_REVIEWER_PROMPT_ZH,
-                        PROGRESS_REVIEWER_PROMPT_EN,
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "dayIndex": request.dayIndex,
-                            "todayTasks": [
-                                item.model_dump() for item in request.todayTasks
-                            ],
-                            "userFeedback": request.userFeedback,
-                            "completedTasks": [
-                                item.model_dump() for item in request.completedTasks
-                            ],
-                            "unfinishedTasks": [
-                                item.model_dump() for item in request.unfinishedTasks
-                            ],
-                            "blockers": request.blockers,
-                            "responseLanguage": request.responseLanguage,
-                        },
-                        ensure_ascii=False,
-                    ),
-                },
-            ],
-            "temperature": 0.2,
-        },
-        timeout=PROGRESS_REVIEWER_TIMEOUT_SECONDS,
+    parsed = chat_completion_json(
+        model=PROFILE_ANALYZER_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": prompt_section(
+                    "progress_reviewer",
+                    "system_rules",
+                    request.responseLanguage,
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "dayIndex": request.dayIndex,
+                        "todayTasks": [
+                            item.model_dump() for item in request.todayTasks
+                        ],
+                        "userFeedback": request.userFeedback,
+                        "completedTasks": [
+                            item.model_dump() for item in request.completedTasks
+                        ],
+                        "unfinishedTasks": [
+                            item.model_dump() for item in request.unfinishedTasks
+                        ],
+                        "blockers": request.blockers,
+                        "responseLanguage": request.responseLanguage,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+        timeout_seconds=PROGRESS_REVIEWER_TIMEOUT_SECONDS,
+        temperature=0.2,
+        max_tokens=1000,
     )
-    response.raise_for_status()
-
-    body = response.json()
-    content = body["choices"][0]["message"]["content"]
-    parsed = _load_json_object(content)
     normalized = _normalize_model_output(parsed, request)
     return ProgressReviewResponse.model_validate(normalized)
 
@@ -148,11 +86,12 @@ def review_progress_with_model(request: ProgressReviewRequest) -> ProgressReview
 def review_progress_with_mock(request: ProgressReviewRequest) -> ProgressReviewResponse:
     completed = [task.title for task in request.completedTasks]
     unfinished = [task.title for task in request.unfinishedTasks]
+    blockers = _clean_blockers(request.blockers)
     impact = _impact_for_counts(
         total_count=len(request.todayTasks),
         completed_count=len(completed),
         unfinished_count=len(unfinished),
-        blocker_count=len(request.blockers),
+        blocker_count=len(blockers),
     )
 
     if impact == "none":
@@ -192,7 +131,7 @@ def review_progress_with_mock(request: ProgressReviewRequest) -> ProgressReviewR
     return ProgressReviewResponse(
         completedTasks=completed,
         unfinishedTasks=unfinished,
-        blockers=request.blockers,
+        blockers=blockers,
         impact=impact,
         suggestion=suggestion,
     )
@@ -218,20 +157,29 @@ def _normalize_model_output(
     request: ProgressReviewRequest,
 ) -> dict[str, object]:
     nested = _find_review_object(parsed)
+    fallback = review_progress_with_mock(request)
+    completed_tasks = _string_list(nested, "completedTasks", "completed_tasks")
+    unfinished_tasks = _string_list(
+        nested,
+        "unfinishedTasks",
+        "unfinished_tasks",
+        "incompleteTasks",
+        "incomplete_tasks",
+    )
+    blockers = _clean_blockers(
+        _string_list(nested, "blockers", "blockingIssues", "issues")
+        or request.blockers
+    )
+    impact_value = _first_string(nested, "impact", "risk", "level")
     return {
-        "completedTasks": _string_list(nested, "completedTasks", "completed_tasks"),
-        "unfinishedTasks": _string_list(
-            nested,
-            "unfinishedTasks",
-            "unfinished_tasks",
-            "incompleteTasks",
-            "incomplete_tasks",
-        ),
-        "blockers": _string_list(nested, "blockers", "blockingIssues", "issues")
-        or request.blockers,
-        "impact": _normalize_impact(_first_string(nested, "impact", "risk", "level")),
+        "completedTasks": completed_tasks or [task.title for task in request.completedTasks],
+        "unfinishedTasks": unfinished_tasks or [task.title for task in request.unfinishedTasks],
+        "blockers": blockers,
+        "impact": _normalize_impact(impact_value)
+        if impact_value.strip()
+        else fallback.impact,
         "suggestion": _first_string(nested, "suggestion", "advice", "nextStep")
-        or review_progress_with_mock(request).suggestion,
+        or fallback.suggestion,
     }
 
 
@@ -273,13 +221,28 @@ def _first_string(values: dict[object, object], *keys: str) -> str:
 
 def _normalize_impact(value: str) -> str:
     normalized = value.strip().lower()
-    if normalized in {"none", "no", "zero", "0"}:
+    if normalized in {"none", "no", "zero", "0", "无"}:
         return "none"
-    if normalized in {"minor", "low", "small", "slight"}:
+    if normalized in {"minor", "low", "small", "slight", "轻微"}:
         return "minor"
-    if normalized in {"major", "high", "severe", "blocked", "critical"}:
+    if normalized in {"medium", "moderate", "中等"}:
+        return "medium"
+    if normalized in {"major", "high", "severe", "blocked", "critical", "严重"}:
         return "major"
     return "medium"
+
+
+def _clean_blockers(values: list[str]) -> list[str]:
+    empty_markers = {"none", "no blocker", "no blockers", "无", "没有", "无阻塞"}
+    cleaned: list[str] = []
+    for value in values:
+        normalized = value.strip()
+        if not normalized:
+            continue
+        if normalized.lower() in empty_markers or normalized in empty_markers:
+            continue
+        cleaned.append(normalized)
+    return cleaned
 
 
 def _impact_for_counts(

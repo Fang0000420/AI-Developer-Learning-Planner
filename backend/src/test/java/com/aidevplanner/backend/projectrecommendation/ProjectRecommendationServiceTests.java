@@ -96,15 +96,15 @@ class ProjectRecommendationServiceTests {
 
         assertThat(response.runId()).isEqualTo(70L);
         assertThat(response.goalId()).isEqualTo(10L);
-        assertThat(response.recommendedProject()).isEqualTo("AI Developer Learning Planner");
+        assertThat(response.recommendedProject()).isEqualTo("Business English speaking track");
         assertThat(response.durationDays()).isEqualTo(30);
         assertThat(response.dailyTimeHours()).isEqualByComparingTo("2.0");
 
         ArgumentCaptor<ProjectRecommendRequest> requestCaptor =
                 ArgumentCaptor.forClass(ProjectRecommendRequest.class);
         verify(projectRecommenderClient).recommend(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().mainGoal()).isEqualTo("Build AI agent apps");
-        assertThat(requestCaptor.getValue().currentSkills()).containsExactly("Java", "Spring Boot");
+        assertThat(requestCaptor.getValue().mainGoal()).isEqualTo("Improve business English speaking");
+        assertThat(requestCaptor.getValue().currentSkills()).containsExactly("Reading comprehension", "Basic vocabulary");
         assertThat(requestCaptor.getValue().subGoals()).extracting(SubGoalResponse::title)
                 .containsExactly("Design agent workflow");
         assertThat(requestCaptor.getValue().skillGaps()).extracting(SkillGapResponse::skill)
@@ -164,8 +164,8 @@ class ProjectRecommendationServiceTests {
 
         assertThat(response.runId()).isEqualTo(80L);
         assertThat(response.goalId()).isEqualTo(10L);
-        assertThat(response.recommendedProject()).isEqualTo("AI Developer Learning Planner");
-        assertThat(response.coreTechStack()).containsExactly("Spring Boot", "FastAPI", "Next.js");
+        assertThat(response.recommendedProject()).isEqualTo("Business English speaking track");
+        assertThat(response.coreTechStack()).containsExactly("Listening input", "Role-play", "Speaking feedback");
     }
 
     private AgentRun goalDecompositionRun(Goal goal) {
@@ -173,7 +173,7 @@ class ProjectRecommendationServiceTests {
                 goal.getUser(),
                 goal,
                 "Goal Decomposer",
-                "{\"mainGoal\":\"Build AI agent apps\"}",
+                "{\"mainGoal\":\"Improve business English speaking\"}",
                 """
                         {
                           "subGoals": [
@@ -196,7 +196,7 @@ class ProjectRecommendationServiceTests {
                 goal.getUser(),
                 goal,
                 "Skill Gap Analyzer",
-                "{\"mainGoal\":\"Build AI agent apps\"}",
+                "{\"mainGoal\":\"Improve business English speaking\"}",
                 """
                         {
                           "skillGaps": [
@@ -221,16 +221,16 @@ class ProjectRecommendationServiceTests {
                 goal.getUser(),
                 goal,
                 "Project Recommender",
-                "{\"mainGoal\":\"Build AI agent apps\"}",
+                "{\"mainGoal\":\"Improve business English speaking\"}",
                 """
                         {
-                          "recommendedProject": "AI Developer Learning Planner",
-                          "reason": "Covers full-stack agent workflow practice.",
-                          "difficulty": "medium-high",
+                          "recommendedProject": "Business English speaking track",
+                          "reason": "Uses a focused speaking track with repeated practice.",
+                          "difficulty": "medium",
                           "durationDays": 30,
                           "dailyTimeHours": 2,
-                          "coreTechStack": ["Spring Boot", "FastAPI", "Next.js"],
-                          "finalDeliverables": ["Complete GitHub repository", "Runnable full-stack demo"]
+                          "coreTechStack": ["Listening input", "Role-play", "Speaking feedback"],
+                          "finalDeliverables": ["Speaking recordings", "Phrase bank"]
                         }
                         """,
                 AgentRunStatus.SUCCESS,
@@ -244,12 +244,12 @@ class ProjectRecommendationServiceTests {
 
     private Goal goal() {
         User user = new User("demo-user", "demo@example.com", "not-used");
-        user.setBackground("Backend developer with Java and PostgreSQL experience.");
+        user.setBackground("Customer support specialist with strong reading habits.");
         user.setDailyAvailableHours(new BigDecimal("2.0"));
         ReflectionTestUtils.setField(user, "id", 1L);
 
-        Goal goal = new Goal(user, "Build AI agent apps", 30);
-        goal.setDescription("Learn production AI agent workflows.");
+        Goal goal = new Goal(user, "Improve business English speaking", 30);
+        goal.setDescription("Build stronger spoken communication for work scenarios.");
         ReflectionTestUtils.setField(goal, "id", 10L);
         return goal;
     }
@@ -258,22 +258,22 @@ class ProjectRecommendationServiceTests {
         return new SkillProfile(
                 goal.getUser(),
                 goal,
-                List.of("Java", "Spring Boot"),
-                List.of("Backend foundation"),
-                List.of("LLM evaluation"),
-                "Build an MVP AI agent workflow."
+                List.of("Reading comprehension", "Basic vocabulary"),
+                List.of("Regular learning habit"),
+                List.of("Speaking fluency"),
+                "Build a focused speaking routine with weekly review."
         );
     }
 
     private ProjectRecommendResponse projectRecommendResponse() {
         return new ProjectRecommendResponse(
-                "AI Developer Learning Planner",
-                "Covers full-stack agent workflow practice.",
-                "medium-high",
+                "Business English speaking track",
+                "Uses a focused speaking track with repeated practice.",
+                "medium",
                 30,
                 BigDecimal.valueOf(2),
-                List.of("Spring Boot", "FastAPI", "Next.js"),
-                List.of("Complete GitHub repository", "Runnable full-stack demo")
+                List.of("Listening input", "Role-play", "Speaking feedback"),
+                List.of("Speaking recordings", "Phrase bank")
         );
     }
 }

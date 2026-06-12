@@ -37,8 +37,8 @@ class ProjectRecommendationControllerTests {
         mockMvc.perform(get("/api/goals/{goalId}/project-recommendation", 10L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.goalId").value(10))
-                .andExpect(jsonPath("$.recommendedProject").value("AI Developer Learning Planner"))
-                .andExpect(jsonPath("$.coreTechStack[0]").value("Spring Boot"));
+                .andExpect(jsonPath("$.recommendedProject").value("Business English speaking track"))
+                .andExpect(jsonPath("$.coreTechStack[0]").value("Listening input"));
 
         verify(projectRecommendationService).getLatestProjectRecommendation(10L);
     }
@@ -59,7 +59,7 @@ class ProjectRecommendationControllerTests {
 
         mockMvc.perform(post("/api/goals/{goalId}/project-recommendation/recommend", 10L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.finalDeliverables[0]").value("Complete GitHub repository"));
+                .andExpect(jsonPath("$.finalDeliverables[0]").value("Speaking recordings"));
 
         verify(projectRecommendationService).recommendProject(10L);
     }
@@ -89,13 +89,13 @@ class ProjectRecommendationControllerTests {
         return new ProjectRecommendationResponse(
                 70L,
                 10L,
-                "AI Developer Learning Planner",
-                "Covers full-stack agent workflow practice.",
-                "medium-high",
+                "Business English speaking track",
+                "Uses a focused speaking track with repeated practice.",
+                "medium",
                 21,
                 BigDecimal.valueOf(2),
-                List.of("Spring Boot", "FastAPI", "Next.js"),
-                List.of("Complete GitHub repository", "Runnable full-stack demo"),
+                List.of("Listening input", "Role-play", "Speaking feedback"),
+                List.of("Speaking recordings", "Phrase bank"),
                 TIMESTAMP
         );
     }

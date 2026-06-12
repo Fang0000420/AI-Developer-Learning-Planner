@@ -241,7 +241,7 @@ public class LearningPlanService {
                 profile == null ? List.of() : copyList(profile.getWeaknesses()),
                 latestSubGoals(goal.getId()),
                 latestSkillGaps(goal.getId()),
-                firstPresent(projectRecommendation.recommendedProject(), "AI Developer Learning Planner"),
+                firstPresent(projectRecommendation.recommendedProject(), fallbackTrackTitle(goal)),
                 projectRecommendation.reason(),
                 projectRecommendation.difficulty(),
                 cleanList(projectRecommendation.coreTechStack()),
@@ -272,9 +272,9 @@ public class LearningPlanService {
         try {
             ProjectRecommendResponse response = objectMapper.readValue(outputJson, ProjectRecommendResponse.class);
             return new ProjectRecommendResponse(
-                    firstPresent(response.recommendedProject(), "AI Developer Learning Planner"),
-                    firstPresent(response.reason(), "Build the planner MVP as the learning project."),
-                    firstPresent(response.difficulty(), "medium-high"),
+                    firstPresent(response.recommendedProject(), fallbackTrackTitle(null)),
+                    firstPresent(response.reason(), "Use a focused learning track with visible progress."),
+                    firstPresent(response.difficulty(), "medium"),
                     response.durationDays(),
                     response.dailyTimeHours(),
                     cleanList(response.coreTechStack()),
@@ -288,15 +288,19 @@ public class LearningPlanService {
     private ProjectRecommendResponse fallbackProjectRecommendation(Goal goal) {
         boolean zh = goal != null && "zh".equalsIgnoreCase(goal.getResponseLanguage().name());
         return new ProjectRecommendResponse(
-                "AI Developer Learning Planner",
-                zh ? "将学习规划器 MVP 作为本阶段学习项目。" : "Build the planner MVP as the learning project.",
-                zh ? "中高" : "medium-high",
+                fallbackTrackTitle(goal),
+                zh
+                        ? "用一条聚焦的学习主线把练习、应用和成果验证串起来。"
+                        : "Use a focused learning track to connect practice, application, and visible progress.",
+                zh ? "中等" : "medium",
                 goal == null ? 21 : goal.getDurationDays(),
                 goal == null ? BigDecimal.valueOf(2) : goal.getUser().getDailyAvailableHours(),
-                List.of("Spring Boot", "FastAPI", "DeepSeek", "PostgreSQL", "Next.js"),
                 zh
-                        ? List.of("可运行的全栈演示", "Agent 调用记录", "学习计划总览")
-                        : List.of("Runnable full-stack demo", "Agent run records", "Learning plan overview")
+                        ? List.of("关键基础", "稳定练习", "场景应用", "反馈复盘")
+                        : List.of("Core foundation", "Consistent practice", "Applied scenarios", "Feedback review"),
+                zh
+                        ? List.of("阶段性成果记录", "可展示的练习输出", "学习计划总览")
+                        : List.of("Stage progress notes", "Visible practice outputs", "Learning plan overview")
         );
     }
 
@@ -369,8 +373,8 @@ public class LearningPlanService {
                 firstPresent(
                         response.planTitle(),
                         isZh(request)
-                                ? durationDays + " 天 " + request.recommendedProject() + " 构建计划"
-                                : durationDays + "-Day " + request.recommendedProject() + " Build Plan"
+                                ? durationDays + " 天 " + firstPresent(request.recommendedProject(), request.mainGoal()) + " 学习计划"
+                                : durationDays + "-Day " + firstPresent(request.recommendedProject(), request.mainGoal()) + " Learning Plan"
                 ),
                 durationDays,
                 days
@@ -397,7 +401,7 @@ public class LearningPlanService {
                 dayIndex,
                 firstPresent(
                         day.theme(),
-                        isZh(request) ? "第 " + dayIndex + " 天实现" : "Day " + dayIndex + " implementation"
+                        isZh(request) ? "第 " + dayIndex + " 天学习安排" : "Day " + dayIndex + " learning plan"
                 ),
                 tasks
         );
@@ -410,19 +414,19 @@ public class LearningPlanService {
                 firstPresent(
                         task.description(),
                         zh
-                                ? "完成计划中的学习和实现工作。"
-                                : "Complete the planned learning and implementation work."
+                                ? "完成计划中的学习、练习或应用任务。"
+                                : "Complete the planned learning, practice, or application work."
                 ),
                 positiveOrDefault(task.estimatedMinutes(), 45),
-                firstPresent(task.type(), "build"),
-                firstPresent(task.deliverable(), zh ? "可工作的阶段产物" : "Working progress artifact"),
+                firstPresent(task.type(), "practice"),
+                firstPresent(task.deliverable(), zh ? "阶段性学习产物" : "Progress artifact"),
                 normalizePriority(task.priority())
         );
     }
 
     private PlanDayAgentResponse fallbackDay(int dayIndex, PlanGenerateAgentRequest request) {
         boolean zh = isZh(request);
-        String focus = zh ? "规划器 MVP 能力" : "planner MVP capability";
+        String focus = zh ? "学习重点" : "learning focus";
         if (request.subGoals() != null && !request.subGoals().isEmpty()) {
             focus = request.subGoals().get((dayIndex - 1) % request.subGoals().size()).title();
         } else if (request.skillGaps() != null && !request.skillGaps().isEmpty()) {
@@ -431,33 +435,33 @@ public class LearningPlanService {
 
         return new PlanDayAgentResponse(
                 dayIndex,
-                zh ? "构建并验证 " + focus : "Build and verify " + focus,
+                zh ? "围绕 " + focus + " 学习与验证" : "Learn and validate " + focus,
                 List.of(
                         new PlanTaskAgentResponse(
-                                zh ? "明确第 " + dayIndex + " 天范围" : "Clarify Day " + dayIndex + " scope",
+                                zh ? "梳理第 " + dayIndex + " 天学习重点" : "Map Day " + dayIndex + " learning focus",
                                 zh
-                                        ? "复盘相关目标上下文，并确定最小可用切片。"
-                                        : "Review the relevant goal context and decide the smallest useful slice.",
+                                        ? "复盘相关目标上下文，并确定今天最关键的学习任务。"
+                                        : "Review the relevant goal context and decide the most important learning task.",
                                 30,
-                                "learning",
-                                zh ? "第 " + dayIndex + " 天范围说明" : "Day " + dayIndex + " scope notes",
+                                "learn",
+                                zh ? "第 " + dayIndex + " 天学习重点说明" : "Day " + dayIndex + " focus notes",
                                 "high"
                         ),
                         new PlanTaskAgentResponse(
-                                zh ? "实现 " + focus : "Implement " + focus,
+                                zh ? "练习并应用 " + focus : "Practice and apply " + focus,
                                 zh
-                                        ? "构建计划切片，并把它接入 MVP 工作流。"
-                                        : "Build the planned slice and connect it to the MVP workflow.",
+                                        ? "完成一个可验证的小练习或实际应用任务。"
+                                        : "Complete a small but verifiable exercise or applied task.",
                                 75,
-                                "build",
-                                zh ? "可运行的 " + focus + " 切片" : "Working " + focus + " slice",
+                                "practice",
+                                zh ? focus + " 阶段成果" : focus + " progress artifact",
                                 "high"
                         ),
                         new PlanTaskAgentResponse(
                                 zh ? "验证第 " + dayIndex + " 天进展" : "Verify Day " + dayIndex + " progress",
                                 zh
-                                        ? "运行聚焦检查，并记录下一步要继续的内容。"
-                                        : "Run focused checks and record what should continue next.",
+                                        ? "回看今天结果，并记录下一步要继续的内容。"
+                                        : "Review today's results and record what should continue next.",
                                 15,
                                 "review",
                                 zh
@@ -610,6 +614,15 @@ public class LearningPlanService {
             }
         }
         return "";
+    }
+
+    private String fallbackTrackTitle(Goal goal) {
+        boolean zh = goal != null && "zh".equalsIgnoreCase(goal.getResponseLanguage().name());
+        String title = goal == null ? "" : firstPresent(goal.getTitle());
+        if (!title.isBlank()) {
+            return zh ? title + " 学习主线" : title + " learning track";
+        }
+        return zh ? "通用学习主线" : "General learning track";
     }
 
     private boolean isZh(PlanGenerateAgentRequest request) {

@@ -84,6 +84,20 @@ def test_agent_request_schemas_accept_minimal_valid_payloads() -> None:
         nextDayTasks=[],
     )
 
+    alias_request = PlanGenerateRequest(
+        mainGoal="Improve business English speaking",
+        recommendedTrack="Business English speaking track",
+        trackReason="Fits the learner's real work context.",
+        focusAreas=["Listening input", "Role-play"],
+        expectedOutcomes=["Speaking recordings"],
+        durationDays=14,
+        dailyAvailableHours=2,
+    )
+    assert alias_request.recommendedProject == "Business English speaking track"
+    assert alias_request.projectReason == "Fits the learner's real work context."
+    assert alias_request.coreTechStack == ["Listening input", "Role-play"]
+    assert alias_request.finalDeliverables == ["Speaking recordings"]
+
 
 def test_agent_response_schemas_reject_invalid_contracts() -> None:
     assert ProfileAnalyzeResponse(
@@ -155,3 +169,41 @@ def test_schema_normalizers_keep_ci_contracts_stable() -> None:
     assert urgent_task.priority == "high"
     assert progress_request.userFeedback == "Finished one speaking round."
     assert progress_request.blockers == ["Need example phrases"]
+
+
+def test_plan_response_requires_unique_contiguous_day_indexes() -> None:
+    with pytest.raises(ValidationError):
+        PlanGenerateResponse(
+            planTitle="Invalid plan",
+            durationDays=2,
+            days=[
+                {
+                    "dayIndex": 1,
+                    "theme": "Day 1",
+                    "tasks": [
+                        {
+                            "title": "Task 1",
+                            "description": "Description 1",
+                            "estimatedMinutes": 30,
+                            "type": "practice",
+                            "deliverable": "Notes 1",
+                            "priority": "medium",
+                        }
+                    ],
+                },
+                {
+                    "dayIndex": 3,
+                    "theme": "Day 3",
+                    "tasks": [
+                        {
+                            "title": "Task 3",
+                            "description": "Description 3",
+                            "estimatedMinutes": 30,
+                            "type": "practice",
+                            "deliverable": "Notes 3",
+                            "priority": "medium",
+                        }
+                    ],
+                },
+            ],
+        )

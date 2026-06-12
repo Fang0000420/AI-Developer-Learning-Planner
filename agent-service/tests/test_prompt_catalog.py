@@ -1,7 +1,7 @@
 from pytest import MonkeyPatch
 
 from app.services import deepseek_chat
-from app.services.prompt_catalog import PROMPT_CATALOG
+from app.services.prompt_catalog import PROMPT_CATALOG, prompt_section
 
 
 def test_prompt_catalog_keeps_zh_en_keys_in_sync() -> None:
@@ -45,3 +45,24 @@ def test_chat_completion_json_requests_json_output(monkeypatch: MonkeyPatch) -> 
     assert captured["json"]["response_format"] == {"type": "json_object"}
     assert captured["json"]["model"] == "deepseek-v4-flash"
     assert captured["json"]["stream"] is False
+
+
+def test_prompt_catalog_contains_all_generalized_agents() -> None:
+    for agent in {
+        "profile_analyzer",
+        "goal_decomposer",
+        "progress_reviewer",
+        "plan_adjuster",
+        "plan_generator",
+        "project_recommender",
+    }:
+        assert agent in PROMPT_CATALOG
+        assert "system_rules" in PROMPT_CATALOG[agent]
+
+
+def test_prompt_section_returns_localized_prompt() -> None:
+    zh_prompt = prompt_section("profile_analyzer", "system_rules", "zh")
+    en_prompt = prompt_section("profile_analyzer", "system_rules", "en")
+
+    assert "能力画像分析器" in zh_prompt
+    assert "Profile Analyzer" in en_prompt

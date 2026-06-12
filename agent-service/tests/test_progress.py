@@ -103,9 +103,61 @@ def test_progress_model_output_is_normalized() -> None:
 
     assert response.completedTasks == ["Create progress table"]
     assert response.unfinishedTasks == []
-    assert response.blockers == ["No blocker"]
+    assert response.blockers == []
     assert response.impact == "minor"
     assert response.suggestion == "Continue with the UI tomorrow."
+
+
+def test_progress_model_output_supports_chinese_impact_aliases() -> None:
+    request = ProgressReviewRequest(
+        dayIndex=1,
+        todayTasks=[
+            {
+                "id": 1,
+                "title": "Practice speaking",
+            }
+        ],
+        userFeedback="需要更多练习。",
+        responseLanguage="zh",
+    )
+
+    normalized = progress_reviewer._normalize_model_output(
+        {
+            "review": {
+                "completedTasks": [],
+                "unfinishedTasks": ["Practice speaking"],
+                "blockers": ["无"],
+                "impact": "轻微",
+            }
+        },
+        request,
+    )
+
+    assert normalized["blockers"] == []
+    assert normalized["impact"] == "minor"
+
+
+def test_progress_model_output_falls_back_to_request_and_mock_defaults() -> None:
+    request = ProgressReviewRequest(
+        dayIndex=1,
+        todayTasks=[
+            {
+                "id": 1,
+                "title": "Practice speaking",
+            }
+        ],
+        userFeedback="Finished one round.",
+        completedTasks=[{"id": 1, "title": "Practice speaking"}],
+        blockers=["none"],
+        responseLanguage="en",
+    )
+
+    normalized = progress_reviewer._normalize_model_output({"review": {}}, request)
+
+    assert normalized["completedTasks"] == ["Practice speaking"]
+    assert normalized["blockers"] == []
+    assert normalized["impact"] == "none"
+    assert normalized["suggestion"]
 
 
 def test_progress_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) -> None:

@@ -1,73 +1,17 @@
 import json
 import re
 
-import httpx
-
-from app.config import (
-    DEEPSEEK_API_BASE_URL,
-    DEEPSEEK_API_KEY,
-    GOAL_DECOMPOSER_TIMEOUT_SECONDS,
-    PROFILE_ANALYZER_MODEL,
-)
+from app.config import DEEPSEEK_API_KEY, GOAL_DECOMPOSER_TIMEOUT_SECONDS, PROFILE_ANALYZER_MODEL
 from app.schemas.goal import GoalDecomposeRequest, GoalDecomposeResponse, SubGoal
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
-from app.services.language import is_zh, prompt_for
+from app.services.deepseek_chat import chat_completion_json
+from app.services.language import is_zh
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
-
-GOAL_DECOMPOSER_PROMPT_EN = """
-You are the Goal Decomposer for AI Developer Learning Planner.
-
-Decompose the learner's main goal into practical sub-goals for a structured
-learning plan. Return JSON only, with this exact shape:
-{
-  "subGoals": [
-    {
-      "title": "string",
-      "description": "string",
-      "priority": "high | medium | low"
-    }
-  ]
-}
-
-Rules:
-- Do not include markdown fences or explanatory prose.
-- Generate 5 to 8 sub-goals.
-- Each title must be concrete and action-oriented.
-- Each description must explain what the learner should be able to do.
-- priority must be exactly one of: high, medium, low.
-- Use the optional background only to make the decomposition more realistic.
-- Prefer domain-neutral learning language unless the goal is clearly technical.
-""".strip()
-
-GOAL_DECOMPOSER_PROMPT_ZH = """
-你是 AI Developer Learning Planner 的目标拆解器。
-
-把学习者的主目标拆解成适合结构化学习计划的实践子目标。只返回 JSON，
-结构必须完全如下：
-{
-  "subGoals": [
-    {
-      "title": "string",
-      "description": "string",
-      "priority": "high | medium | low"
-    }
-  ]
-}
-
-规则：
-- 不要包含 markdown 代码块或解释性正文。
-- 所有 title 和 description 必须使用简体中文。
-- 生成 5 到 8 个子目标。
-- 每个 title 必须具体、行动导向。
-- 每个 description 必须说明学习者最终应能做到什么。
-- priority 必须是 high、medium、low 之一。
-- 仅用可选背景让拆解更贴近真实情况。
-- 除非目标明确属于技术领域，否则优先使用领域中立的学习表达。
-""".strip()
+from app.services.prompt_catalog import prompt_section
 
 
 class GoalDecomposerError(RuntimeError):
@@ -96,44 +40,33 @@ def decompose_goal(request: GoalDecomposeRequest) -> AgentExecutionResult[GoalDe
 
 
 def decompose_goal_with_model(request: GoalDecomposeRequest) -> GoalDecomposeResponse:
-    response = httpx.post(
-        f"{DEEPSEEK_API_BASE_URL.rstrip('/')}/chat/completions",
-        headers={
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": PROFILE_ANALYZER_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": prompt_for(
-                        request.responseLanguage,
-                        GOAL_DECOMPOSER_PROMPT_ZH,
-                        GOAL_DECOMPOSER_PROMPT_EN,
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "mainGoal": request.mainGoal,
-                            "background": request.background,
-                            "responseLanguage": request.responseLanguage,
-                        },
-                        ensure_ascii=False,
-                    ),
-                },
-            ],
-            "temperature": 0.2,
-        },
-        timeout=GOAL_DECOMPOSER_TIMEOUT_SECONDS,
+    parsed = chat_completion_json(
+        model=PROFILE_ANALYZER_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": prompt_section(
+                    "goal_decomposer",
+                    "system_rules",
+                    request.responseLanguage,
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "mainGoal": request.mainGoal,
+                        "background": request.background,
+                        "responseLanguage": request.responseLanguage,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+        timeout_seconds=GOAL_DECOMPOSER_TIMEOUT_SECONDS,
+        temperature=0.2,
+        max_tokens=1400,
     )
-    response.raise_for_status()
-
-    body = response.json()
-    content = body["choices"][0]["message"]["content"]
-    parsed = _load_json_object(content)
     normalized = _normalize_model_output(parsed, request)
     return GoalDecomposeResponse.model_validate(normalized)
 
@@ -267,7 +200,7 @@ def _normalize_model_output(
         if not _has_title(normalized, fallback["title"]):
             normalized.append(fallback)
 
-    return {"subGoals": normalized}
+    return {"subGoals": normalized[:8]}
 
 
 def _find_sub_goal_items(parsed: dict[str, object]) -> object:
@@ -309,7 +242,11 @@ def _normalize_sub_goal_item(
             return None
         return {
             "title": title,
-            "description": f"Make measurable progress toward the goal: {request.mainGoal}.",
+            "description": (
+                f"围绕目标「{request.mainGoal}」形成可衡量的阶段性进展。"
+                if is_zh(request.responseLanguage)
+                else f"Make measurable progress toward the goal: {request.mainGoal}."
+            ),
             "priority": "medium",
         }
 
@@ -353,7 +290,11 @@ def _normalize_sub_goal_item(
     )
     if not description:
         description = _first_different_string(string_values, title) or (
-            f"Build enough practical capability to support the goal: {request.mainGoal}."
+            (
+                f"围绕目标「{request.mainGoal}」建立足够的实践能力。"
+                if is_zh(request.responseLanguage)
+                else f"Build enough practical capability to support the goal: {request.mainGoal}."
+            )
         )
 
     priority = _normalize_priority(

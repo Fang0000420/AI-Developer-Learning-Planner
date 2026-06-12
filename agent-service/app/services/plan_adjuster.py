@@ -1,14 +1,7 @@
 import json
 import re
 
-import httpx
-
-from app.config import (
-    DEEPSEEK_API_BASE_URL,
-    DEEPSEEK_API_KEY,
-    PLAN_ADJUSTER_TIMEOUT_SECONDS,
-    PROFILE_ANALYZER_MODEL,
-)
+from app.config import DEEPSEEK_API_KEY, PLAN_ADJUSTER_TIMEOUT_SECONDS, PROFILE_ANALYZER_MODEL
 from app.schemas.plan import (
     PlanAdjustRequest,
     PlanAdjustResponse,
@@ -17,129 +10,14 @@ from app.schemas.plan import (
     PlanSplitTask,
 )
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
-from app.services.language import is_zh, prompt_for
+from app.services.deepseek_chat import chat_completion_json
+from app.services.language import is_zh
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
-
-PLAN_ADJUSTER_PROMPT_EN = """
-You are the Plan Adjuster for AI Developer Learning Planner.
-
-Adjust only the next day of an existing learning plan. Return JSON only, with this exact shape:
-{
-  "nextDayTasks": [
-    {
-      "id": 123,
-      "dayIndex": 2,
-      "taskOrder": 1,
-      "title": "string",
-      "description": "string",
-      "estimatedMinutes": 45,
-      "type": "build",
-      "deliverable": "string",
-      "priority": "high|medium|low",
-      "status": "PENDING"
-    }
-  ],
-  "movedTasks": [
-    {
-      "taskId": 123,
-      "title": "string",
-      "fromDayIndex": 1,
-      "toDayIndex": 2,
-      "reason": "string"
-    }
-  ],
-  "splitTasks": [
-    {
-      "sourceTaskId": 123,
-      "sourceTitle": "string",
-      "parts": [
-        {
-          "title": "string",
-          "description": "string",
-          "estimatedMinutes": 45,
-          "type": "build",
-          "deliverable": "string",
-          "priority": "high"
-        }
-      ],
-      "reason": "string"
-    }
-  ],
-  "reason": "string"
-}
-
-Rules:
-- Do not include markdown fences or explanatory prose.
-- Do not repeat completed tasks.
-- Prioritize unfinished tasks before adding new scope.
-- Split tasks that are too large for a focused next-day session.
-- Adjust only the next day; do not rewrite the whole plan.
-- Preserve existing next-day tasks unless the unfinished work needs the first slot.
-- Keep the wording suitable for general learning tasks, not only software delivery.
-""".strip()
-
-PLAN_ADJUSTER_PROMPT_ZH = """
-你是 AI Developer Learning Planner 的计划调整器。
-
-只调整现有学习计划的下一天。只返回 JSON，结构必须完全如下：
-{
-  "nextDayTasks": [
-    {
-      "id": 123,
-      "dayIndex": 2,
-      "taskOrder": 1,
-      "title": "string",
-      "description": "string",
-      "estimatedMinutes": 45,
-      "type": "build",
-      "deliverable": "string",
-      "priority": "high|medium|low",
-      "status": "PENDING"
-    }
-  ],
-  "movedTasks": [
-    {
-      "taskId": 123,
-      "title": "string",
-      "fromDayIndex": 1,
-      "toDayIndex": 2,
-      "reason": "string"
-    }
-  ],
-  "splitTasks": [
-    {
-      "sourceTaskId": 123,
-      "sourceTitle": "string",
-      "parts": [
-        {
-          "title": "string",
-          "description": "string",
-          "estimatedMinutes": 45,
-          "type": "build",
-          "deliverable": "string",
-          "priority": "high"
-        }
-      ],
-      "reason": "string"
-    }
-  ],
-  "reason": "string"
-}
-
-规则：
-- 不要包含 markdown 代码块或解释性正文。
-- title、description、deliverable、reason 必须使用简体中文。
-- 不要重复已完成任务。
-- 添加新范围前，优先处理未完成任务。
-- 对于下一天难以聚焦完成的大任务，应拆分成小任务。
-- 只调整下一天，不要重写整个计划。
-- 除非未完成任务需要排到首位，否则保留已有下一天任务。
-- 表达要适用于通用学习任务，不要默认是软件开发交付。
-""".strip()
+from app.services.prompt_catalog import prompt_section
 
 
 class PlanAdjusterError(RuntimeError):
@@ -170,37 +48,26 @@ def adjust_plan(
 
 
 def adjust_plan_with_model(request: PlanAdjustRequest) -> PlanAdjustResponse:
-    response = httpx.post(
-        f"{DEEPSEEK_API_BASE_URL.rstrip('/')}/chat/completions",
-        headers={
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": PROFILE_ANALYZER_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": prompt_for(
-                        request.responseLanguage,
-                        PLAN_ADJUSTER_PROMPT_ZH,
-                        PLAN_ADJUSTER_PROMPT_EN,
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(request.model_dump(), ensure_ascii=False),
-                },
-            ],
-            "temperature": 0.2,
-        },
-        timeout=PLAN_ADJUSTER_TIMEOUT_SECONDS,
+    parsed = chat_completion_json(
+        model=PROFILE_ANALYZER_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": prompt_section(
+                    "plan_adjuster",
+                    "system_rules",
+                    request.responseLanguage,
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(request.model_dump(), ensure_ascii=False),
+            },
+        ],
+        timeout_seconds=PLAN_ADJUSTER_TIMEOUT_SECONDS,
+        temperature=0.2,
+        max_tokens=1600,
     )
-    response.raise_for_status()
-
-    body = response.json()
-    content = body["choices"][0]["message"]["content"]
-    parsed = _load_json_object(content)
     normalized = _normalize_model_output(parsed, request)
     return PlanAdjustResponse.model_validate(normalized)
 
@@ -292,7 +159,7 @@ def adjust_plan_with_mock(request: PlanAdjustRequest) -> PlanAdjustResponse:
 
     reason = _reason_for(request, carried_tasks)
     return PlanAdjustResponse(
-        nextDayTasks=[*carried_tasks, *next_day_tasks],
+        nextDayTasks=_dedupe_tasks([*carried_tasks, *next_day_tasks], request),
         movedTasks=moved_tasks,
         splitTasks=split_tasks,
         reason=reason,
@@ -320,9 +187,13 @@ def _normalize_model_output(
 ) -> dict[str, object]:
     nested = _find_adjustment_object(parsed)
     fallback = adjust_plan_with_mock(request)
-    return {
-        "nextDayTasks": _task_list(nested, request, "nextDayTasks", "next_day_tasks")
+    next_day_tasks = _dedupe_tasks(
+        _task_list(nested, request, "nextDayTasks", "next_day_tasks")
         or [task.model_dump() for task in fallback.nextDayTasks],
+        request,
+    )
+    return {
+        "nextDayTasks": next_day_tasks,
         "movedTasks": _moved_list(nested, request, "movedTasks", "moved_tasks")
         or [task.model_dump() for task in fallback.movedTasks],
         "splitTasks": _split_list(nested, request, "splitTasks", "split_tasks")
@@ -380,7 +251,7 @@ def _moved_list(
                             ),
                             "fromDayIndex": _first_int(item, "fromDayIndex")
                             or request.currentDayIndex,
-                            "toDayIndex": _first_int(item, "toDayIndex") or target_day,
+                            "toDayIndex": target_day,
                             "reason": _first_string(item, "reason")
                             or (
                                 "该任务尚未完成。"
@@ -446,7 +317,7 @@ def _normalize_task(
     target_day = _target_day_index(request)
     return {
         "id": _first_int(item, "id", "taskId"),
-        "dayIndex": _first_int(item, "dayIndex", "day") or target_day,
+        "dayIndex": target_day,
         "taskOrder": _first_int(item, "taskOrder", "order"),
         "title": _first_string(item, "title", "name", "task")
         or ("调整后的学习任务" if is_zh(request.responseLanguage) else "Adjusted learning task"),
@@ -466,7 +337,7 @@ def _normalize_task(
             else "Updated learning artifact"
         ),
         "priority": _normalize_priority(_first_string(item, "priority", "urgency")),
-        "status": _first_string(item, "status") or "PENDING",
+        "status": "PENDING",
     }
 
 
@@ -520,6 +391,27 @@ def _reason_for(request: PlanAdjustRequest, carried_tasks: list[PlanAdjustTask])
         if is_zh(request.responseLanguage)
         else "Tomorrow's plan was adjusted to carry over unfinished work before new content."
     )
+
+
+def _dedupe_tasks(
+    tasks: list[PlanAdjustTask | dict[str, object]],
+    request: PlanAdjustRequest,
+) -> list[dict[str, object]]:
+    deduped: list[dict[str, object]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in tasks:
+        normalized = item.model_dump() if isinstance(item, PlanAdjustTask) else _normalize_task(item, request)
+        key = (
+            str(normalized.get("title", "")).strip().lower(),
+            str(normalized.get("deliverable", "")).strip().lower(),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(normalized)
+    for index, item in enumerate(deduped, start=1):
+        item["taskOrder"] = index
+    return deduped
 
 
 def _first_string(values: dict[object, object], *keys: str) -> str:

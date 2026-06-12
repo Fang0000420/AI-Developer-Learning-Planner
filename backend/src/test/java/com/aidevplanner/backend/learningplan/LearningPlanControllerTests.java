@@ -41,8 +41,8 @@ class LearningPlanControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(30))
                 .andExpect(jsonPath("$.goalId").value(10))
-                .andExpect(jsonPath("$.planTitle").value("21-Day AI Planner MVP Plan"))
-                .andExpect(jsonPath("$.days[0].tasks[0].title").value("Review architecture"));
+                .andExpect(jsonPath("$.planTitle").value("21-Day Business English speaking track Learning Plan"))
+                .andExpect(jsonPath("$.days[0].tasks[0].title").value("Review speaking goals"));
 
         verify(learningPlanService).generatePlan(10L);
     }
@@ -94,7 +94,7 @@ class LearningPlanControllerTests {
                         .param("dayIndex", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dayIndex").value(1))
-                .andExpect(jsonPath("$.tasks[0].title").value("Review architecture"));
+                .andExpect(jsonPath("$.tasks[0].title").value("Review speaking goals"));
 
         verify(learningPlanService).getDayTasks(30L, 1);
     }
@@ -124,11 +124,11 @@ class LearningPlanControllerTests {
                 1L,
                 1,
                 1,
-                "Review architecture",
-                "Understand service boundaries.",
+                "Review speaking goals",
+                "Understand the speaking priorities for work scenarios.",
                 30,
                 "learning",
-                "Architecture notes",
+                "Speaking focus notes",
                 "high",
                 DailyTaskStatus.IN_PROGRESS
         );
@@ -211,24 +211,24 @@ class LearningPlanControllerTests {
                 10L,
                 1L,
                 90L,
-                "21-Day AI Planner MVP Plan",
+                "21-Day Business English speaking track Learning Plan",
                 21,
                 LearningPlanStatus.ACTIVE,
                 List.of(
                         new PlanDayResponse(
                                 1,
-                                "Foundation setup",
+                                "Speaking foundation",
                                 90,
                                 List.of(
                                         new PlanTaskResponse(
                                                 1L,
                                                 1,
                                                 1,
-                                                "Review architecture",
-                                                "Understand service boundaries.",
+                                                "Review speaking goals",
+                                                "Understand the speaking priorities for work scenarios.",
                                                 30,
                                                 "learning",
-                                                "Architecture notes",
+                                                "Speaking focus notes",
                                                 "high",
                                                 DailyTaskStatus.PENDING
                                         ),
@@ -236,11 +236,11 @@ class LearningPlanControllerTests {
                                                 2L,
                                                 1,
                                                 2,
-                                                "Create plan endpoint",
-                                                "Implement the backend endpoint.",
+                                                "Practice role-play answers",
+                                                "Complete one focused speaking practice block.",
                                                 60,
-                                                "build",
-                                                "Working endpoint",
+                                                "practice",
+                                                "Role-play notes",
                                                 "high",
                                                 DailyTaskStatus.PENDING
                                         )
@@ -258,7 +258,7 @@ class LearningPlanControllerTests {
                 10L,
                 1L,
                 90L,
-                "21-Day AI Planner MVP Plan",
+                "21-Day Business English speaking track Learning Plan",
                 21,
                 LearningPlanStatus.PAUSED,
                 List.of(),
@@ -272,7 +272,7 @@ class LearningPlanControllerTests {
                 30L,
                 10L,
                 1L,
-                "21-Day AI Planner MVP Plan",
+                "21-Day Business English speaking track Learning Plan",
                 21,
                 LearningPlanStatus.ACTIVE,
                 1,

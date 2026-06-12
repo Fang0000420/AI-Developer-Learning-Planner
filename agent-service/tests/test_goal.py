@@ -73,6 +73,42 @@ def test_goal_decompose_normalizes_model_aliases() -> None:
     assert normalized["subGoals"][2]["title"] == "Record one short speaking sample each week"
 
 
+def test_goal_decompose_localizes_bare_string_description_for_chinese() -> None:
+    request = GoalDecomposeRequest(
+        mainGoal="提升商务英语口语",
+        background="客服专员",
+        responseLanguage="zh",
+    )
+
+    normalized = goal_decomposer._normalize_model_output(
+        {"goals": ["建立每日口语练习节奏"]},
+        request,
+    )
+
+    assert normalized["subGoals"][0]["title"] == "建立每日口语练习节奏"
+    assert "围绕目标" in normalized["subGoals"][0]["description"]
+
+
+def test_goal_decompose_limits_result_to_eight_items() -> None:
+    request = GoalDecomposeRequest(
+        mainGoal="Improve business English speaking",
+        background="Customer support specialist",
+        responseLanguage="en",
+    )
+
+    normalized = goal_decomposer._normalize_model_output(
+        {
+            "goals": [
+                {"name": f"Goal {index}", "details": f"Description {index}"}
+                for index in range(1, 11)
+            ]
+        },
+        request,
+    )
+
+    assert len(normalized["subGoals"]) == 8
+
+
 def test_goal_decompose_falls_back_when_model_response_is_invalid(
     monkeypatch: MonkeyPatch,
 ) -> None:

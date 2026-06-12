@@ -55,6 +55,8 @@ class PlanGenerateChunkResponse(BaseModel):
         day_indexes = [day.dayIndex for day in self.days]
         if len(set(day_indexes)) != len(day_indexes):
             raise ValueError("chunk dayIndex values must be unique.")
+        if day_indexes != list(range(min(day_indexes), max(day_indexes) + 1)):
+            raise ValueError("chunk dayIndex values must be consecutive.")
         return self
 
 
@@ -65,14 +67,34 @@ class PlanGenerateRequest(BaseModel):
     weaknesses: list[str] = Field(default_factory=list)
     subGoals: list[SubGoal] = Field(default_factory=list)
     skillGaps: list[SkillGap] = Field(default_factory=list)
+    # 兼容字段：承载“学习主线标题”，不再局限于软件项目名
     recommendedProject: str | None = None
+    # 兼容字段：承载推荐该学习主线的原因
     projectReason: str | None = None
     difficulty: str | None = None
+    # 兼容字段：承载核心聚焦领域，不再局限于技术栈
     coreTechStack: list[str] = Field(default_factory=list)
+    # 兼容字段：承载成果证明或预期产出
     finalDeliverables: list[str] = Field(default_factory=list)
     durationDays: int = Field(gt=0)
     dailyAvailableHours: float | None = Field(default=None, ge=0)
     responseLanguage: ResponseLanguage = "zh"
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_general_aliases(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        mapped = dict(data)
+        if not mapped.get("recommendedProject") and mapped.get("recommendedTrack"):
+            mapped["recommendedProject"] = mapped["recommendedTrack"]
+        if not mapped.get("projectReason") and mapped.get("trackReason"):
+            mapped["projectReason"] = mapped["trackReason"]
+        if not mapped.get("coreTechStack") and mapped.get("focusAreas"):
+            mapped["coreTechStack"] = mapped["focusAreas"]
+        if not mapped.get("finalDeliverables") and mapped.get("expectedOutcomes"):
+            mapped["finalDeliverables"] = mapped["expectedOutcomes"]
+        return mapped
 
     @field_validator("durationDays")
     @classmethod
@@ -91,6 +113,11 @@ class PlanGenerateResponse(BaseModel):
     def validate_day_count(self) -> "PlanGenerateResponse":
         if len(self.days) != self.durationDays:
             raise ValueError("days length must match durationDays.")
+        day_indexes = [day.dayIndex for day in self.days]
+        if len(set(day_indexes)) != len(day_indexes):
+            raise ValueError("dayIndex values must be unique.")
+        if day_indexes != list(range(1, self.durationDays + 1)):
+            raise ValueError("dayIndex values must cover 1..durationDays.")
         return self
 
 
@@ -157,3 +184,11 @@ class PlanAdjustResponse(BaseModel):
     movedTasks: list[PlanMovedTask] = Field(default_factory=list)
     splitTasks: list[PlanSplitTask] = Field(default_factory=list)
     reason: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_next_day_alignment(self) -> "PlanAdjustResponse":
+        if self.nextDayTasks:
+            target_day_indexes = {task.dayIndex for task in self.nextDayTasks if task.dayIndex is not None}
+            if len(target_day_indexes) > 1:
+                raise ValueError("nextDayTasks must point to a single day.")
+        return self

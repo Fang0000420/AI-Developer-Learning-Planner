@@ -1,59 +1,17 @@
 import json
 import re
 
-import httpx
-
-from app.config import (
-    DEEPSEEK_API_BASE_URL,
-    DEEPSEEK_API_KEY,
-    PROFILE_ANALYZER_MODEL,
-    PROFILE_ANALYZER_TIMEOUT_SECONDS,
-)
+from app.config import DEEPSEEK_API_KEY, PROFILE_ANALYZER_MODEL, PROFILE_ANALYZER_TIMEOUT_SECONDS
 from app.schemas.profile import ProfileAnalyzeRequest, ProfileAnalyzeResponse
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
-from app.services.language import is_zh, prompt_for
+from app.services.deepseek_chat import chat_completion_json
+from app.services.language import is_zh
 from app.services.model_retry import (
     ModelCallNonRetryableError,
     ModelCallRetryExhaustedError,
     retry_model_call,
 )
-
-PROFILE_ANALYZER_PROMPT_EN = """
-You are the Profile Analyzer for AI Developer Learning Planner.
-
-Analyze a learner's background, existing capabilities, and learning goal. Return
-JSON only, with these exact field names:
-- currentSkills: string[]
-- strengths: string[]
-- weaknesses: string[]
-- recommendedDirection: string
-
-Rules:
-- Do not include markdown fences or explanatory prose.
-- Keep each list focused, concrete, and useful for a structured learning plan.
-- Infer capabilities only from the user's background and goal.
-- Prefer domain-neutral language unless the goal is clearly technical.
-- recommendedDirection should be one concise paragraph describing a suitable
-  learning direction.
-""".strip()
-
-PROFILE_ANALYZER_PROMPT_ZH = """
-你是 AI Developer Learning Planner 的能力画像分析器。
-
-分析学习者的能力背景、已有基础与学习目标。只返回 JSON，字段名必须完全如下：
-- currentSkills: string[]
-- strengths: string[]
-- weaknesses: string[]
-- recommendedDirection: string
-
-规则：
-- 不要包含 markdown 代码块或解释性正文。
-- 所有字段值中的自然语言必须使用简体中文。
-- 每个列表都要聚焦结构化学习计划中真正实用的能力。
-- 只能根据用户背景和目标推断能力，不要自行补充领域设定。
-- 除非目标明确属于技术领域，否则优先使用领域中立的能力描述。
-- recommendedDirection 应是一段简洁的中文建议。
-""".strip()
+from app.services.prompt_catalog import prompt_section
 
 
 class ProfileAnalyzerError(RuntimeError):
@@ -82,45 +40,36 @@ def analyze_profile(request: ProfileAnalyzeRequest) -> AgentExecutionResult[Prof
 
 
 def analyze_profile_with_model(request: ProfileAnalyzeRequest) -> ProfileAnalyzeResponse:
-    response = httpx.post(
-        f"{DEEPSEEK_API_BASE_URL.rstrip('/')}/chat/completions",
-        headers={
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": PROFILE_ANALYZER_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": prompt_for(
-                        request.responseLanguage,
-                        PROFILE_ANALYZER_PROMPT_ZH,
-                        PROFILE_ANALYZER_PROMPT_EN,
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "background": request.background,
-                            "goal": request.goal,
-                            "dailyAvailableHours": request.dailyAvailableHours,
-                            "responseLanguage": request.responseLanguage,
-                        },
-                        ensure_ascii=False,
-                    ),
-                },
-            ],
-            "temperature": 0.2,
-        },
-        timeout=PROFILE_ANALYZER_TIMEOUT_SECONDS,
+    parsed = chat_completion_json(
+        model=PROFILE_ANALYZER_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": prompt_section(
+                    "profile_analyzer",
+                    "system_rules",
+                    request.responseLanguage,
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "background": request.background,
+                        "goal": request.goal,
+                        "dailyAvailableHours": request.dailyAvailableHours,
+                        "responseLanguage": request.responseLanguage,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+        timeout_seconds=PROFILE_ANALYZER_TIMEOUT_SECONDS,
+        temperature=0.2,
+        max_tokens=1000,
     )
-    response.raise_for_status()
-
-    body = response.json()
-    content = body["choices"][0]["message"]["content"]
-    return ProfileAnalyzeResponse.model_validate(_load_json_object(content))
+    normalized = _normalize_model_output(parsed, request)
+    return ProfileAnalyzeResponse.model_validate(normalized)
 
 
 def analyze_profile_with_mock(request: ProfileAnalyzeRequest) -> ProfileAnalyzeResponse:
@@ -183,3 +132,88 @@ def _load_json_object(content: str) -> dict[str, object]:
         raise ValueError("Profile analyzer response must be a JSON object.")
 
     return parsed
+
+
+def _normalize_model_output(
+    parsed: dict[str, object],
+    request: ProfileAnalyzeRequest,
+) -> dict[str, object]:
+    nested = _find_profile_object(parsed)
+    fallback = analyze_profile_with_mock(request)
+    return {
+        "currentSkills": _string_list(
+            nested,
+            "currentSkills",
+            "current_skills",
+            "skills",
+            "capabilities",
+            "existingSkills",
+            "existing_skills",
+            "当前技能",
+            "技能",
+        )
+        or fallback.currentSkills,
+        "strengths": _string_list(
+            nested,
+            "strengths",
+            "advantages",
+            "pros",
+            "优点",
+            "优势",
+        )
+        or fallback.strengths,
+        "weaknesses": _string_list(
+            nested,
+            "weaknesses",
+            "gaps",
+            "limitations",
+            "cons",
+            "不足",
+            "短板",
+        )
+        or fallback.weaknesses,
+        "recommendedDirection": _first_string(
+            nested,
+            "recommendedDirection",
+            "recommended_direction",
+            "direction",
+            "recommendation",
+            "建议方向",
+            "方向",
+        )
+        or fallback.recommendedDirection,
+    }
+
+
+def _find_profile_object(parsed: dict[str, object]) -> dict[object, object]:
+    for key in ("profile", "analysis", "result", "data"):
+        value = parsed.get(key)
+        if isinstance(value, dict):
+            return value
+    return parsed
+
+
+def _string_list(values: dict[object, object], *keys: str) -> list[str]:
+    for key in keys:
+        value = values.get(key)
+        if isinstance(value, list):
+            cleaned = [str(item).strip() for item in value if str(item).strip()]
+            if cleaned:
+                return cleaned
+        if isinstance(value, str) and value.strip():
+            return [
+                item.strip()
+                for item in re.split(r"[,，;；\n]", value)
+                if item.strip()
+            ]
+    return []
+
+
+def _first_string(values: dict[object, object], *keys: str) -> str:
+    for key in keys:
+        value = values.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        if isinstance(value, int | float):
+            return str(value)
+    return ""

@@ -126,16 +126,16 @@ class LearningPlanServiceTests {
         assertThat(response.id()).isEqualTo(30L);
         assertThat(response.goalId()).isEqualTo(10L);
         assertThat(response.sourceAgentRunId()).isEqualTo(90L);
-        assertThat(response.planTitle()).isEqualTo("30-Day AI Planner MVP Plan");
+        assertThat(response.planTitle()).isEqualTo("30-Day Business English speaking track Learning Plan");
         assertThat(response.days()).hasSize(30);
         assertThat(response.days().get(0).tasks()).hasSize(2);
 
         ArgumentCaptor<PlanGenerateAgentRequest> requestCaptor =
                 ArgumentCaptor.forClass(PlanGenerateAgentRequest.class);
         verify(planGeneratorClient).generate(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().mainGoal()).isEqualTo("Build AI agent apps");
-        assertThat(requestCaptor.getValue().currentSkills()).containsExactly("Java", "Spring Boot");
-        assertThat(requestCaptor.getValue().recommendedProject()).isEqualTo("AI Developer Learning Planner");
+        assertThat(requestCaptor.getValue().mainGoal()).isEqualTo("Improve business English speaking");
+        assertThat(requestCaptor.getValue().currentSkills()).containsExactly("Reading comprehension", "Basic vocabulary");
+        assertThat(requestCaptor.getValue().recommendedProject()).isEqualTo("Business English speaking track");
         assertThat(requestCaptor.getValue().subGoals()).extracting(SubGoalResponse::title)
                 .containsExactly("Design agent workflow");
         assertThat(requestCaptor.getValue().skillGaps()).extracting(SkillGapResponse::skill)
@@ -326,13 +326,13 @@ class LearningPlanServiceTests {
                 goal.getUser(),
                 goal,
                 "Goal Decomposer",
-                "{\"mainGoal\":\"Build AI agent apps\"}",
+                "{\"mainGoal\":\"Improve business English speaking\"}",
                 """
                         {
                           "subGoals": [
                             {
-                              "title": "Design agent workflow",
-                              "description": "Define nodes and data flow.",
+                              "title": "Build a daily speaking routine",
+                              "description": "Practice speaking every day with feedback.",
                               "priority": "high"
                             }
                           ]
@@ -349,16 +349,16 @@ class LearningPlanServiceTests {
                 goal.getUser(),
                 goal,
                 "Skill Gap Analyzer",
-                "{\"mainGoal\":\"Build AI agent apps\"}",
+                "{\"mainGoal\":\"Improve business English speaking\"}",
                 """
                         {
                           "skillGaps": [
                             {
-                              "skill": "Structured LLM output validation",
+                              "skill": "Speaking fluency",
                               "currentLevel": "beginner",
                               "targetLevel": "intermediate",
                               "priority": "high",
-                              "reason": "Needed for schema-safe agent responses."
+                              "reason": "Needed to communicate more naturally at work."
                             }
                           ]
                         }
@@ -374,16 +374,16 @@ class LearningPlanServiceTests {
                 goal.getUser(),
                 goal,
                 "Project Recommender",
-                "{\"mainGoal\":\"Build AI agent apps\"}",
+                "{\"mainGoal\":\"Improve business English speaking\"}",
                 """
                         {
-                          "recommendedProject": "AI Developer Learning Planner",
-                          "reason": "Covers full-stack agent workflow practice.",
-                          "difficulty": "medium-high",
+                          "recommendedProject": "Business English speaking track",
+                          "reason": "Uses a focused speaking track with repeated practice.",
+                          "difficulty": "medium",
                           "durationDays": 30,
                           "dailyTimeHours": 2,
-                          "coreTechStack": ["Spring Boot", "FastAPI", "Next.js"],
-                          "finalDeliverables": ["Complete GitHub repository", "Runnable full-stack demo"]
+                          "coreTechStack": ["Listening input", "Role-play", "Speaking feedback"],
+                          "finalDeliverables": ["Speaking recordings", "Phrase bank"]
                         }
                         """,
                 AgentRunStatus.SUCCESS,
@@ -394,49 +394,49 @@ class LearningPlanServiceTests {
 
     private PlanGenerateAgentResponse planResponse() {
         return new PlanGenerateAgentResponse(
-                "30-Day AI Planner MVP Plan",
+                "30-Day Business English speaking track Learning Plan",
                 30,
                 List.of(
                         new PlanDayAgentResponse(
                                 1,
-                                "Foundation setup",
+                                "Speaking foundation",
                                 List.of(
                                         new PlanTaskAgentResponse(
-                                                "Review architecture",
-                                                "Understand service boundaries.",
+                                                "Review speaking goals",
+                                                "Understand the speaking priorities for work scenarios.",
                                                 30,
                                                 "learning",
-                                                "Architecture notes",
+                                                "Speaking focus notes",
                                                 "high"
                                         ),
                                         new PlanTaskAgentResponse(
-                                                "Create plan endpoint",
-                                                "Implement the backend endpoint.",
+                                                "Practice role-play answers",
+                                                "Complete one focused speaking practice block.",
                                                 60,
-                                                "build",
-                                                "Working endpoint",
+                                                "practice",
+                                                "Role-play notes",
                                                 "high"
                                         )
                                 )
                         ),
                         new PlanDayAgentResponse(
                                 2,
-                                "Agent integration",
+                                "Applied speaking",
                                 List.of(
                                         new PlanTaskAgentResponse(
-                                                "Call plan generator",
-                                                "Connect backend to FastAPI.",
+                                                "Record a speaking sample",
+                                                "Record one short simulated work conversation.",
                                                 90,
-                                                "build",
-                                                "Agent client integration",
+                                                "practice",
+                                                "Speaking recording",
                                                 "high"
                                         ),
                                         new PlanTaskAgentResponse(
-                                                "Verify persistence",
-                                                "Save plan and tasks.",
+                                                "Review the recording",
+                                                "Note pronunciation and phrasing issues.",
                                                 30,
-                                                "test",
-                                                "Persistence check",
+                                                "review",
+                                                "Review notes",
                                                 "medium"
                                         )
                                 )
@@ -450,9 +450,9 @@ class LearningPlanServiceTests {
                 goal.getUser(),
                 goal,
                 null,
-                "30-Day AI Planner MVP Plan",
+                "30-Day Business English speaking track Learning Plan",
                 21,
-                java.util.Map.of("planTitle", "30-Day AI Planner MVP Plan")
+                java.util.Map.of("planTitle", "30-Day Business English speaking track Learning Plan")
         );
         ReflectionTestUtils.setField(plan, "id", 30L);
         ReflectionTestUtils.setField(plan, "createdAt", LocalDateTime.of(2026, 6, 9, 13, 1));
@@ -467,12 +467,12 @@ class LearningPlanServiceTests {
                 goal,
                 1,
                 1,
-                "Foundation setup",
-                "Review architecture",
-                "Understand service boundaries.",
+                "Speaking foundation",
+                "Review speaking goals",
+                "Understand the speaking priorities for work scenarios.",
                 30,
                 "learning",
-                "Architecture notes",
+                "Speaking focus notes",
                 "high"
         );
         DailyTask second = new DailyTask(
@@ -481,12 +481,12 @@ class LearningPlanServiceTests {
                 goal,
                 1,
                 2,
-                "Foundation setup",
-                "Create plan endpoint",
-                "Implement the backend endpoint.",
+                "Speaking foundation",
+                "Practice role-play answers",
+                "Complete one focused speaking practice block.",
                 60,
-                "build",
-                "Working endpoint",
+                "practice",
+                "Role-play notes",
                 "high"
         );
         DailyTask third = new DailyTask(
@@ -495,12 +495,12 @@ class LearningPlanServiceTests {
                 goal,
                 2,
                 1,
-                "Agent integration",
-                "Call plan generator",
-                "Connect backend to FastAPI.",
+                "Applied speaking",
+                "Record a speaking sample",
+                "Record one short simulated work conversation.",
                 90,
-                "build",
-                "Agent client integration",
+                "practice",
+                "Speaking recording",
                 "high"
         );
         ReflectionTestUtils.setField(first, "id", 1L);
@@ -511,12 +511,12 @@ class LearningPlanServiceTests {
 
     private Goal goal() {
         User user = new User("demo-user", "demo@example.com", "not-used");
-        user.setBackground("Backend developer with Java and PostgreSQL experience.");
+        user.setBackground("Customer support specialist with strong reading habits.");
         user.setDailyAvailableHours(new BigDecimal("2.0"));
         ReflectionTestUtils.setField(user, "id", 1L);
 
-        Goal goal = new Goal(user, "Build AI agent apps", 30);
-        goal.setDescription("Learn production AI agent workflows.");
+        Goal goal = new Goal(user, "Improve business English speaking", 30);
+        goal.setDescription("Build stronger spoken communication for work scenarios.");
         ReflectionTestUtils.setField(goal, "id", 10L);
         return goal;
     }
@@ -525,10 +525,10 @@ class LearningPlanServiceTests {
         return new SkillProfile(
                 goal.getUser(),
                 goal,
-                List.of("Java", "Spring Boot"),
-                List.of("Backend foundation"),
-                List.of("LLM evaluation"),
-                "Build an MVP AI agent workflow."
+                List.of("Reading comprehension", "Basic vocabulary"),
+                List.of("Regular learning habit"),
+                List.of("Speaking fluency"),
+                "Build a focused speaking routine with weekly review."
         );
     }
 }

@@ -54,3 +54,28 @@ def test_profile_analyze_returns_chinese_stub_response(monkeypatch: MonkeyPatch)
     assert response.status_code == 200
     assert "提升商务英语口语" in body["recommendedDirection"]
     assert "目标相关基础认知" in body["currentSkills"]
+
+
+def test_profile_model_output_is_normalized() -> None:
+    request = profile_analyzer.ProfileAnalyzeRequest(
+        background="Customer support specialist",
+        goal="Improve business English speaking",
+        dailyAvailableHours=2,
+        responseLanguage="en",
+    )
+    normalized = profile_analyzer._normalize_model_output(
+        {
+            "analysis": {
+                "skills": ["Reading comprehension", "Basic vocabulary"],
+                "advantages": ["Consistent study habit"],
+                "gaps": ["Speaking fluency"],
+                "direction": "Build a steady speaking routine with weekly review.",
+            }
+        },
+        request,
+    )
+
+    assert normalized["currentSkills"] == ["Reading comprehension", "Basic vocabulary"]
+    assert normalized["strengths"] == ["Consistent study habit"]
+    assert normalized["weaknesses"] == ["Speaking fluency"]
+    assert normalized["recommendedDirection"] == "Build a steady speaking routine with weekly review."

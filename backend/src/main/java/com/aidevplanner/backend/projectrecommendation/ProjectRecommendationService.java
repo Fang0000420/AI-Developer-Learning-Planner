@@ -232,24 +232,21 @@ public class ProjectRecommendationService {
 
         List<String> coreTechStack = cleanList(response.coreTechStack());
         if (coreTechStack.isEmpty()) {
-            coreTechStack = List.of("Spring Boot", "FastAPI", "DeepSeek", "PostgreSQL", "Next.js");
+            coreTechStack = defaultFocusAreas(zh);
         }
 
         List<String> finalDeliverables = cleanList(response.finalDeliverables());
         if (finalDeliverables.isEmpty()) {
-            finalDeliverables = zh
-                    ? List.of("完整 GitHub 仓库", "可运行的全栈演示", "README 和架构文档")
-                    : List.of(
-                            "Complete GitHub repository",
-                            "Runnable full-stack demo",
-                            "README and architecture documentation"
-                    );
+            finalDeliverables = defaultExpectedOutcomes(zh);
         }
 
         return new ProjectRecommendResponse(
-                "AI Developer Learning Planner",
+                firstPresent(
+                        response.recommendedProject(),
+                        fallbackTrackTitle(goal, zh)
+                ),
                 firstPresent(response.reason(), zh ? "未返回推荐理由。" : "No recommendation reason returned."),
-                firstPresent(response.difficulty(), zh ? "中高" : "medium-high"),
+                firstPresent(response.difficulty(), zh ? "中等" : "medium"),
                 durationDays,
                 dailyTimeHours,
                 coreTechStack,
@@ -278,6 +275,26 @@ public class ProjectRecommendationService {
                 .filter(value -> value != null && !value.isBlank())
                 .map(String::trim)
                 .toList();
+    }
+
+    private String fallbackTrackTitle(Goal goal, boolean zh) {
+        String goalTitle = goal == null ? "" : firstPresent(goal.getTitle());
+        if (!goalTitle.isBlank()) {
+            return zh ? goalTitle + " 学习主线" : goalTitle + " learning track";
+        }
+        return zh ? "通用学习主线" : "General learning track";
+    }
+
+    private List<String> defaultFocusAreas(boolean zh) {
+        return zh
+                ? List.of("关键基础", "稳定练习", "场景应用", "反馈复盘")
+                : List.of("Core foundation", "Consistent practice", "Applied scenarios", "Feedback review");
+    }
+
+    private List<String> defaultExpectedOutcomes(boolean zh) {
+        return zh
+                ? List.of("阶段性成果记录", "可展示的练习输出", "复盘笔记")
+                : List.of("Stage progress notes", "Visible practice outputs", "Review summary");
     }
 
     private List<String> copyList(List<String> values) {
