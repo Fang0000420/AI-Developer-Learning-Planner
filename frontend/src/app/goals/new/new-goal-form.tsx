@@ -110,7 +110,10 @@ export function NewGoalForm({ locale }: NewGoalFormProps) {
   const watchedDailyHours = useWatch({ control, name: "dailyAvailableHours" });
   const watchedPlanCycleDays = useWatch({ control, name: "planCycleDays" });
   const watchedJobTarget = useWatch({ control, name: "jobTarget" });
-  const watchedResponseLanguage = useWatch({ control, name: "responseLanguage" });
+  const watchedResponseLanguage = useWatch({
+    control,
+    name: "responseLanguage",
+  });
 
   const summaryItems = [
     {

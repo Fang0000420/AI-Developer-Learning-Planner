@@ -8,9 +8,9 @@ from app.config import (
 )
 from app.schemas.project import (
     ProjectCandidateComparison,
+    ProjectRecommendationMemory,
     ProjectRecommendRequest,
     ProjectRecommendResponse,
-    ProjectRecommendationMemory,
 )
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
 from app.services.deepseek_chat import chat_completion_json

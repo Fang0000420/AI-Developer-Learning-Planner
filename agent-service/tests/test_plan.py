@@ -345,7 +345,9 @@ def test_plan_generate_uses_chunked_rounds_and_memory(monkeypatch: MonkeyPatch) 
     )
 
 
-def test_plan_generate_preserves_completed_chunks_when_later_chunk_fails(monkeypatch: MonkeyPatch) -> None:
+def test_plan_generate_preserves_completed_chunks_when_later_chunk_fails(
+    monkeypatch: MonkeyPatch,
+) -> None:
     request = PlanGenerateRequest(
         mainGoal="Improve business English speaking",
         recommendedProject="Business English speaking track",

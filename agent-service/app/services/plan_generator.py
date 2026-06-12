@@ -64,16 +64,21 @@ def generate_plan_with_model(request: PlanGenerateRequest) -> PlanGenerateRespon
     for start_day in range(1, request.durationDays + 1, chunk_size):
         end_day = min(request.durationDays, start_day + chunk_size - 1)
         try:
-            chunk_response = retry_model_call(
-                lambda start_day=start_day, end_day=end_day, previous_chunk=previous_chunk, memory=memory:
-                _generate_plan_chunk(
+            def chunk_loader(
+                start_day_value: int = start_day,
+                end_day_value: int = end_day,
+                previous_chunk_value: dict[str, object] | None = previous_chunk,
+                memory_value: PlanGenerationMemory = memory,
+            ) -> dict[str, object]:
+                return _generate_plan_chunk(
                     request,
-                    start_day,
-                    end_day,
-                    previous_chunk,
-                    memory,
+                    start_day_value,
+                    end_day_value,
+                    previous_chunk_value,
+                    memory_value,
                 )
-            )
+
+            chunk_response = retry_model_call(chunk_loader)
         except ModelCallRetryExhaustedError:
             while len(days) < request.durationDays:
                 days.append(
@@ -189,15 +194,33 @@ def _plan_generation_messages(
                     ensure_ascii=False,
                 )
                 + "\n"
-                + prompt_section(
-                    "plan_generator",
-                    "round_instruction",
-                    request.responseLanguage,
-                ).format(start_day=start_day, end_day=end_day)
+                + _render_round_instruction(
+                    request,
+                    start_day,
+                    end_day,
+                )
             ),
         }
     )
     return messages
+
+
+def _render_round_instruction(
+    request: PlanGenerateRequest,
+    start_day: int,
+    end_day: int,
+) -> str:
+    instruction = prompt_section(
+        "plan_generator",
+        "round_instruction",
+        request.responseLanguage,
+    )
+    return (
+        instruction.replace("[START_DAY]", str(start_day)).replace(
+            "[END_DAY]",
+            str(end_day),
+        )
+    )
 
 
 def _normalize_plan_chunk(
@@ -317,7 +340,7 @@ def _build_mock_day(
             ),
             PlanTask(
                 title=f"练习并应用 {focus}",
-                description=f"围绕今日主题完成一个可验证的小练习或实际应用任务，推进目标达成。",
+                description="围绕今日主题完成一个可验证的小练习或实际应用任务，推进目标达成。",
                 estimatedMinutes=task_minutes[1],
                 type="practice",
                 deliverable=f"{focus} 阶段成果",

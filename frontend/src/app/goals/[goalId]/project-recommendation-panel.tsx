@@ -140,7 +140,9 @@ export function ProjectRecommendationPanel({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-950">
-                {locale === "zh" ? "学习主线建议" : "Learning Track Recommendation"}
+                {locale === "zh"
+                  ? "学习主线建议"
+                  : "Learning Track Recommendation"}
               </h2>
               <span className="inline-flex h-7 items-center gap-1 rounded-md bg-slate-100 px-2 text-xs font-semibold text-slate-600">
                 {isGenerating ? (

@@ -42,16 +42,27 @@ PROMPT_CATALOG = {
         },
         "round_instruction": {
             "zh": (
-                "本轮只生成第 {start_day} 天到第 {end_day} 天。"
+                "本轮只生成第 [START_DAY] 天到第 [END_DAY] 天。"
                 "返回 JSON 结构必须为 "
-                '{{"planTitle":"string","days":[{{"dayIndex":1,"theme":"string","tasks":[{{"title":"string","description":"string","estimatedMinutes":60,"type":"learn|practice|apply|review|assessment|reflection","deliverable":"string","priority":"high|medium|low"}}]}}],"memory":{{"completedDayIndexes":[1],"establishedThemes":["string"],"carryForwardConstraints":["string"],"nextFocusHints":["string"]}}}}。'
+                '{"planTitle":"string","days":[{"dayIndex":1,"theme":"string",'
+                '"tasks":[{"title":"string","description":"string","estimatedMinutes":60,'
+                '"type":"learn|practice|apply|review|assessment|reflection",'
+                '"deliverable":"string","priority":"high|medium|low"}]}],'
+                '"memory":{"completedDayIndexes":[1],"establishedThemes":["string"],'
+                '"carryForwardConstraints":["string"],"nextFocusHints":["string"]}}。'
                 "days 只包含本轮天数；memory 必须概括当前累计脉络。"
             ),
             "en": (
-                "Generate only Day {start_day} through Day {end_day} in this round. "
+                "Generate only Day [START_DAY] through Day [END_DAY] in this round. "
                 "Return JSON with exactly this shape: "
-                '{{"planTitle":"string","days":[{{"dayIndex":1,"theme":"string","tasks":[{{"title":"string","description":"string","estimatedMinutes":60,"type":"learn|practice|apply|review|assessment|reflection","deliverable":"string","priority":"high|medium|low"}}]}}],"memory":{{"completedDayIndexes":[1],"establishedThemes":["string"],"carryForwardConstraints":["string"],"nextFocusHints":["string"]}}}}. '
-                "The days array must contain only the days for this round, and memory must summarize the cumulative plan direction."
+                '{"planTitle":"string","days":[{"dayIndex":1,"theme":"string",'
+                '"tasks":[{"title":"string","description":"string","estimatedMinutes":60,'
+                '"type":"learn|practice|apply|review|assessment|reflection",'
+                '"deliverable":"string","priority":"high|medium|low"}]}],'
+                '"memory":{"completedDayIndexes":[1],"establishedThemes":["string"],'
+                '"carryForwardConstraints":["string"],"nextFocusHints":["string"]}}. '
+                "The days array must contain only the days for this round, "
+                "and memory must summarize the cumulative plan direction."
             ),
         },
     },
@@ -72,35 +83,46 @@ PROMPT_CATALOG = {
         "summary_instruction": {
             "zh": (
                 "先根据输入画像总结学习者约束与机会点。"
-                '返回 JSON：{"learnerSummary":["string"],"constraints":["string"],"opportunities":["string"],"difficultySignals":["string"]}。'
+                '返回 JSON：{"learnerSummary":["string"],"constraints":["string"],'
+                '"opportunities":["string"],"difficultySignals":["string"]}。'
             ),
             "en": (
-                "First summarize the learner's constraints and opportunities from the input profile. "
-                'Return JSON: {"learnerSummary":["string"],"constraints":["string"],"opportunities":["string"],"difficultySignals":["string"]}.'
+                "First summarize the learner's constraints and opportunities "
+                "from the input profile. "
+                'Return JSON: {"learnerSummary":["string"],"constraints":["string"],'
+                '"opportunities":["string"],"difficultySignals":["string"]}.'
             ),
         },
         "comparison_instruction": {
             "zh": (
                 "基于已有摘要，比较 2 到 3 个候选学习主线或实践方向。"
-                '返回 JSON：{"candidates":[{"name":"string","fit":"string","risk":"string","reason":"string"}],"decisionHints":["string"]}。'
+                '返回 JSON：{"candidates":[{"name":"string","fit":"string",'
+                '"risk":"string","reason":"string"}],"decisionHints":["string"]}。'
             ),
             "en": (
-                "Using the existing summary, compare 2 to 3 candidate learning tracks or practice directions. "
-                'Return JSON: {"candidates":[{"name":"string","fit":"string","risk":"string","reason":"string"}],"decisionHints":["string"]}.'
+                "Using the existing summary, compare 2 to 3 candidate learning tracks "
+                "or practice directions. "
+                'Return JSON: {"candidates":[{"name":"string","fit":"string",'
+                '"risk":"string","reason":"string"}],"decisionHints":["string"]}.'
             ),
         },
         "final_instruction": {
             "zh": (
                 "基于前两轮结果，收敛成最终推荐。"
-                '返回 JSON：{"recommendedProject":"string","reason":"string","difficulty":"string","durationDays":21,"dailyTimeHours":2,"coreTechStack":["string"],"finalDeliverables":["string"]}。'
+                '返回 JSON：{"recommendedProject":"string","reason":"string",'
+                '"difficulty":"string","durationDays":21,"dailyTimeHours":2,'
+                '"coreTechStack":["string"],"finalDeliverables":["string"]}。'
                 "recommendedProject 表示学习主线标题；当目标不是技术领域时，"
                 "coreTechStack 表示核心聚焦领域，finalDeliverables 表示成果证明或预期产出。"
             ),
             "en": (
                 "Use the first two rounds to converge on the final recommendation. "
-                'Return JSON: {"recommendedProject":"string","reason":"string","difficulty":"string","durationDays":21,"dailyTimeHours":2,"coreTechStack":["string"],"finalDeliverables":["string"]}. '
-                "recommendedProject is the title of the learning track; when the goal is not technical, "
-                "treat coreTechStack as focus areas and finalDeliverables as evidence of progress or expected outcomes."
+                'Return JSON: {"recommendedProject":"string","reason":"string",'
+                '"difficulty":"string","durationDays":21,"dailyTimeHours":2,'
+                '"coreTechStack":["string"],"finalDeliverables":["string"]}. '
+                "recommendedProject is the title of the learning track; "
+                "when the goal is not technical, treat coreTechStack as focus areas "
+                "and finalDeliverables as evidence of progress or expected outcomes."
             ),
         },
     },
