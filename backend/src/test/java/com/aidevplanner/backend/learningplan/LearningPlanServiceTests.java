@@ -137,9 +137,9 @@ class LearningPlanServiceTests {
         assertThat(requestCaptor.getValue().currentSkills()).containsExactly("Reading comprehension", "Basic vocabulary");
         assertThat(requestCaptor.getValue().recommendedProject()).isEqualTo("Business English speaking track");
         assertThat(requestCaptor.getValue().subGoals()).extracting(SubGoalResponse::title)
-                .containsExactly("Design agent workflow");
+                .containsExactly("Build a daily speaking routine");
         assertThat(requestCaptor.getValue().skillGaps()).extracting(SkillGapResponse::skill)
-                .containsExactly("Structured LLM output validation");
+                .containsExactly("Speaking fluency");
 
         ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
         verify(agentRunRepository).save(runCaptor.capture());
@@ -221,7 +221,7 @@ class LearningPlanServiceTests {
         List<PlanTaskResponse> response = learningPlanService.listTasks(30L);
 
         assertThat(response).hasSize(3);
-        assertThat(response.get(0).title()).isEqualTo("Review architecture");
+        assertThat(response.get(0).title()).isEqualTo("Review speaking goals");
         assertThat(response.get(0).status()).isEqualTo(DailyTaskStatus.PENDING);
     }
 
@@ -236,7 +236,7 @@ class LearningPlanServiceTests {
         PlanDayResponse response = learningPlanService.getDayTasks(30L, 2);
 
         assertThat(response.dayIndex()).isEqualTo(2);
-        assertThat(response.theme()).isEqualTo("Agent integration");
+        assertThat(response.theme()).isEqualTo("Applied speaking");
         assertThat(response.tasks()).hasSize(1);
     }
 
