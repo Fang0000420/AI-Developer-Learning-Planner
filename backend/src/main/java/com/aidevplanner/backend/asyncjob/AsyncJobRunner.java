@@ -3,6 +3,8 @@ package com.aidevplanner.backend.asyncjob;
 import com.aidevplanner.backend.cache.AsyncJobCacheService;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.idempotency.AsyncJobDeduplicationService;
+import com.aidevplanner.backend.knowledge.KnowledgeDocumentResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeDocumentService;
 import com.aidevplanner.backend.learningplan.LearningPlanResponse;
 import com.aidevplanner.backend.learningplan.LearningPlanService;
 import com.aidevplanner.backend.lock.ResourceLockHandle;
@@ -26,6 +28,7 @@ public class AsyncJobRunner {
     private final AsyncJobCacheService asyncJobCacheService;
     private final AsyncJobDeduplicationService asyncJobDeduplicationService;
     private final AsyncJobRepository asyncJobRepository;
+    private final KnowledgeDocumentService knowledgeDocumentService;
     private final LearningPlanService learningPlanService;
     private final ResourceLockService resourceLockService;
     private final ObjectMapper objectMapper;
@@ -36,6 +39,7 @@ public class AsyncJobRunner {
             AsyncJobCacheService asyncJobCacheService,
             AsyncJobDeduplicationService asyncJobDeduplicationService,
             AsyncJobRepository asyncJobRepository,
+            KnowledgeDocumentService knowledgeDocumentService,
             LearningPlanService learningPlanService,
             ResourceLockService resourceLockService,
             ObjectMapper objectMapper,
@@ -45,11 +49,34 @@ public class AsyncJobRunner {
         this.asyncJobCacheService = asyncJobCacheService;
         this.asyncJobDeduplicationService = asyncJobDeduplicationService;
         this.asyncJobRepository = asyncJobRepository;
+        this.knowledgeDocumentService = knowledgeDocumentService;
         this.learningPlanService = learningPlanService;
         this.resourceLockService = resourceLockService;
         this.objectMapper = objectMapper;
         this.pathRecommendationService = pathRecommendationService;
         this.progressLogService = progressLogService;
+    }
+
+    @Async
+    public void runKnowledgeIngestion(
+            UUID jobId,
+            Long documentId,
+            String requestId,
+            String activeJobKey,
+            ResourceLockHandle lockHandle
+    ) {
+        ObservabilityContext.setRequestId(requestId);
+        try {
+            markRunning(jobId);
+            KnowledgeDocumentResponse response = knowledgeDocumentService.ingestDocument(documentId);
+            markSucceeded(jobId, writeJson(response));
+        } catch (Exception exception) {
+            markFailed(jobId, exception);
+        } finally {
+            asyncJobDeduplicationService.clear(activeJobKey);
+            resourceLockService.release(lockHandle);
+            ObservabilityContext.clear();
+        }
     }
 
     @Async

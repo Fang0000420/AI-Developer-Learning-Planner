@@ -37,6 +37,8 @@ app:
     async-job-cache-ttl: ${REDIS_ASYNC_JOB_CACHE_TTL:PT24H}
     async-job-active-ttl: ${REDIS_ASYNC_JOB_ACTIVE_TTL:PT30M}
     resource-lock-ttl: ${REDIS_RESOURCE_LOCK_TTL:PT30M}
+  storage:
+    knowledge-root: ${KNOWLEDGE_STORAGE_ROOT:${user.dir}/storage/knowledge}
 
 logging:
   pattern:

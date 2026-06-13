@@ -100,6 +100,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException exception) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "BAD_REQUEST",
+                exception.getMessage(),
+                Map.of("request", exception.getMessage())
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException exception) {
         ApiErrorResponse response = ApiErrorResponse.of("NOT_FOUND", exception.getMessage());

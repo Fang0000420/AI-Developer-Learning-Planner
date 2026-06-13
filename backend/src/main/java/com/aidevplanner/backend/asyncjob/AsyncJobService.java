@@ -7,6 +7,9 @@ import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.idempotency.AsyncJobDeduplicationService;
+import com.aidevplanner.backend.knowledge.KnowledgeDocument;
+import com.aidevplanner.backend.knowledge.KnowledgeDocumentRepository;
+import com.aidevplanner.backend.knowledge.KnowledgeIngestionRequest;
 import com.aidevplanner.backend.learningplan.LearningPlanGenerateRequest;
 import com.aidevplanner.backend.learningplan.LearningPlan;
 import com.aidevplanner.backend.learningplan.LearningPlanRepository;
@@ -30,9 +33,11 @@ public class AsyncJobService {
     private static final String PATH_ANALYSIS_LOCK_PREFIX = "lock:path-analysis:goal:";
     private static final String PLAN_GENERATION_LOCK_PREFIX = "lock:plan-generation:goal:";
     private static final String PROGRESS_SUBMISSION_LOCK_PREFIX = "lock:progress-submission:plan:";
+    private static final String KNOWLEDGE_INGESTION_LOCK_PREFIX = "lock:knowledge-ingestion:document:";
     private static final String PATH_ANALYSIS_ACTIVE_PREFIX = "active-job:path-analysis:goal:";
     private static final String PLAN_GENERATION_ACTIVE_PREFIX = "active-job:plan-generation:goal:";
     private static final String PROGRESS_SUBMISSION_ACTIVE_PREFIX = "active-job:progress-submission:plan:";
+    private static final String KNOWLEDGE_INGESTION_ACTIVE_PREFIX = "active-job:knowledge-ingestion:document:";
 
     private final AsyncJobRepository asyncJobRepository;
     private final AsyncJobRunner asyncJobRunner;
@@ -40,6 +45,7 @@ public class AsyncJobService {
     private final AsyncJobDeduplicationService asyncJobDeduplicationService;
     private final AuthenticatedUserService authenticatedUserService;
     private final GoalRepository goalRepository;
+    private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final LearningPlanRepository learningPlanRepository;
     private final ResourceLockService resourceLockService;
     private final ObjectMapper objectMapper;
@@ -52,6 +58,7 @@ public class AsyncJobService {
             AsyncJobDeduplicationService asyncJobDeduplicationService,
             AuthenticatedUserService authenticatedUserService,
             GoalRepository goalRepository,
+            KnowledgeDocumentRepository knowledgeDocumentRepository,
             LearningPlanRepository learningPlanRepository,
             ResourceLockService resourceLockService,
             ObjectMapper objectMapper,
@@ -63,6 +70,7 @@ public class AsyncJobService {
         this.asyncJobDeduplicationService = asyncJobDeduplicationService;
         this.authenticatedUserService = authenticatedUserService;
         this.goalRepository = goalRepository;
+        this.knowledgeDocumentRepository = knowledgeDocumentRepository;
         this.learningPlanRepository = learningPlanRepository;
         this.resourceLockService = resourceLockService;
         this.objectMapper = objectMapper;
@@ -164,6 +172,40 @@ public class AsyncJobService {
         asyncJobRunner.runProgressSubmission(
                 job.getId(),
                 request,
+                ObservabilityContext.getRequestId(),
+                activeJobKey,
+                lockHandle
+        );
+        return response;
+    }
+
+    public AsyncJobResponse createKnowledgeIngestionJob(KnowledgeIngestionRequest request) {
+        User user = currentUser();
+        KnowledgeDocument document = knowledgeDocumentRepository.findById(request.documentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Knowledge document", request.documentId()));
+        ensureUserOwns(document.getUser().getId(), request.documentId(), "Knowledge document");
+        String activeJobKey = KNOWLEDGE_INGESTION_ACTIVE_PREFIX + request.documentId();
+        AsyncJobResponse existingJob = activeJobResponse(activeJobKey);
+        if (existingJob != null) {
+            return existingJob;
+        }
+        ResourceLockHandle lockHandle = acquireLockOrFail(
+                KNOWLEDGE_INGESTION_LOCK_PREFIX + request.documentId(),
+                activeJobKey,
+                "A knowledge ingestion job is already running for this document."
+        );
+        AsyncJob job = asyncJobRepository.save(new AsyncJob(
+                UUID.randomUUID(),
+                AsyncJobType.KNOWLEDGE_INGESTION,
+                writeJson(request),
+                user
+        ));
+        AsyncJobResponse response = toResponse(job);
+        asyncJobCacheService.put(response);
+        asyncJobDeduplicationService.saveActiveJobId(activeJobKey, job.getId());
+        asyncJobRunner.runKnowledgeIngestion(
+                job.getId(),
+                request.documentId(),
                 ObservabilityContext.getRequestId(),
                 activeJobKey,
                 lockHandle

@@ -84,10 +84,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ai_planner_dev_password}
       AGENT_SERVICE_BASE_URL: http://agent-service:8000
       REDIS_URL: redis://redis:6379/0
+      KNOWLEDGE_STORAGE_ROOT: /data/knowledge
       JWT_SECRET: ${JWT_SECRET:-replace-with-a-long-random-secret}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-86400}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - backend-storage:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -130,6 +133,7 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  backend-storage:
 
 networks:
   ai-planner:

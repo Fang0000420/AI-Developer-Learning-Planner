@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Activity,
+  BookOpenText,
   CalendarCheck,
   LayoutDashboard,
   ListChecks,
@@ -35,6 +36,7 @@ export default async function RootLayout({
     { href: "/goals", label: t.nav.goals, icon: Target },
     { href: "/goals/new", label: t.nav.newGoal, icon: Plus },
     { href: "/plans", label: t.nav.plans, icon: ListChecks },
+    { href: "/knowledge", label: t.nav.knowledge, icon: BookOpenText },
     { href: "/tasks/today", label: t.nav.today, icon: CalendarCheck },
     { href: "/agent-runs", label: t.nav.agentRuns, icon: Activity },
     ...(auth ? [] : [{ href: "/login", label: t.nav.login, icon: LogIn }]),
