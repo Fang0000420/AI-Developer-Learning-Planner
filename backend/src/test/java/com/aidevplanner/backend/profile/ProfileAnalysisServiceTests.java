@@ -63,7 +63,7 @@ class ProfileAnalysisServiceTests {
                 agentRunRepository,
                 authenticatedUserService,
                 goalRepository,
-                new ObjectMapper(),
+                new ObjectMapper().findAndRegisterModules(),
                 profileAnalyzerClient,
                 skillProfileRepository,
                 knowledgeContextService,

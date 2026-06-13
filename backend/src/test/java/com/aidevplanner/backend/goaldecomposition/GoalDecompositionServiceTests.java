@@ -54,7 +54,7 @@ class GoalDecompositionServiceTests {
                 authenticatedUserService,
                 goalDecomposerClient,
                 goalRepository,
-                new ObjectMapper()
+                new ObjectMapper().findAndRegisterModules()
         );
     }
 

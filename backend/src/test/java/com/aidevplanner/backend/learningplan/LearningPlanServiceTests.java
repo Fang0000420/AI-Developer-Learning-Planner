@@ -91,7 +91,7 @@ class LearningPlanServiceTests {
                 knowledgeContextService,
                 learningPlanRepository,
                 learningPlanVersionManager,
-                new ObjectMapper(),
+                new ObjectMapper().findAndRegisterModules(),
                 planGeneratorClient,
                 pathRecommendationRepository,
                 progressLogRepository,

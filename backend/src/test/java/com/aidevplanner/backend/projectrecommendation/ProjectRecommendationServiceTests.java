@@ -65,7 +65,7 @@ class ProjectRecommendationServiceTests {
                 agentRunRepository,
                 authenticatedUserService,
                 goalRepository,
-                new ObjectMapper(),
+                new ObjectMapper().findAndRegisterModules(),
                 projectRecommenderClient,
                 skillProfileRepository,
                 knowledgeContextService

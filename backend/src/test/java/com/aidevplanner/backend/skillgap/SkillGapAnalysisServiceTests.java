@@ -64,7 +64,7 @@ class SkillGapAnalysisServiceTests {
                 agentRunRepository,
                 authenticatedUserService,
                 goalRepository,
-                new ObjectMapper(),
+                new ObjectMapper().findAndRegisterModules(),
                 skillGapAnalyzerClient,
                 skillProfileRepository,
                 knowledgeContextService
