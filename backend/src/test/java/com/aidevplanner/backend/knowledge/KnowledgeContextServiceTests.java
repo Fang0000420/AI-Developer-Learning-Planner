@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,7 +67,7 @@ class KnowledgeContextServiceTests {
 
         when(knowledgeDocumentRepository.findByUserIdAndEnabledTrueAndStatusOrderByUpdatedAtDesc(1L, KnowledgeDocumentStatus.READY))
                 .thenReturn(List.of(personal, platform));
-        when(knowledgeChunkRepository.findByDocumentIdIn(anyList()))
+        when(knowledgeChunkRepository.findByDocumentIdIn(anyCollection()))
                 .thenReturn(List.of(personalChunk1, personalChunk2, platformChunk));
 
         KnowledgeContextBundle bundle = knowledgeContextService.buildForGoal(goal);
@@ -99,7 +99,7 @@ class KnowledgeContextServiceTests {
 
         when(knowledgeDocumentRepository.findByUserIdAndEnabledTrueAndStatusOrderByUpdatedAtDesc(1L, KnowledgeDocumentStatus.READY))
                 .thenReturn(List.of(personal, platform));
-        when(knowledgeChunkRepository.findByDocumentIdIn(anyList()))
+        when(knowledgeChunkRepository.findByDocumentIdIn(anyCollection()))
                 .thenReturn(List.of());
 
         KnowledgeContextBundle bundle = knowledgeContextService.buildForGoal(goal);
