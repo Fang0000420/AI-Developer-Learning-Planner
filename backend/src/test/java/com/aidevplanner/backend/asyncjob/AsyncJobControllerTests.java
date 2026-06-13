@@ -1,5 +1,6 @@
 package com.aidevplanner.backend.asyncjob;
 
+import com.aidevplanner.backend.common.ConcurrentJobExecutionException;
 import com.aidevplanner.backend.learningplan.LearningPlanGenerateRequest;
 import com.aidevplanner.backend.path.PathAnalysisRequest;
 import com.aidevplanner.backend.progress.ProgressSubmitRequest;
@@ -70,6 +71,20 @@ class AsyncJobControllerTests {
                 .andExpect(jsonPath("$.status").value("PENDING"));
 
         verify(asyncJobService).createPathAnalysisJob(request);
+    }
+
+    @Test
+    void returnsConflictWhenPathAnalysisIsAlreadyRunning() throws Exception {
+        PathAnalysisRequest request = new PathAnalysisRequest(10L);
+        when(asyncJobService.createPathAnalysisJob(request))
+                .thenThrow(new ConcurrentJobExecutionException("A path analysis job is already running."));
+
+        mockMvc.perform(post("/api/jobs/path-analysis")
+                        .contentType("application/json")
+                        .content("{\"goalId\":10}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value("CONFLICT"))
+                .andExpect(jsonPath("$.errors.job").value("A path analysis job is already running."));
     }
 
     @Test

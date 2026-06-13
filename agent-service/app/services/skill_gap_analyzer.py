@@ -15,6 +15,7 @@ from app.schemas.skill_gap import (
     SkillGapAnalyzeResponse,
 )
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
+from app.services.cache.redis_json_cache import cache_get, cache_set
 from app.services.language import is_zh, prompt_for
 from app.services.model_retry import (
     ModelCallNonRetryableError,
@@ -108,6 +109,14 @@ def analyze_skill_gap(
 def analyze_skill_gap_with_model(
     request: SkillGapAnalyzeRequest,
 ) -> SkillGapAnalyzeResponse:
+    cache_payload = {
+        "model": PROFILE_ANALYZER_MODEL,
+        "request": request.model_dump(mode="json"),
+    }
+    cached = cache_get("skill-gap-analyzer", cache_payload)
+    if cached is not None:
+        return SkillGapAnalyzeResponse.model_validate(cached)
+
     response = httpx.post(
         f"{DEEPSEEK_API_BASE_URL.rstrip('/')}/chat/completions",
         headers={
@@ -150,6 +159,7 @@ def analyze_skill_gap_with_model(
     content = body["choices"][0]["message"]["content"]
     parsed = _load_json_object(content)
     normalized = _normalize_model_output(parsed, request)
+    cache_set("skill-gap-analyzer", cache_payload, normalized)
     return SkillGapAnalyzeResponse.model_validate(normalized)
 
 

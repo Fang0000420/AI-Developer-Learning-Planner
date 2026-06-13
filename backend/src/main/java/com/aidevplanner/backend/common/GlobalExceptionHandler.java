@@ -126,6 +126,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(ConcurrentJobExecutionException.class)
+    ResponseEntity<ApiErrorResponse> handleConcurrentJobExecution(ConcurrentJobExecutionException exception) {
+        ApiErrorResponse response = ApiErrorResponse.of(
+                "CONFLICT",
+                exception.getMessage(),
+                Map.of("job", exception.getMessage())
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException exception) {
         ApiErrorResponse response = ApiErrorResponse.of(

@@ -13,6 +13,7 @@ from app.schemas.project import (
     ProjectRecommendResponse,
 )
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
+from app.services.cache.redis_json_cache import cache_get, cache_set
 from app.services.deepseek_chat import chat_completion_json
 from app.services.language import is_zh
 from app.services.model_retry import (
@@ -53,6 +54,14 @@ def recommend_project(
 def recommend_project_with_model(
     request: ProjectRecommendRequest,
 ) -> ProjectRecommendResponse:
+    cache_payload = {
+        "model": PROJECT_RECOMMENDER_MODEL,
+        "request": request.model_dump(mode="json"),
+    }
+    cached = cache_get("project-recommender", cache_payload)
+    if cached is not None:
+        return ProjectRecommendResponse.model_validate(cached)
+
     summary = ProjectRecommendationMemory.model_validate(
         chat_completion_json(
             model=PROJECT_RECOMMENDER_MODEL,
@@ -79,6 +88,7 @@ def recommend_project_with_model(
         max_tokens=1200,
     )
     normalized = _normalize_model_output(parsed, request)
+    cache_set("project-recommender", cache_payload, normalized)
     return ProjectRecommendResponse.model_validate(normalized)
 
 

@@ -4,6 +4,7 @@ import re
 from app.config import DEEPSEEK_API_KEY, PROFILE_ANALYZER_MODEL, PROFILE_ANALYZER_TIMEOUT_SECONDS
 from app.schemas.profile import ProfileAnalyzeRequest, ProfileAnalyzeResponse
 from app.services.agent_execution import AgentExecutionResult, AgentResponseSource
+from app.services.cache.redis_json_cache import cache_get, cache_set
 from app.services.deepseek_chat import chat_completion_json
 from app.services.language import is_zh
 from app.services.model_retry import (
@@ -40,6 +41,14 @@ def analyze_profile(request: ProfileAnalyzeRequest) -> AgentExecutionResult[Prof
 
 
 def analyze_profile_with_model(request: ProfileAnalyzeRequest) -> ProfileAnalyzeResponse:
+    cache_payload = {
+        "model": PROFILE_ANALYZER_MODEL,
+        "request": request.model_dump(mode="json"),
+    }
+    cached = cache_get("profile-analyzer", cache_payload)
+    if cached is not None:
+        return ProfileAnalyzeResponse.model_validate(cached)
+
     parsed = chat_completion_json(
         model=PROFILE_ANALYZER_MODEL,
         messages=[
@@ -69,6 +78,7 @@ def analyze_profile_with_model(request: ProfileAnalyzeRequest) -> ProfileAnalyze
         max_tokens=1000,
     )
     normalized = _normalize_model_output(parsed, request)
+    cache_set("profile-analyzer", cache_payload, normalized)
     return ProfileAnalyzeResponse.model_validate(normalized)
 
 

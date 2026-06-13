@@ -21,11 +21,22 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  data:
+    redis:
+      url: ${REDIS_URL:redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}/0}
+      timeout: ${REDIS_TIMEOUT:2s}
+
 server:
   port: ${BACKEND_PORT:8080}
 
 agent-service:
   base-url: ${AGENT_SERVICE_BASE_URL:http://localhost:8000}
+
+app:
+  redis:
+    async-job-cache-ttl: ${REDIS_ASYNC_JOB_CACHE_TTL:PT24H}
+    async-job-active-ttl: ${REDIS_ASYNC_JOB_ACTIVE_TTL:PT30M}
+    resource-lock-ttl: ${REDIS_RESOURCE_LOCK_TTL:PT30M}
 
 logging:
   pattern:
