@@ -219,8 +219,8 @@ def _normalize_model_output(
         or fallback.suggestion,
         "wins": _string_list(nested, "wins", "highlights", "achievements") or fallback.wins,
         "nextFocus": _string_list(nested, "nextFocus", "next_focus", "focus") or fallback.nextFocus,
-        "paceAdjustment": pace_adjustment or fallback.paceAdjustment,
-        "confidence": confidence or fallback.confidence,
+        "paceAdjustment": pace_adjustment or "keep",
+        "confidence": confidence or "medium",
     }
 
 

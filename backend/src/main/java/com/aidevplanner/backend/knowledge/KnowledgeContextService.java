@@ -175,7 +175,8 @@ public class KnowledgeContextService {
                 .filter(match -> compareMatches.containsKey(match.documentId()))
                 .map(match -> toComparisonDocument(match, compareMatches.get(match.documentId())))
                 .sorted(Comparator.comparingInt(
-                        item -> Math.abs(item.scoreDelta() == null ? 0 : item.scoreDelta())
+                        (KnowledgeStrategyComparisonDocumentResponse item) ->
+                                Math.abs(item.scoreDelta() == null ? 0 : item.scoreDelta())
                 ).reversed())
                 .toList();
 

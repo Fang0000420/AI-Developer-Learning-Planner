@@ -9,6 +9,7 @@ import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
+import com.aidevplanner.backend.goal.ResponseLanguage;
 import com.aidevplanner.backend.goaldecomposition.GoalDecomposeResponse;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
 import com.aidevplanner.backend.knowledge.KnowledgeBasisResponse;
@@ -194,7 +195,8 @@ public class LearningPlanService {
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
         ensureCurrentUserOwns(goal);
-        PlanGenerateAgentRequest request = buildRequest(goal);
+        KnowledgeContextBundle knowledgeContext = knowledgeContextService.buildForGoal(goal);
+        PlanGenerateAgentRequest request = buildRequest(goal, knowledgeContext);
         String inputJson = writeJson(request);
         long startedAt = System.nanoTime();
 
@@ -267,7 +269,7 @@ public class LearningPlanService {
         });
     }
 
-    private PlanGenerateAgentRequest buildRequest(Goal goal) {
+    private PlanGenerateAgentRequest buildRequest(Goal goal, KnowledgeContextBundle knowledgeContext) {
         SkillProfile profile = skillProfileRepository
                 .findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
                 .orElse(null);
@@ -276,7 +278,6 @@ public class LearningPlanService {
         PathRecommendation pathRecommendation = pathRecommendationRepository
                 .findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
                 .orElse(null);
-        KnowledgeContextBundle knowledgeContext = knowledgeContextService.buildForGoal(goal);
         List<String> recentFeedback = latestFeedback(goal);
         List<String> planningConstraints = planningConstraints(goal, userProfile, pathRecommendation, recentFeedback);
 
@@ -369,6 +370,10 @@ public class LearningPlanService {
                 .filter(value -> value != null && !value.isBlank())
                 .distinct()
                 .toList();
+    }
+
+    private boolean isZh(Goal goal) {
+        return goal.getResponseLanguage() == ResponseLanguage.ZH;
     }
 
     private ProjectRecommendResponse latestProjectRecommendation(Goal goal) {
