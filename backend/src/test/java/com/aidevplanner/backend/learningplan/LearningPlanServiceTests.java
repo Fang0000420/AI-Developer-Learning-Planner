@@ -208,7 +208,6 @@ class LearningPlanServiceTests {
         when(userProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(learningPlanRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L)).thenReturn(Optional.empty());
         when(pathRecommendationRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L)).thenReturn(Optional.empty());
-        when(learningPlanVersionManager.versions(any(LearningPlan.class))).thenReturn(List.of());
         when(agentRunRepository.findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
                 10L,
                 "Project Recommender",
