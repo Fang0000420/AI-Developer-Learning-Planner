@@ -65,6 +65,11 @@ class PlanGenerateRequest(BaseModel):
     currentSkills: list[str] = Field(default_factory=list)
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
+    userProfileSummary: str | None = None
+    pacePreference: str | None = None
+    timeBudgetNote: str | None = None
+    manualCorrection: str | None = None
+    profileEvidence: list[str] = Field(default_factory=list)
     subGoals: list[SubGoal] = Field(default_factory=list)
     skillGaps: list[SkillGap] = Field(default_factory=list)
     # 兼容字段：承载“学习主线标题”，不再局限于软件项目名
@@ -76,6 +81,9 @@ class PlanGenerateRequest(BaseModel):
     coreTechStack: list[str] = Field(default_factory=list)
     # 兼容字段：承载成果证明或预期产出
     finalDeliverables: list[str] = Field(default_factory=list)
+    planningConstraints: list[str] = Field(default_factory=list)
+    recentFeedback: list[str] = Field(default_factory=list)
+    knowledgeContext: str = ""
     durationDays: int = Field(gt=0)
     dailyAvailableHours: float | None = Field(default=None, ge=0)
     responseLanguage: ResponseLanguage = "zh"

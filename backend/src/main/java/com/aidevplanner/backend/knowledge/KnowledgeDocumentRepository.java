@@ -9,5 +9,10 @@ public interface KnowledgeDocumentRepository extends JpaRepository<KnowledgeDocu
 
     List<KnowledgeDocument> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    List<KnowledgeDocument> findByUserIdAndEnabledTrueAndStatusOrderByUpdatedAtDesc(
+            Long userId,
+            KnowledgeDocumentStatus status
+    );
+
     Optional<KnowledgeDocument> findByIdAndUserId(Long id, Long userId);
 }

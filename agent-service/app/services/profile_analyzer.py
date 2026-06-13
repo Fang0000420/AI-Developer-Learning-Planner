@@ -67,6 +67,7 @@ def analyze_profile_with_model(request: ProfileAnalyzeRequest) -> ProfileAnalyze
                         "background": request.background,
                         "goal": request.goal,
                         "dailyAvailableHours": request.dailyAvailableHours,
+                        "knowledgeContext": request.knowledgeContext,
                         "responseLanguage": request.responseLanguage,
                     },
                     ensure_ascii=False,
@@ -84,6 +85,11 @@ def analyze_profile_with_model(request: ProfileAnalyzeRequest) -> ProfileAnalyze
 
 def analyze_profile_with_mock(request: ProfileAnalyzeRequest) -> ProfileAnalyzeResponse:
     if is_zh(request.responseLanguage):
+        direction_suffix = (
+            " 并优先参考用户知识库中的个人资料与学习笔记。"
+            if request.knowledgeContext
+            else ""
+        )
         return ProfileAnalyzeResponse(
             currentSkills=[
                 "目标相关基础认知",
@@ -103,9 +109,15 @@ def analyze_profile_with_mock(request: ProfileAnalyzeRequest) -> ProfileAnalyzeR
             recommendedDirection=(
                 f"围绕目标「{request.goal}」先明确关键能力要求，再建立稳定练习、"
                 "阶段性输出和复盘调整的学习闭环。"
+                + direction_suffix
             ),
         )
 
+    direction_suffix = (
+        " Use the personal knowledge-base excerpts as higher-priority evidence."
+        if request.knowledgeContext
+        else ""
+    )
     return ProfileAnalyzeResponse(
         currentSkills=[
             "Goal-related fundamentals",
@@ -125,6 +137,7 @@ def analyze_profile_with_mock(request: ProfileAnalyzeRequest) -> ProfileAnalyzeR
         recommendedDirection=(
             "Clarify the capabilities required for the goal first, then build a steady "
             f"cycle of practice, tangible outputs, and review around: {request.goal}."
+            + direction_suffix
         ),
     )
 

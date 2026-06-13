@@ -140,6 +140,11 @@ def _plan_generation_messages(
         "currentSkills": request.currentSkills,
         "strengths": request.strengths,
         "weaknesses": request.weaknesses,
+        "userProfileSummary": request.userProfileSummary,
+        "pacePreference": request.pacePreference,
+        "timeBudgetNote": request.timeBudgetNote,
+        "manualCorrection": request.manualCorrection,
+        "profileEvidence": request.profileEvidence,
         "subGoals": [item.model_dump() for item in request.subGoals],
         "skillGaps": [item.model_dump() for item in request.skillGaps],
         "recommendedProject": request.recommendedProject,
@@ -147,6 +152,9 @@ def _plan_generation_messages(
         "difficulty": request.difficulty,
         "coreTechStack": request.coreTechStack,
         "finalDeliverables": request.finalDeliverables,
+        "planningConstraints": request.planningConstraints,
+        "recentFeedback": request.recentFeedback,
+        "knowledgeContext": request.knowledgeContext,
         "durationDays": request.durationDays,
         "dailyAvailableHours": request.dailyAvailableHours,
         "responseLanguage": request.responseLanguage,
@@ -327,12 +335,17 @@ def _build_mock_day(
     phase, theme = phases[phase_index]
     focus = _focus_for_day(day_index, request)
     task_minutes = _task_minutes(daily_limit)
+    constraint_suffix = _constraint_suffix(request)
+    evidence_hint = _evidence_hint(request)
 
     if is_zh(request.responseLanguage):
         tasks = [
             PlanTask(
                 title=f"梳理第 {day_index} 天的 {focus} 学习重点",
-                description="先复盘目标、相关差距和预期成果，再明确今天最重要的学习任务。",
+                description=(
+                    "先复盘目标、相关差距、长期画像和预期成果，再明确今天最重要的学习任务。"
+                    + constraint_suffix
+                ),
                 estimatedMinutes=task_minutes[0],
                 type="learn",
                 deliverable=f"第 {day_index} 天学习重点说明",
@@ -340,7 +353,10 @@ def _build_mock_day(
             ),
             PlanTask(
                 title=f"练习并应用 {focus}",
-                description="围绕今日主题完成一个可验证的小练习或实际应用任务，推进目标达成。",
+                description=(
+                    "围绕今日主题完成一个可验证的小练习或实际应用任务，推进目标达成。"
+                    + evidence_hint
+                ),
                 estimatedMinutes=task_minutes[1],
                 type="practice",
                 deliverable=f"{focus} 阶段成果",
@@ -352,8 +368,9 @@ def _build_mock_day(
             PlanTask(
                 title=f"Map Day {day_index} learning focus for {focus}",
                 description=(
-                    "Review the goal, relevant gaps, and expected outcomes before deciding "
-                    "what matters most today."
+                    "Review the goal, relevant gaps, long-term profile, and expected outcomes "
+                    "before deciding what matters most today."
+                    + constraint_suffix
                 ),
                 estimatedMinutes=task_minutes[0],
                 type="learn",
@@ -365,6 +382,7 @@ def _build_mock_day(
                 description=(
                     "Complete a small but verifiable exercise or applied task that moves "
                     "today's theme forward."
+                    + evidence_hint
                 ),
                 estimatedMinutes=task_minutes[1],
                 type="practice",
@@ -667,6 +685,37 @@ def _normalize_priority(value: str) -> str:
 
 
 def _daily_minutes_limit(request: PlanGenerateRequest) -> int:
+    base_limit = 120
     if request.dailyAvailableHours and request.dailyAvailableHours > 0:
-        return max(30, int(request.dailyAvailableHours * 60))
-    return 120
+        base_limit = max(30, int(request.dailyAvailableHours * 60))
+
+    normalized_context = " ".join(
+        [
+            request.pacePreference or "",
+            request.timeBudgetNote or "",
+            " ".join(request.planningConstraints),
+            " ".join(request.recentFeedback),
+        ]
+    ).lower()
+    if any(token in normalized_context for token in ["放慢", "slower", "slow down", "轻量"]):
+        return max(30, int(base_limit * 0.8))
+    if any(token in normalized_context for token in ["加快", "faster", "高投入", "more capacity"]):
+        return max(30, int(base_limit * 1.1))
+    return base_limit
+
+
+def _constraint_suffix(request: PlanGenerateRequest) -> str:
+    if not request.planningConstraints:
+        return ""
+    constraint = request.planningConstraints[0]
+    if is_zh(request.responseLanguage):
+        return f" 请同时遵守这个约束：{constraint}"
+    return f" Respect this constraint while planning: {constraint}"
+
+
+def _evidence_hint(request: PlanGenerateRequest) -> str:
+    if not request.knowledgeContext and not request.profileEvidence:
+        return ""
+    if is_zh(request.responseLanguage):
+        return " 优先结合用户知识库和画像证据中已出现的真实场景。"
+    return " Prefer real scenarios already present in the learner's knowledge base and profile evidence."

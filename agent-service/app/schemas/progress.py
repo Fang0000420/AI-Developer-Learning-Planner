@@ -41,3 +41,7 @@ class ProgressReviewResponse(BaseModel):
     blockers: list[str] = Field(default_factory=list)
     impact: Literal["none", "minor", "medium", "major"]
     suggestion: str = Field(min_length=1)
+    wins: list[str] = Field(default_factory=list)
+    nextFocus: list[str] = Field(default_factory=list)
+    paceAdjustment: Literal["keep", "slower", "faster"] = "keep"
+    confidence: Literal["low", "medium", "high"] = "medium"

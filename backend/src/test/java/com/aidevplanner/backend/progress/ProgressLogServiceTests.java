@@ -18,6 +18,7 @@ import com.aidevplanner.backend.learningplan.PlanAdjustAgentResponse;
 import com.aidevplanner.backend.learningplan.PlanAdjustTaskPayload;
 import com.aidevplanner.backend.learningplan.PlanAdjusterClient;
 import com.aidevplanner.backend.learningplan.PlanMovedTaskResponse;
+import com.aidevplanner.backend.profile.UserProfileService;
 import com.aidevplanner.backend.user.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,6 +66,9 @@ class ProgressLogServiceTests {
     @Mock
     private ProgressReviewerClient progressReviewerClient;
 
+    @Mock
+    private UserProfileService userProfileService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private ProgressLogService progressLogService;
@@ -79,7 +83,8 @@ class ProgressLogServiceTests {
                 objectMapper,
                 planAdjusterClient,
                 progressLogRepository,
-                progressReviewerClient
+                progressReviewerClient,
+                userProfileService
         );
     }
 
@@ -99,7 +104,11 @@ class ProgressLogServiceTests {
                         List.of("Create progress form"),
                         List.of("Need server verification"),
                         "minor",
-                        "Finish the UI polish before adding new scope."
+                        "Finish the UI polish before adding new scope.",
+                        List.of("完成了数据层工作"),
+                        List.of("补齐表单交互"),
+                        "keep",
+                        "medium"
                 )));
         when(planAdjusterClient.adjust(any(PlanAdjustAgentRequest.class)))
                 .thenReturn(AgentClientResponse.fallback(new PlanAdjustAgentResponse(
@@ -151,7 +160,9 @@ class ProgressLogServiceTests {
         assertThat(response.blockers()).containsExactly("Need server verification");
         assertThat(response.reviewResultJson())
                 .containsEntry("impact", "minor")
-                .containsEntry("suggestion", "Finish the UI polish before adding new scope.");
+                .containsEntry("suggestion", "Finish the UI polish before adding new scope.")
+                .containsEntry("paceAdjustment", "keep")
+                .containsEntry("confidence", "medium");
         assertThat(response.reviewResultJson()).containsKey("planAdjustment");
         assertThat(tasks.get(0).getStatus()).isEqualTo(DailyTaskStatus.DONE);
         assertThat(tasks.get(1).getStatus()).isEqualTo(DailyTaskStatus.SKIPPED);
@@ -226,7 +237,9 @@ class ProgressLogServiceTests {
                 List.of("Waiting for deploy"),
                 Map.of(
                         "impact", "medium",
-                        "suggestion", "Clear the deploy blocker first."
+                        "suggestion", "Clear the deploy blocker first.",
+                        "paceAdjustment", "slower",
+                        "confidence", "low"
                 )
         );
         ReflectionTestUtils.setField(log, "id", 100L);

@@ -9,6 +9,8 @@ import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
+import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
+import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.user.User;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +31,8 @@ public class ProfileAnalysisService {
     private final ObjectMapper objectMapper;
     private final ProfileAnalyzerClient profileAnalyzerClient;
     private final SkillProfileRepository skillProfileRepository;
+    private final KnowledgeContextService knowledgeContextService;
+    private final UserProfileService userProfileService;
 
     public ProfileAnalysisService(
             AgentRunRepository agentRunRepository,
@@ -36,7 +40,9 @@ public class ProfileAnalysisService {
             GoalRepository goalRepository,
             ObjectMapper objectMapper,
             ProfileAnalyzerClient profileAnalyzerClient,
-            SkillProfileRepository skillProfileRepository
+            SkillProfileRepository skillProfileRepository,
+            KnowledgeContextService knowledgeContextService,
+            UserProfileService userProfileService
     ) {
         this.agentRunRepository = agentRunRepository;
         this.authenticatedUserService = authenticatedUserService;
@@ -44,6 +50,8 @@ public class ProfileAnalysisService {
         this.objectMapper = objectMapper;
         this.profileAnalyzerClient = profileAnalyzerClient;
         this.skillProfileRepository = skillProfileRepository;
+        this.knowledgeContextService = knowledgeContextService;
+        this.userProfileService = userProfileService;
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +78,7 @@ public class ProfileAnalysisService {
             long latencyMs = elapsedMs(startedAt);
             String outputJson = writeJson(response);
             SkillProfile profile = skillProfileRepository.save(toSkillProfile(goal, response));
+            userProfileService.recordGoalAnalysis(goal, profile, response);
 
             agentRunRepository.save(new AgentRun(
                     goal.getUser(),
@@ -109,11 +118,13 @@ public class ProfileAnalysisService {
         BigDecimal dailyAvailableHours = user.getDailyAvailableHours() == null
                 ? BigDecimal.ONE
                 : user.getDailyAvailableHours();
+        KnowledgeContextBundle knowledgeContext = knowledgeContextService.buildForGoal(goal);
 
         return new ProfileAnalyzeRequest(
                 background,
                 goal.getTitle(),
                 dailyAvailableHours,
+                knowledgeContext.contextText(),
                 goal.getResponseLanguage().name()
         );
     }

@@ -128,12 +128,43 @@ def review_progress_with_mock(request: ProgressReviewRequest) -> ProgressReviewR
             )
         )
 
+    wins = completed[:2]
+    next_focus = unfinished[:2] if unfinished else blockers[:2]
+    pace_adjustment = "keep"
+    confidence = "medium"
+    if impact == "none":
+        pace_adjustment = "faster"
+        confidence = "high"
+    elif impact == "minor":
+        pace_adjustment = "keep"
+        confidence = "medium"
+    elif impact == "medium":
+        pace_adjustment = "slower"
+        confidence = "medium"
+    else:
+        pace_adjustment = "slower"
+        confidence = "low"
+
+    if not wins and is_zh(request.responseLanguage):
+        wins = ["今天至少完成了一部分计划内容。"]
+    elif not wins:
+        wins = ["At least part of the planned work was completed today."]
+
+    if not next_focus and is_zh(request.responseLanguage):
+        next_focus = ["先处理主要阻塞，再进入新的学习内容。"]
+    elif not next_focus:
+        next_focus = ["Clear the main blocker before moving into new work."]
+
     return ProgressReviewResponse(
         completedTasks=completed,
         unfinishedTasks=unfinished,
         blockers=blockers,
         impact=impact,
         suggestion=suggestion,
+        wins=wins,
+        nextFocus=next_focus,
+        paceAdjustment=pace_adjustment,
+        confidence=confidence,
     )
 
 
@@ -171,6 +202,12 @@ def _normalize_model_output(
         or request.blockers
     )
     impact_value = _first_string(nested, "impact", "risk", "level")
+    pace_adjustment = _normalize_pace_adjustment(
+        _first_string(nested, "paceAdjustment", "pace_adjustment", "pace")
+    )
+    confidence = _normalize_confidence(
+        _first_string(nested, "confidence", "confidenceLevel", "confidence_level")
+    )
     return {
         "completedTasks": completed_tasks or [task.title for task in request.completedTasks],
         "unfinishedTasks": unfinished_tasks or [task.title for task in request.unfinishedTasks],
@@ -180,6 +217,10 @@ def _normalize_model_output(
         else fallback.impact,
         "suggestion": _first_string(nested, "suggestion", "advice", "nextStep")
         or fallback.suggestion,
+        "wins": _string_list(nested, "wins", "highlights", "achievements") or fallback.wins,
+        "nextFocus": _string_list(nested, "nextFocus", "next_focus", "focus") or fallback.nextFocus,
+        "paceAdjustment": pace_adjustment or fallback.paceAdjustment,
+        "confidence": confidence or fallback.confidence,
     }
 
 
@@ -230,6 +271,28 @@ def _normalize_impact(value: str) -> str:
     if normalized in {"major", "high", "severe", "blocked", "critical", "严重"}:
         return "major"
     return "medium"
+
+
+def _normalize_pace_adjustment(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized in {"faster", "speed_up", "speedup", "加快", "更快"}:
+        return "faster"
+    if normalized in {"slower", "slow_down", "slowdown", "放慢", "更慢"}:
+        return "slower"
+    if normalized in {"keep", "steady", "maintain", "保持"}:
+        return "keep"
+    return ""
+
+
+def _normalize_confidence(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized in {"low", "弱", "低"}:
+        return "low"
+    if normalized in {"high", "strong", "高"}:
+        return "high"
+    if normalized in {"medium", "moderate", "中", "中等"}:
+        return "medium"
+    return ""
 
 
 def _clean_blockers(values: list[str]) -> list[str]:

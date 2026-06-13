@@ -198,6 +198,7 @@ def _project_context(request: ProjectRecommendRequest) -> dict[str, object]:
         "skillGaps": [item.model_dump() for item in request.skillGaps],
         "durationDays": request.durationDays,
         "dailyAvailableHours": request.dailyAvailableHours,
+        "knowledgeContext": request.knowledgeContext,
         "responseLanguage": request.responseLanguage,
     }
 
@@ -207,11 +208,17 @@ def recommend_project_with_mock(
 ) -> ProjectRecommendResponse:
     daily_hours = _daily_hours(request)
     if is_zh(request.responseLanguage):
+        reason_suffix = (
+            " 另外，推荐已结合用户知识库中的个人资料、笔记和经验片段。"
+            if request.knowledgeContext
+            else ""
+        )
         return ProjectRecommendResponse(
             recommendedProject=_fallback_project_title(request),
             reason=(
                 "这条主线能把学习目标转化为持续练习、阶段性输出和可验证成果，"
                 "既方便聚焦重点，也便于根据反馈逐步调整。"
+                + reason_suffix
             ),
             difficulty="中等",
             durationDays=request.durationDays,
@@ -230,11 +237,17 @@ def recommend_project_with_mock(
             ],
         )
 
+    reason_suffix = (
+        " The recommendation also incorporates personal notes and evidence from the learner's knowledge base."
+        if request.knowledgeContext
+        else ""
+    )
     return ProjectRecommendResponse(
         recommendedProject=_fallback_project_title(request),
         reason=(
             "This track turns the learner's goal into a focused path with repeatable "
             "practice, visible outputs, and clear signals for adjustment."
+            + reason_suffix
         ),
         difficulty="medium",
         durationDays=request.durationDays,

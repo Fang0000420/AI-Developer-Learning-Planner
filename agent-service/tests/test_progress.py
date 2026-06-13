@@ -62,6 +62,10 @@ def test_progress_review_returns_structured_stub_response(
     assert body["blockers"] == ["Need server verification"]
     assert body["impact"] in {"none", "minor", "medium", "major"}
     assert body["suggestion"]
+    assert body["wins"]
+    assert body["nextFocus"]
+    assert body["paceAdjustment"] in {"keep", "slower", "faster"}
+    assert body["confidence"] in {"low", "medium", "high"}
 
 
 def test_progress_review_rejects_missing_tasks() -> None:
@@ -106,6 +110,8 @@ def test_progress_model_output_is_normalized() -> None:
     assert response.blockers == []
     assert response.impact == "minor"
     assert response.suggestion == "Continue with the UI tomorrow."
+    assert response.paceAdjustment == "keep"
+    assert response.confidence == "medium"
 
 
 def test_progress_model_output_supports_chinese_impact_aliases() -> None:
@@ -158,6 +164,8 @@ def test_progress_model_output_falls_back_to_request_and_mock_defaults() -> None
     assert normalized["blockers"] == []
     assert normalized["impact"] == "none"
     assert normalized["suggestion"]
+    assert normalized["wins"]
+    assert normalized["nextFocus"]
 
 
 def test_progress_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) -> None:
@@ -185,3 +193,4 @@ def test_progress_model_failure_uses_mock_fallback(monkeypatch: MonkeyPatch) -> 
     assert response.completedTasks == ["Create progress table"]
     assert response.impact == "none"
     assert response.suggestion
+    assert response.confidence == "high"

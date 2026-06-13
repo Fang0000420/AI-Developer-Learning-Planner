@@ -10,6 +10,8 @@ import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
+import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.profile.SkillProfile;
 import com.aidevplanner.backend.profile.SkillProfileRepository;
 import com.aidevplanner.backend.skillgap.SkillGapResponse;
@@ -52,6 +54,9 @@ class ProjectRecommendationServiceTests {
     @Mock
     private SkillProfileRepository skillProfileRepository;
 
+    @Mock
+    private KnowledgeContextService knowledgeContextService;
+
     private ProjectRecommendationService projectRecommendationService;
 
     @BeforeEach
@@ -62,7 +67,8 @@ class ProjectRecommendationServiceTests {
                 goalRepository,
                 new ObjectMapper(),
                 projectRecommenderClient,
-                skillProfileRepository
+                skillProfileRepository,
+                knowledgeContextService
         );
     }
 
@@ -72,6 +78,12 @@ class ProjectRecommendationServiceTests {
         when(goalRepository.findById(10L)).thenReturn(Optional.of(goal));
         when(skillProfileRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L))
                 .thenReturn(Optional.of(skillProfile(goal)));
+        when(knowledgeContextService.buildForGoal(goal)).thenReturn(new KnowledgeContextBundle(
+                "Source: Interview notes\nExcerpt: Wants speaking practice with work scenarios",
+                List.of("Knowledge evidence from \"Interview notes\": Wants speaking practice with work scenarios"),
+                List.of("Interview notes"),
+                1
+        ));
         when(agentRunRepository.findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
                 10L,
                 "Goal Decomposer",
@@ -109,6 +121,7 @@ class ProjectRecommendationServiceTests {
                 .containsExactly("Design agent workflow");
         assertThat(requestCaptor.getValue().skillGaps()).extracting(SkillGapResponse::skill)
                 .containsExactly("Structured LLM output validation");
+        assertThat(requestCaptor.getValue().knowledgeContext()).contains("Interview notes");
 
         ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
         verify(agentRunRepository).save(runCaptor.capture());
@@ -125,6 +138,7 @@ class ProjectRecommendationServiceTests {
         when(goalRepository.findById(10L)).thenReturn(Optional.of(goal));
         when(skillProfileRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L))
                 .thenReturn(Optional.empty());
+        when(knowledgeContextService.buildForGoal(goal)).thenReturn(KnowledgeContextBundle.empty());
         when(agentRunRepository.findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
                 10L,
                 "Goal Decomposer",

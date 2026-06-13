@@ -49,6 +49,7 @@ Rules:
 - priority must be exactly one of: high, medium, low.
 - Use weaknesses and high-priority sub-goals to decide urgency.
 - Prefer domain-neutral language unless the goal is clearly technical.
+- If knowledgeContext is present, treat it as the learner's own materials and use it as personalized evidence.
 """.strip()
 
 SKILL_GAP_ANALYZER_PROMPT_ZH = """
@@ -76,6 +77,7 @@ SKILL_GAP_ANALYZER_PROMPT_ZH = """
 - priority 必须是 high、medium、low 之一。
 - 根据 weaknesses 和高优先级 subGoals 判断紧急程度。
 - 除非目标明确属于技术领域，否则优先使用领域中立的能力描述。
+- 如果输入中提供 knowledgeContext，应把它视为学习者自己的资料和笔记，优先作为个性化证据。
 """.strip()
 
 
@@ -143,6 +145,7 @@ def analyze_skill_gap_with_model(
                             "strengths": request.strengths,
                             "weaknesses": request.weaknesses,
                             "subGoals": [item.model_dump() for item in request.subGoals],
+                            "knowledgeContext": request.knowledgeContext,
                             "responseLanguage": request.responseLanguage,
                         },
                         ensure_ascii=False,
@@ -167,6 +170,11 @@ def analyze_skill_gap_with_mock(
     request: SkillGapAnalyzeRequest,
 ) -> SkillGapAnalyzeResponse:
     if is_zh(request.responseLanguage):
+        extra_reason = (
+            " 这项判断也参考了用户知识库中的个人资料和笔记。"
+            if request.knowledgeContext
+            else ""
+        )
         return SkillGapAnalyzeResponse(
             skillGaps=[
                 SkillGap(
@@ -174,7 +182,7 @@ def analyze_skill_gap_with_mock(
                     currentLevel="基础",
                     targetLevel="熟练",
                     priority="high",
-                    reason="当前基础还不足以稳定支撑目标推进，需要先补齐核心认知和基本方法。",
+                    reason="当前基础还不足以稳定支撑目标推进，需要先补齐核心认知和基本方法。" + extra_reason,
                 ),
                 SkillGap(
                     skill="稳定练习机制",
@@ -203,6 +211,11 @@ def analyze_skill_gap_with_mock(
             ]
         )
 
+    extra_reason = (
+        " This judgment also uses personal evidence from the learner's knowledge base."
+        if request.knowledgeContext
+        else ""
+    )
     return SkillGapAnalyzeResponse(
         skillGaps=[
             SkillGap(
@@ -212,7 +225,7 @@ def analyze_skill_gap_with_mock(
                 priority="high",
                 reason=(
                     "The current foundation is not yet strong enough to support steady "
-                    "progress toward the goal."
+                    "progress toward the goal." + extra_reason
                 ),
             ),
             SkillGap(

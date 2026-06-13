@@ -9,6 +9,8 @@ import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.GoalDecompositionResponse;
 import com.aidevplanner.backend.goaldecomposition.GoalDecompositionService;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
+import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.profile.ProfileAnalysisService;
 import com.aidevplanner.backend.profile.SkillProfileResponse;
 import com.aidevplanner.backend.projectrecommendation.ProjectRecommendationResponse;
@@ -32,6 +34,7 @@ public class PathRecommendationService {
     private final AuthenticatedUserService authenticatedUserService;
     private final GoalDecompositionService goalDecompositionService;
     private final GoalRepository goalRepository;
+    private final KnowledgeContextService knowledgeContextService;
     private final PathRecommendationRepository pathRecommendationRepository;
     private final ProfileAnalysisService profileAnalysisService;
     private final ProjectRecommendationService projectRecommendationService;
@@ -42,6 +45,7 @@ public class PathRecommendationService {
             AuthenticatedUserService authenticatedUserService,
             GoalDecompositionService goalDecompositionService,
             GoalRepository goalRepository,
+            KnowledgeContextService knowledgeContextService,
             PathRecommendationRepository pathRecommendationRepository,
             ProfileAnalysisService profileAnalysisService,
             ProjectRecommendationService projectRecommendationService,
@@ -51,6 +55,7 @@ public class PathRecommendationService {
         this.authenticatedUserService = authenticatedUserService;
         this.goalDecompositionService = goalDecompositionService;
         this.goalRepository = goalRepository;
+        this.knowledgeContextService = knowledgeContextService;
         this.pathRecommendationRepository = pathRecommendationRepository;
         this.profileAnalysisService = profileAnalysisService;
         this.projectRecommendationService = projectRecommendationService;
@@ -77,6 +82,7 @@ public class PathRecommendationService {
         GoalDecompositionResponse decomposition = goalDecompositionService.decomposeGoal(goalId);
         SkillGapAnalysisResponse skillGapAnalysis = skillGapAnalysisService.analyzeSkillGap(goalId);
         ProjectRecommendationResponse projectRecommendation = projectRecommendationService.recommendProject(goalId);
+        KnowledgeContextBundle knowledgeContext = knowledgeContextService.buildForGoal(goal);
 
         AgentRun sourceAgentRun = projectRecommendation.runId() == null
                 ? null
@@ -107,7 +113,7 @@ public class PathRecommendationService {
                         cleanList(projectRecommendation.coreTechStack(), defaultFocusAreas(goal)),
                         milestones(goal, decomposition, projectRecommendation),
                         riskSignals(goal, profile, skillGapAnalysis),
-                        evidence(goal, profile, skillGapAnalysis),
+                        evidence(goal, profile, skillGapAnalysis, knowledgeContext),
                         cleanList(projectRecommendation.finalDeliverables(), defaultDeliverables(goal))
                 )
         );
@@ -235,7 +241,8 @@ public class PathRecommendationService {
     private List<String> evidence(
             Goal goal,
             SkillProfileResponse profile,
-            SkillGapAnalysisResponse skillGapAnalysis
+            SkillGapAnalysisResponse skillGapAnalysis,
+            KnowledgeContextBundle knowledgeContext
     ) {
         boolean zh = isZh(goal);
         Set<String> values = new LinkedHashSet<>();
@@ -255,6 +262,9 @@ public class PathRecommendationService {
                             : "Priority gap: " + skillGap.skill())
                     .forEach(values::add);
         }
+        knowledgeContext.evidence().stream()
+                .limit(3)
+                .forEach(values::add);
         return values.isEmpty()
                 ? List.of(zh ? "尚未形成足够证据，建议先完成一轮基础分析。" : "There is not enough evidence yet; start with one full analysis cycle.")
                 : List.copyOf(values);

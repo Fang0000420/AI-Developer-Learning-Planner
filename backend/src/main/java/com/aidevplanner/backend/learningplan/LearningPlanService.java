@@ -11,10 +11,16 @@ import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.GoalDecomposeResponse;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
+import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.path.PathRecommendation;
 import com.aidevplanner.backend.path.PathRecommendationRepository;
 import com.aidevplanner.backend.profile.SkillProfile;
 import com.aidevplanner.backend.profile.SkillProfileRepository;
+import com.aidevplanner.backend.profile.UserProfile;
+import com.aidevplanner.backend.profile.UserProfileRepository;
+import com.aidevplanner.backend.progress.ProgressLog;
+import com.aidevplanner.backend.progress.ProgressLogRepository;
 import com.aidevplanner.backend.projectrecommendation.ProjectRecommendResponse;
 import com.aidevplanner.backend.skillgap.SkillGapAnalyzeResponse;
 import com.aidevplanner.backend.skillgap.SkillGapResponse;
@@ -42,32 +48,41 @@ public class LearningPlanService {
     private final AuthenticatedUserService authenticatedUserService;
     private final DailyTaskRepository dailyTaskRepository;
     private final GoalRepository goalRepository;
+    private final KnowledgeContextService knowledgeContextService;
     private final LearningPlanRepository learningPlanRepository;
     private final ObjectMapper objectMapper;
     private final PlanGeneratorClient planGeneratorClient;
     private final PathRecommendationRepository pathRecommendationRepository;
+    private final ProgressLogRepository progressLogRepository;
     private final SkillProfileRepository skillProfileRepository;
+    private final UserProfileRepository userProfileRepository;
 
     public LearningPlanService(
             AgentRunRepository agentRunRepository,
             AuthenticatedUserService authenticatedUserService,
             DailyTaskRepository dailyTaskRepository,
             GoalRepository goalRepository,
+            KnowledgeContextService knowledgeContextService,
             LearningPlanRepository learningPlanRepository,
             ObjectMapper objectMapper,
             PlanGeneratorClient planGeneratorClient,
             PathRecommendationRepository pathRecommendationRepository,
-            SkillProfileRepository skillProfileRepository
+            ProgressLogRepository progressLogRepository,
+            SkillProfileRepository skillProfileRepository,
+            UserProfileRepository userProfileRepository
     ) {
         this.agentRunRepository = agentRunRepository;
         this.authenticatedUserService = authenticatedUserService;
         this.dailyTaskRepository = dailyTaskRepository;
         this.goalRepository = goalRepository;
+        this.knowledgeContextService = knowledgeContextService;
         this.learningPlanRepository = learningPlanRepository;
         this.objectMapper = objectMapper;
         this.planGeneratorClient = planGeneratorClient;
         this.pathRecommendationRepository = pathRecommendationRepository;
+        this.progressLogRepository = progressLogRepository;
         this.skillProfileRepository = skillProfileRepository;
+        this.userProfileRepository = userProfileRepository;
     }
 
     @Transactional(readOnly = true)
@@ -237,16 +252,25 @@ public class LearningPlanService {
         SkillProfile profile = skillProfileRepository
                 .findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
                 .orElse(null);
+        UserProfile userProfile = userProfileRepository.findByUserId(goal.getUser().getId()).orElse(null);
         ProjectRecommendResponse projectRecommendation = latestProjectRecommendation(goal);
         PathRecommendation pathRecommendation = pathRecommendationRepository
                 .findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
                 .orElse(null);
+        KnowledgeContextBundle knowledgeContext = knowledgeContextService.buildForGoal(goal);
+        List<String> recentFeedback = latestFeedback(goal);
+        List<String> planningConstraints = planningConstraints(goal, userProfile, pathRecommendation, recentFeedback);
 
         return new PlanGenerateAgentRequest(
                 firstPresent(goal.getTitle(), "Untitled learning goal"),
                 profile == null ? List.of() : copyList(profile.getCurrentSkills()),
                 profile == null ? List.of() : copyList(profile.getStrengths()),
                 profile == null ? List.of() : copyList(profile.getWeaknesses()),
+                userProfile == null ? "" : firstPresent(userProfile.getProfileSummary()),
+                userProfile == null ? "" : firstPresent(userProfile.getPacePreference()),
+                userProfile == null ? "" : firstPresent(userProfile.getTimeBudgetNote()),
+                userProfile == null ? "" : firstPresent(userProfile.getManualCorrection()),
+                userProfile == null ? List.of() : cleanList(userProfile.getEvidence()),
                 latestSubGoals(goal.getId()),
                 latestSkillGaps(goal.getId()),
                 pathRecommendation == null
@@ -264,10 +288,68 @@ public class LearningPlanService {
                 pathRecommendation == null
                         ? cleanList(projectRecommendation.finalDeliverables())
                         : cleanList(pathRecommendation.getFinalDeliverables()),
+                planningConstraints,
+                recentFeedback,
+                knowledgeContext.contextText(),
                 goal.getDurationDays(),
                 goal.getUser().getDailyAvailableHours(),
                 goal.getResponseLanguage().name()
         );
+    }
+
+    private List<String> latestFeedback(Goal goal) {
+        return learningPlanRepository.findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
+                .map(LearningPlan::getId)
+                .map(progressLogRepository::findByPlanIdOrderByCreatedAtDesc)
+                .stream()
+                .flatMap(List::stream)
+                .limit(2)
+                .map(this::summarizeFeedback)
+                .toList();
+    }
+
+    private String summarizeFeedback(ProgressLog progressLog) {
+        Object suggestion = progressLog.getReviewResultJson().get("suggestion");
+        String suggestionText = suggestion == null ? "" : String.valueOf(suggestion).trim();
+        String feedback = firstPresent(progressLog.getUserFeedback());
+        String blockers = cleanList(progressLog.getBlockers()).stream().limit(2).reduce((left, right) -> left + "；" + right).orElse("");
+        return firstPresent(
+                feedback,
+                suggestionText,
+                blockers,
+                "Recent feedback captured in progress review."
+        );
+    }
+
+    private List<String> planningConstraints(
+            Goal goal,
+            UserProfile userProfile,
+            PathRecommendation pathRecommendation,
+            List<String> recentFeedback
+    ) {
+        List<String> values = new ArrayList<>();
+        if (userProfile != null) {
+            if (!firstPresent(userProfile.getPacePreference()).isBlank()) {
+                values.add(firstPresent(userProfile.getPacePreference()));
+            }
+            if (!firstPresent(userProfile.getTimeBudgetNote()).isBlank()) {
+                values.add(firstPresent(userProfile.getTimeBudgetNote()));
+            }
+            if (!firstPresent(userProfile.getManualCorrection()).isBlank()) {
+                values.add(isZh(goal)
+                        ? "用户纠偏：" + userProfile.getManualCorrection().trim()
+                        : "User correction: " + userProfile.getManualCorrection().trim());
+            }
+            values.addAll(cleanList(userProfile.getRiskSignals()).stream().limit(2).toList());
+        }
+        if (pathRecommendation != null) {
+            values.addAll(cleanList(pathRecommendation.getRiskSignals()).stream().limit(2).toList());
+        }
+        values.addAll(recentFeedback.stream().limit(2).toList());
+        return values.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .distinct()
+                .toList();
     }
 
     private ProjectRecommendResponse latestProjectRecommendation(Goal goal) {

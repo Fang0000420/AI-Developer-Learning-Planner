@@ -20,6 +20,7 @@ import com.aidevplanner.backend.learningplan.PlanAdjustTaskPayload;
 import com.aidevplanner.backend.learningplan.PlanAdjusterClient;
 import com.aidevplanner.backend.learningplan.PlanMovedTaskResponse;
 import com.aidevplanner.backend.learningplan.PlanSplitTaskResponse;
+import com.aidevplanner.backend.profile.UserProfileService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,6 +50,7 @@ public class ProgressLogService {
     private final PlanAdjusterClient planAdjusterClient;
     private final ProgressLogRepository progressLogRepository;
     private final ProgressReviewerClient progressReviewerClient;
+    private final UserProfileService userProfileService;
 
     public ProgressLogService(
             AgentRunRepository agentRunRepository,
@@ -58,7 +60,8 @@ public class ProgressLogService {
             ObjectMapper objectMapper,
             PlanAdjusterClient planAdjusterClient,
             ProgressLogRepository progressLogRepository,
-            ProgressReviewerClient progressReviewerClient
+            ProgressReviewerClient progressReviewerClient,
+            UserProfileService userProfileService
     ) {
         this.agentRunRepository = agentRunRepository;
         this.authenticatedUserService = authenticatedUserService;
@@ -68,6 +71,7 @@ public class ProgressLogService {
         this.planAdjusterClient = planAdjusterClient;
         this.progressLogRepository = progressLogRepository;
         this.progressReviewerClient = progressReviewerClient;
+        this.userProfileService = userProfileService;
     }
 
     @Transactional(noRollbackFor = AgentServiceException.class)
@@ -202,6 +206,7 @@ public class ProgressLogService {
 
         Map<String, Object> reviewResultJson = toReviewResultJson(reviewResponse);
         reviewResultJson.put("planAdjustment", toPlanAdjustmentJson(adjustResponse));
+        userProfileService.applyProgressFeedback(plan, reviewResponse, request);
         ProgressLog savedLog = progressLogRepository.save(new ProgressLog(
                 plan,
                 plan.getUser(),
@@ -376,7 +381,11 @@ public class ProgressLogService {
                 firstPresent(
                         response.suggestion(),
                         zh ? "复盘今天的阻塞，并让明天保持聚焦。" : "Review today's blockers and keep tomorrow focused."
-                )
+                ),
+                cleanList(response.wins()),
+                cleanList(response.nextFocus()),
+                normalizePaceAdjustment(response.paceAdjustment()),
+                normalizeConfidence(response.confidence())
         );
     }
 
@@ -717,6 +726,22 @@ public class ProgressLogService {
         }
         if (normalized.equals("low") || normalized.equals("optional")) {
             return "low";
+        }
+        return "medium";
+    }
+
+    private String normalizePaceAdjustment(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase();
+        if (normalized.equals("slower") || normalized.equals("faster") || normalized.equals("keep")) {
+            return normalized;
+        }
+        return "keep";
+    }
+
+    private String normalizeConfidence(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase();
+        if (normalized.equals("low") || normalized.equals("medium") || normalized.equals("high")) {
+            return normalized;
         }
         return "medium";
     }

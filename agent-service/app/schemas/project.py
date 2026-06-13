@@ -14,6 +14,7 @@ class ProjectRecommendRequest(BaseModel):
     skillGaps: list[SkillGap] = Field(default_factory=list)
     durationDays: int = Field(gt=0)
     dailyAvailableHours: float | None = Field(default=None, ge=0)
+    knowledgeContext: str = ""
     responseLanguage: ResponseLanguage = "zh"
 
     @model_validator(mode="before")

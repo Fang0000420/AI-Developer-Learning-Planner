@@ -7,6 +7,7 @@ class ProfileAnalyzeRequest(BaseModel):
     background: str = Field(min_length=1)
     goal: str = Field(min_length=1)
     dailyAvailableHours: float = Field(gt=0)
+    knowledgeContext: str = ""
     responseLanguage: ResponseLanguage = "zh"
 
 

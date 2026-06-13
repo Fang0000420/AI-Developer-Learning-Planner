@@ -10,8 +10,14 @@ import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
+import com.aidevplanner.backend.knowledge.KnowledgeContextService;
+import com.aidevplanner.backend.path.PathRecommendationRepository;
 import com.aidevplanner.backend.profile.SkillProfile;
 import com.aidevplanner.backend.profile.SkillProfileRepository;
+import com.aidevplanner.backend.profile.UserProfile;
+import com.aidevplanner.backend.profile.UserProfileRepository;
+import com.aidevplanner.backend.progress.ProgressLogRepository;
 import com.aidevplanner.backend.skillgap.SkillGapResponse;
 import com.aidevplanner.backend.user.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,10 +59,22 @@ class LearningPlanServiceTests {
     private LearningPlanRepository learningPlanRepository;
 
     @Mock
+    private KnowledgeContextService knowledgeContextService;
+
+    @Mock
+    private PathRecommendationRepository pathRecommendationRepository;
+
+    @Mock
     private PlanGeneratorClient planGeneratorClient;
 
     @Mock
+    private ProgressLogRepository progressLogRepository;
+
+    @Mock
     private SkillProfileRepository skillProfileRepository;
+
+    @Mock
+    private UserProfileRepository userProfileRepository;
 
     private LearningPlanService learningPlanService;
 
@@ -67,10 +85,14 @@ class LearningPlanServiceTests {
                 authenticatedUserService,
                 dailyTaskRepository,
                 goalRepository,
+                knowledgeContextService,
                 learningPlanRepository,
                 new ObjectMapper(),
                 planGeneratorClient,
-                skillProfileRepository
+                pathRecommendationRepository,
+                progressLogRepository,
+                skillProfileRepository,
+                userProfileRepository
         );
     }
 
@@ -78,8 +100,17 @@ class LearningPlanServiceTests {
     void generatesPlanAndPersistsPlanAndTasks() {
         Goal goal = goal();
         when(goalRepository.findById(10L)).thenReturn(Optional.of(goal));
+        when(knowledgeContextService.buildForGoal(goal)).thenReturn(new KnowledgeContextBundle(
+                "Source: Work notes\nSummary: Real customer call notes\nExcerpt: Needs short speaking drills for work.",
+                List.of("Knowledge evidence from \"Work notes\": Needs short speaking drills for work."),
+                List.of("Work notes"),
+                1
+        ));
+        when(userProfileRepository.findByUserId(1L)).thenReturn(Optional.of(userProfile(goal)));
         when(skillProfileRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L))
                 .thenReturn(Optional.of(skillProfile(goal)));
+        when(learningPlanRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L)).thenReturn(Optional.empty());
+        when(pathRecommendationRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L)).thenReturn(Optional.empty());
         when(agentRunRepository.findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
                 10L,
                 "Project Recommender",
@@ -136,6 +167,9 @@ class LearningPlanServiceTests {
         assertThat(requestCaptor.getValue().mainGoal()).isEqualTo("Improve business English speaking");
         assertThat(requestCaptor.getValue().currentSkills()).containsExactly("Reading comprehension", "Basic vocabulary");
         assertThat(requestCaptor.getValue().recommendedProject()).isEqualTo("Business English speaking track");
+        assertThat(requestCaptor.getValue().userProfileSummary()).contains("项目驱动");
+        assertThat(requestCaptor.getValue().knowledgeContext()).contains("Work notes");
+        assertThat(requestCaptor.getValue().planningConstraints()).isNotEmpty();
         assertThat(requestCaptor.getValue().subGoals()).extracting(SubGoalResponse::title)
                 .containsExactly("Build a daily speaking routine");
         assertThat(requestCaptor.getValue().skillGaps()).extracting(SkillGapResponse::skill)
@@ -163,8 +197,12 @@ class LearningPlanServiceTests {
     void savesFailedRunWhenAgentFails() {
         Goal goal = goal();
         when(goalRepository.findById(10L)).thenReturn(Optional.of(goal));
+        when(knowledgeContextService.buildForGoal(goal)).thenReturn(KnowledgeContextBundle.empty());
         when(skillProfileRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L))
                 .thenReturn(Optional.empty());
+        when(userProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(learningPlanRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L)).thenReturn(Optional.empty());
+        when(pathRecommendationRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L)).thenReturn(Optional.empty());
         when(agentRunRepository.findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
                 10L,
                 "Project Recommender",
@@ -530,5 +568,26 @@ class LearningPlanServiceTests {
                 List.of("Speaking fluency"),
                 "Build a focused speaking routine with weekly review."
         );
+    }
+
+    private UserProfile userProfile(Goal goal) {
+        UserProfile profile = new UserProfile(
+                goal.getUser(),
+                2,
+                "长期画像显示该用户更适合项目驱动、短反馈周期的学习方式。",
+                "项目驱动",
+                "稳步推进",
+                "工作日 2 小时。",
+                "我更适合短时高频练习。",
+                List.of("Reading comprehension", "Basic vocabulary"),
+                List.of("Regular learning habit"),
+                List.of("Speaking fluency"),
+                List.of("Speaking drills", "Role-play"),
+                List.of("如果任务过长，容易中断。"),
+                List.of("知识库证据：真实工作场景需要短 speaking drills。"),
+                "围绕工作场景持续建立 speaking 输出。"
+        );
+        ReflectionTestUtils.setField(profile, "id", 88L);
+        return profile;
     }
 }

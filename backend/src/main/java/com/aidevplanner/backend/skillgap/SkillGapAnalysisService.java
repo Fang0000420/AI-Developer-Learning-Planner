@@ -11,6 +11,8 @@ import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.GoalDecomposeResponse;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
+import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.profile.SkillProfile;
 import com.aidevplanner.backend.profile.SkillProfileRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -33,6 +35,7 @@ public class SkillGapAnalysisService {
     private final ObjectMapper objectMapper;
     private final SkillGapAnalyzerClient skillGapAnalyzerClient;
     private final SkillProfileRepository skillProfileRepository;
+    private final KnowledgeContextService knowledgeContextService;
 
     public SkillGapAnalysisService(
             AgentRunRepository agentRunRepository,
@@ -40,7 +43,8 @@ public class SkillGapAnalysisService {
             GoalRepository goalRepository,
             ObjectMapper objectMapper,
             SkillGapAnalyzerClient skillGapAnalyzerClient,
-            SkillProfileRepository skillProfileRepository
+            SkillProfileRepository skillProfileRepository,
+            KnowledgeContextService knowledgeContextService
     ) {
         this.agentRunRepository = agentRunRepository;
         this.authenticatedUserService = authenticatedUserService;
@@ -48,6 +52,7 @@ public class SkillGapAnalysisService {
         this.objectMapper = objectMapper;
         this.skillGapAnalyzerClient = skillGapAnalyzerClient;
         this.skillProfileRepository = skillProfileRepository;
+        this.knowledgeContextService = knowledgeContextService;
     }
 
     @Transactional(readOnly = true)
@@ -111,6 +116,7 @@ public class SkillGapAnalysisService {
         SkillProfile profile = skillProfileRepository
                 .findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
                 .orElse(null);
+        KnowledgeContextBundle knowledgeContext = knowledgeContextService.buildForGoal(goal);
 
         return new SkillGapAnalyzeRequest(
                 firstPresent(goal.getTitle(), "Untitled learning goal"),
@@ -118,6 +124,7 @@ public class SkillGapAnalysisService {
                 profile == null ? List.of() : copyList(profile.getStrengths()),
                 profile == null ? List.of() : copyList(profile.getWeaknesses()),
                 latestSubGoals(goal.getId()),
+                knowledgeContext.contextText(),
                 goal.getResponseLanguage().name()
         );
     }

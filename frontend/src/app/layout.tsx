@@ -8,6 +8,7 @@ import {
   ListChecks,
   LogIn,
   Plus,
+  UserRound,
   Target,
 } from "lucide-react";
 import { authDisplayFromCookies } from "@/lib/backend-auth";
@@ -34,6 +35,7 @@ export default async function RootLayout({
   const navigationItems = [
     { href: "/", label: t.nav.dashboard, icon: LayoutDashboard },
     { href: "/goals", label: t.nav.goals, icon: Target },
+    { href: "/profile", label: t.nav.profile, icon: UserRound },
     { href: "/goals/new", label: t.nav.newGoal, icon: Plus },
     { href: "/plans", label: t.nav.plans, icon: ListChecks },
     { href: "/knowledge", label: t.nav.knowledge, icon: BookOpenText },

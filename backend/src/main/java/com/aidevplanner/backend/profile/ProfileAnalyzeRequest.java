@@ -6,6 +6,7 @@ public record ProfileAnalyzeRequest(
         String background,
         String goal,
         BigDecimal dailyAvailableHours,
+        String knowledgeContext,
         String responseLanguage
 ) {
 }

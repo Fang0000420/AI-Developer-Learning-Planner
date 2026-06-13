@@ -22,6 +22,7 @@ export const dictionaries = {
     nav: {
       dashboard: "工作台",
       goals: "目标",
+      profile: "画像",
       newGoal: "新目标",
       plans: "计划",
       knowledge: "知识库",
@@ -195,6 +196,7 @@ export const dictionaries = {
     nav: {
       dashboard: "Dashboard",
       goals: "Goals",
+      profile: "Profile",
       newGoal: "New Goal",
       plans: "Plans",
       knowledge: "Knowledge",

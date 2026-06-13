@@ -7,6 +7,10 @@ public record ProgressReviewAgentResponse(
         List<String> unfinishedTasks,
         List<String> blockers,
         String impact,
-        String suggestion
+        String suggestion,
+        List<String> wins,
+        List<String> nextFocus,
+        String paceAdjustment,
+        String confidence
 ) {
 }

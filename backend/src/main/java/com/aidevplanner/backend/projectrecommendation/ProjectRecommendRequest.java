@@ -15,6 +15,7 @@ public record ProjectRecommendRequest(
         List<SkillGapResponse> skillGaps,
         Integer durationDays,
         BigDecimal dailyAvailableHours,
+        String knowledgeContext,
         String responseLanguage
 ) {
 }

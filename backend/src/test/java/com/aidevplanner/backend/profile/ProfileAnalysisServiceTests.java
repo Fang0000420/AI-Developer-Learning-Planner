@@ -9,6 +9,8 @@ import com.aidevplanner.backend.agent.AgentRunStatus;
 import com.aidevplanner.backend.agent.AgentServiceException;
 import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
+import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
+import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.user.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +49,12 @@ class ProfileAnalysisServiceTests {
     @Mock
     private SkillProfileRepository skillProfileRepository;
 
+    @Mock
+    private KnowledgeContextService knowledgeContextService;
+
+    @Mock
+    private UserProfileService userProfileService;
+
     private ProfileAnalysisService profileAnalysisService;
 
     @BeforeEach
@@ -57,7 +65,9 @@ class ProfileAnalysisServiceTests {
                 goalRepository,
                 new ObjectMapper(),
                 profileAnalyzerClient,
-                skillProfileRepository
+                skillProfileRepository,
+                knowledgeContextService,
+                userProfileService
         );
     }
 
@@ -65,6 +75,12 @@ class ProfileAnalysisServiceTests {
     void analyzesGoalAndPersistsProfileAndRun() {
         Goal goal = goal();
         when(goalRepository.findById(10L)).thenReturn(Optional.of(goal));
+        when(knowledgeContextService.buildForGoal(goal)).thenReturn(new KnowledgeContextBundle(
+                "Source: Resume\nExcerpt: Spring Boot delivery experience",
+                List.of("知识库证据《Resume》：Spring Boot delivery experience"),
+                List.of("Resume"),
+                1
+        ));
         when(profileAnalyzerClient.analyze(any(ProfileAnalyzeRequest.class)))
                 .thenReturn(AgentClientResponse.model(profileAnalyzeResponse()));
         when(skillProfileRepository.save(any(SkillProfile.class)))
@@ -83,6 +99,7 @@ class ProfileAnalysisServiceTests {
                 .isEqualTo("Backend developer with Java and PostgreSQL experience.");
         assertThat(requestCaptor.getValue().goal()).isEqualTo("Build AI agent apps");
         assertThat(requestCaptor.getValue().dailyAvailableHours()).isEqualByComparingTo("2.0");
+        assertThat(requestCaptor.getValue().knowledgeContext()).contains("Resume");
 
         ArgumentCaptor<AgentRun> runCaptor = ArgumentCaptor.forClass(AgentRun.class);
         verify(agentRunRepository).save(runCaptor.capture());
@@ -90,12 +107,14 @@ class ProfileAnalysisServiceTests {
         assertThat(runCaptor.getValue().getResponseSource()).isEqualTo(AgentResponseSource.MODEL);
         assertThat(runCaptor.getValue().getInputJson()).contains("Build AI agent apps");
         assertThat(runCaptor.getValue().getOutputJson()).contains("recommendedDirection");
+        verify(userProfileService).recordGoalAnalysis(any(Goal.class), any(SkillProfile.class), any(ProfileAnalyzeResponse.class));
     }
 
     @Test
     void savesFailedRunWhenAgentFails() {
         Goal goal = goal();
         when(goalRepository.findById(10L)).thenReturn(Optional.of(goal));
+        when(knowledgeContextService.buildForGoal(goal)).thenReturn(KnowledgeContextBundle.empty());
         when(profileAnalyzerClient.analyze(any(ProfileAnalyzeRequest.class)))
                 .thenThrow(new AgentServiceException("Profile analyzer service is unavailable."));
 

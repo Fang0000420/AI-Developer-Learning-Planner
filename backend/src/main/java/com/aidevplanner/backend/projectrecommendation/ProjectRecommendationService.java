@@ -11,6 +11,8 @@ import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.GoalDecomposeResponse;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
+import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.profile.SkillProfile;
 import com.aidevplanner.backend.profile.SkillProfileRepository;
 import com.aidevplanner.backend.skillgap.SkillGapAnalyzeResponse;
@@ -36,6 +38,7 @@ public class ProjectRecommendationService {
     private final ObjectMapper objectMapper;
     private final ProjectRecommenderClient projectRecommenderClient;
     private final SkillProfileRepository skillProfileRepository;
+    private final KnowledgeContextService knowledgeContextService;
 
     public ProjectRecommendationService(
             AgentRunRepository agentRunRepository,
@@ -43,7 +46,8 @@ public class ProjectRecommendationService {
             GoalRepository goalRepository,
             ObjectMapper objectMapper,
             ProjectRecommenderClient projectRecommenderClient,
-            SkillProfileRepository skillProfileRepository
+            SkillProfileRepository skillProfileRepository,
+            KnowledgeContextService knowledgeContextService
     ) {
         this.agentRunRepository = agentRunRepository;
         this.authenticatedUserService = authenticatedUserService;
@@ -51,6 +55,7 @@ public class ProjectRecommendationService {
         this.objectMapper = objectMapper;
         this.projectRecommenderClient = projectRecommenderClient;
         this.skillProfileRepository = skillProfileRepository;
+        this.knowledgeContextService = knowledgeContextService;
     }
 
     @Transactional(readOnly = true)
@@ -114,6 +119,7 @@ public class ProjectRecommendationService {
         SkillProfile profile = skillProfileRepository
                 .findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
                 .orElse(null);
+        KnowledgeContextBundle knowledgeContext = knowledgeContextService.buildForGoal(goal);
 
         return new ProjectRecommendRequest(
                 firstPresent(goal.getTitle(), "Untitled learning goal"),
@@ -124,6 +130,7 @@ public class ProjectRecommendationService {
                 latestSkillGaps(goal.getId()),
                 goal.getDurationDays(),
                 goal.getUser().getDailyAvailableHours(),
+                knowledgeContext.contextText(),
                 goal.getResponseLanguage().name()
         );
     }

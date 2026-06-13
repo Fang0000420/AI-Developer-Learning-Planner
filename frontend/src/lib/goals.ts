@@ -27,6 +27,48 @@ export type SkillProfile = {
   updatedAt: string | null;
 };
 
+export type GoalProfileSnapshot = {
+  id: number;
+  goalId: number;
+  goalTitle: string;
+  userProfileVersionId: number;
+  version: number;
+  summary: string;
+  preferredLearningStyle: string | null;
+  pacePreference: string | null;
+  timeBudgetNote: string | null;
+  currentSkills: string[];
+  strengths: string[];
+  weaknesses: string[];
+  focusAreas: string[];
+  riskSignals: string[];
+  evidence: string[];
+  recommendedDirection: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type UserProfile = {
+  id: number;
+  userId: number;
+  currentVersion: number;
+  profileSummary: string;
+  preferredLearningStyle: string | null;
+  pacePreference: string | null;
+  timeBudgetNote: string | null;
+  manualCorrection: string | null;
+  currentSkills: string[];
+  strengths: string[];
+  weaknesses: string[];
+  focusAreas: string[];
+  riskSignals: string[];
+  evidence: string[];
+  recommendedDirection: string;
+  recentSnapshots: GoalProfileSnapshot[];
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type Priority = "high" | "medium" | "low";
 
 export type SubGoal = {
@@ -149,6 +191,10 @@ export type ProgressReviewResult = {
   impact?: ProgressImpact;
   planAdjustment?: PlanAdjustmentResult;
   suggestion?: string;
+  wins?: string[];
+  nextFocus?: string[];
+  paceAdjustment?: "keep" | "slower" | "faster";
+  confidence?: "low" | "medium" | "high";
 };
 
 export type PlanAdjustmentTask = {
@@ -203,6 +249,7 @@ export type ProgressLog = {
 
 export type AsyncJobStatus = "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
 export type AsyncJobType =
+  | "KNOWLEDGE_INGESTION"
   | "PATH_ANALYSIS"
   | "PLAN_GENERATION"
   | "PROGRESS_SUBMISSION";

@@ -10,6 +10,7 @@ class SkillGapAnalyzeRequest(BaseModel):
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
     subGoals: list[SubGoal] = Field(default_factory=list)
+    knowledgeContext: str = ""
     responseLanguage: ResponseLanguage = "zh"
 
 

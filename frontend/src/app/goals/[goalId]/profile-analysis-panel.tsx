@@ -140,8 +140,8 @@ export function ProfileAnalysisPanel({
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {locale === "zh"
-                ? "根据已保存的背景、目标和每日时间预算生成结构化画像。"
-                : "Structured profile generated from the saved background, goal, and daily time budget."}
+                ? "根据已保存的背景、目标、每日时间预算和已启用知识库文档生成结构化画像。"
+                : "Structured profile generated from the saved background, goal, daily time budget, and enabled knowledge-base documents."}
             </p>
           </div>
         </div>

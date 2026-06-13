@@ -112,8 +112,8 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
               </h1>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 {locale === "zh"
-                  ? "由该目标已保存的最新能力画像、目标拆解、技能差距分析和项目推荐生成。"
-                  : "Generated from the latest profile, goal decomposition, skill gap analysis, and project recommendation saved for this goal."}
+                  ? "由该目标已保存的最新能力画像、长期画像、目标拆解、技能差距分析、项目推荐和已启用知识库上下文生成。"
+                  : "Generated from the latest goal profile, long-term profile, goal decomposition, skill gap analysis, project recommendation, and enabled knowledge-base context."}
               </p>
             </div>
             <Link

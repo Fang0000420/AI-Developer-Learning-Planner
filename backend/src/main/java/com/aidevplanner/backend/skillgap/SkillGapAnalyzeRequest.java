@@ -10,6 +10,7 @@ public record SkillGapAnalyzeRequest(
         List<String> strengths,
         List<String> weaknesses,
         List<SubGoalResponse> subGoals,
+        String knowledgeContext,
         String responseLanguage
 ) {
 }

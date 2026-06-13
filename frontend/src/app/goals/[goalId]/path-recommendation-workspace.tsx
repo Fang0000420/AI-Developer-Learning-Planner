@@ -357,6 +357,11 @@ export function PathRecommendationWorkspace({
                 </span>
               ))}
             </div>
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                {locale === "zh"
+                  ? "基于当前路径生成计划时，系统还会继续参考长期画像、最近反馈和已启用知识库文档。"
+                  : "When generating a plan from this path, the system also uses the long-term profile, recent feedback, and enabled knowledge-base documents."}
+              </p>
           </section>
 
           {planError ? (

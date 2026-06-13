@@ -56,10 +56,52 @@ function normalizeReview(
     impact: review.impact,
     planAdjustment: review.planAdjustment,
     suggestion: review.suggestion,
+    wins: Array.isArray(review.wins) ? review.wins : [],
+    nextFocus: Array.isArray(review.nextFocus) ? review.nextFocus : [],
+    paceAdjustment: review.paceAdjustment ?? "keep",
+    confidence: review.confidence ?? "medium",
     unfinishedTasks: Array.isArray(review.unfinishedTasks)
       ? review.unfinishedTasks
       : [],
   };
+}
+
+function paceAdjustmentLabel(
+  paceAdjustment: "keep" | "slower" | "faster",
+  locale: Locale,
+) {
+  if (locale === "zh") {
+    return {
+      faster: "可以加快",
+      keep: "保持节奏",
+      slower: "需要放慢",
+    }[paceAdjustment];
+  }
+
+  return {
+    faster: "Can go faster",
+    keep: "Keep the pace",
+    slower: "Slow down",
+  }[paceAdjustment];
+}
+
+function confidenceLabel(
+  confidence: "low" | "medium" | "high",
+  locale: Locale,
+) {
+  if (locale === "zh") {
+    return {
+      high: "高",
+      low: "低",
+      medium: "中",
+    }[confidence];
+  }
+
+  return {
+    high: "High",
+    low: "Low",
+    medium: "Medium",
+  }[confidence];
 }
 
 export function ProgressSubmitForm({
@@ -308,6 +350,54 @@ export function ProgressSubmitForm({
                   />
                   <span>{latestReview.suggestion}</span>
                 </p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-md border border-slate-200 bg-white p-3 text-sm">
+                    <div className="font-medium text-slate-500">
+                      {locale === "zh" ? "节奏判断" : "Pace judgment"}
+                    </div>
+                    <p className="mt-1 text-slate-700">
+                      {paceAdjustmentLabel(
+                        latestReview.paceAdjustment ?? "keep",
+                        locale,
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-white p-3 text-sm">
+                    <div className="font-medium text-slate-500">
+                      {locale === "zh" ? "复盘信心" : "Review confidence"}
+                    </div>
+                    <p className="mt-1 text-slate-700">
+                      {confidenceLabel(
+                        latestReview.confidence ?? "medium",
+                        locale,
+                      )}
+                    </p>
+                  </div>
+                </div>
+                {latestReview.wins && latestReview.wins.length > 0 ? (
+                  <div className="mt-3 text-sm">
+                    <div className="font-medium text-slate-500">
+                      {locale === "zh" ? "今天的收获" : "Today's wins"}
+                    </div>
+                    <ul className="mt-2 space-y-1 text-slate-700">
+                      {latestReview.wins.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {latestReview.nextFocus && latestReview.nextFocus.length > 0 ? (
+                  <div className="mt-3 text-sm">
+                    <div className="font-medium text-slate-500">
+                      {locale === "zh" ? "下一步聚焦" : "Next focus"}
+                    </div>
+                    <ul className="mt-2 space-y-1 text-slate-700">
+                      {latestReview.nextFocus.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
                 {latestReview.blockers && latestReview.blockers.length > 0 ? (
                   <div className="mt-3 text-sm">
                     <div className="font-medium text-slate-500">
