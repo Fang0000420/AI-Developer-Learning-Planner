@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, BookOpenText, Target } from "lucide-react";
+import { fetchBackendGoals } from "@/lib/backend-goals";
 import { fetchBackendKnowledgeDocuments } from "@/lib/backend-knowledge";
 import { dictionaries } from "@/lib/i18n";
 import { getCurrentLocale } from "@/lib/i18n-server";
@@ -7,10 +8,22 @@ import { KnowledgeWorkspace } from "./knowledge-workspace";
 
 export const dynamic = "force-dynamic";
 
-export default async function KnowledgePage() {
+type KnowledgePageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function KnowledgePage({ searchParams }: KnowledgePageProps) {
   const locale = await getCurrentLocale();
   const t = dictionaries[locale];
-  const { data: documents, error } = await fetchBackendKnowledgeDocuments();
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const initialGoalId =
+    typeof resolvedSearchParams.goalId === "string"
+      ? resolvedSearchParams.goalId
+      : "";
+  const [{ data: documents, error }, { data: goals }] = await Promise.all([
+    fetchBackendKnowledgeDocuments(),
+    fetchBackendGoals(),
+  ]);
 
   return (
     <main className="flex-1 bg-background text-foreground">
@@ -49,6 +62,8 @@ export default async function KnowledgePage() {
 
         <KnowledgeWorkspace
           initialDocuments={documents}
+          initialGoals={goals ?? []}
+          initialSelectedGoalId={initialGoalId}
           initialError={error?.message ?? null}
           locale={locale}
         />

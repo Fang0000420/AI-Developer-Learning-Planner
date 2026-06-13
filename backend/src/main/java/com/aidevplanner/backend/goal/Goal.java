@@ -46,6 +46,9 @@ public class Goal {
     @Column(length = 50)
     private GoalStatus status = GoalStatus.ACTIVE;
 
+    @Column(name = "knowledge_preference_json", columnDefinition = "TEXT")
+    private String knowledgePreferenceJson;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -129,6 +132,14 @@ public class Goal {
 
     public void setStatus(GoalStatus status) {
         this.status = status;
+    }
+
+    public String getKnowledgePreferenceJson() {
+        return knowledgePreferenceJson;
+    }
+
+    public void setKnowledgePreferenceJson(String knowledgePreferenceJson) {
+        this.knowledgePreferenceJson = knowledgePreferenceJson;
     }
 
     public LocalDateTime getCreatedAt() {

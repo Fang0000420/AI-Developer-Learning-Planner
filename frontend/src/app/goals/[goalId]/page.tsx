@@ -10,6 +10,7 @@ import {
 import {
   fetchBackendGoal,
   fetchBackendGoalDecomposition,
+  fetchBackendGoalKnowledgePreference,
   fetchBackendGoalProfile,
   fetchBackendPathRecommendation,
   fetchBackendProjectRecommendation,
@@ -59,6 +60,10 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
   const { data: pathRecommendation, error: pathRecommendationError } = goal
     ? await fetchBackendPathRecommendation(goalId)
     : { data: null, error: null };
+  const knowledgePreferenceResult = goal
+    ? await fetchBackendGoalKnowledgePreference(goalId)
+    : { data: null };
+  const knowledgePreference = knowledgePreferenceResult.data;
 
   if (error || !goal) {
     return (
@@ -228,6 +233,36 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
             hasPathRecommendation={pathRecommendation !== null}
             locale={locale}
           />
+
+          <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-950">
+              {locale === "zh" ? "知识联动" : "Knowledge Link"}
+            </h2>
+            <div className="mt-5 space-y-3 text-sm text-slate-600">
+              <p>
+                {locale === "zh" ? "优先文档数：" : "Preferred docs: "}
+                {knowledgePreference?.preferredDocumentIds.length ?? 0}
+              </p>
+              <p>
+                {locale === "zh" ? "固定作用域：" : "Fixed scope: "}
+                {knowledgePreference?.preferredScope ?? (locale === "zh" ? "未固定" : "Not fixed")}
+              </p>
+              <p>
+                {locale === "zh" ? "固定分类：" : "Fixed categories: "}
+                {knowledgePreference && knowledgePreference.preferredCategories.length > 0
+                  ? knowledgePreference.preferredCategories.join(", ")
+                  : locale === "zh"
+                    ? "未固定"
+                    : "Not fixed"}
+              </p>
+              <Link
+                className="inline-flex h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white"
+                href={`/knowledge?goalId=${goal.id}`}
+              >
+                {locale === "zh" ? "打开知识库并配置当前目标" : "Open Knowledge for This Goal"}
+              </Link>
+            </div>
+          </section>
 
           <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-slate-950">

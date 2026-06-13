@@ -15,6 +15,7 @@ import {
 import { useRouter } from "next/navigation";
 import { getApiErrorMessage, pollJob, postJson } from "@/lib/client-jobs";
 import type {
+  AdaptiveScheduleControl,
   ApiErrorResponse,
   AsyncJob,
   PlanTask,
@@ -30,6 +31,7 @@ import {
 } from "@/lib/goals";
 
 type ProgressSubmitFormProps = {
+  adaptiveScheduleControl: AdaptiveScheduleControl | null;
   dayIndex: number;
   latestLog: ProgressLog | null;
   locale: Locale;
@@ -60,6 +62,7 @@ function normalizeReview(
     nextFocus: Array.isArray(review.nextFocus) ? review.nextFocus : [],
     paceAdjustment: review.paceAdjustment ?? "keep",
     confidence: review.confidence ?? "medium",
+    adaptiveSchedule: review.adaptiveSchedule,
     unfinishedTasks: Array.isArray(review.unfinishedTasks)
       ? review.unfinishedTasks
       : [],
@@ -104,7 +107,27 @@ function confidenceLabel(
   }[confidence];
 }
 
+function adaptivePacingLabel(
+  pacing: "lighter" | "steady" | "stronger",
+  locale: Locale,
+) {
+  if (locale === "zh") {
+    return {
+      lighter: "后续减负",
+      steady: "保持当前密度",
+      stronger: "后续加压",
+    }[pacing];
+  }
+
+  return {
+    lighter: "Lighten ahead",
+    steady: "Keep current density",
+    stronger: "Increase ahead",
+  }[pacing];
+}
+
 export function ProgressSubmitForm({
+  adaptiveScheduleControl,
   dayIndex,
   latestLog,
   locale,
@@ -129,6 +152,7 @@ export function ProgressSubmitForm({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [isOverriding, setIsOverriding] = useState(false);
 
   function toggleCompleted(taskId: number) {
     setCompletedTaskIds((current) =>
@@ -188,6 +212,44 @@ export function ProgressSubmitForm({
     }
   }
 
+  async function overrideAdaptiveSchedule(
+    pacing: "lighter" | "steady" | "stronger",
+  ) {
+    setError(null);
+    setIsOverriding(true);
+
+    try {
+      const response = await fetch(`/api/progress/${planId}`, {
+        body: JSON.stringify({ pacing }),
+        headers: { "Content-Type": "application/json" },
+        method: "PATCH",
+      });
+      if (!response.ok) {
+        const payload = (await response.json()) as ApiErrorResponse;
+        setError(
+          getApiErrorMessage(
+            payload,
+            locale === "zh"
+              ? "手动覆盖自适应调度失败。"
+              : "Adaptive schedule override failed.",
+          ),
+        );
+        return;
+      }
+      router.refresh();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : locale === "zh"
+            ? "手动覆盖自适应调度失败。"
+            : "Adaptive schedule override failed.",
+      );
+    } finally {
+      setIsOverriding(false);
+    }
+  }
+
   return (
     <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -211,6 +273,81 @@ export function ProgressSubmitForm({
       </div>
 
       <form className="mt-6 flex flex-col gap-5" onSubmit={submitProgress}>
+        {adaptiveScheduleControl ? (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <Activity aria-hidden="true" className="size-4" />
+              {locale === "zh"
+                ? "调度解释与覆盖"
+                : "Scheduling explanation and override"}
+            </div>
+            {adaptiveScheduleControl.latestAutomatic?.pacing ? (
+              <div className="mt-3 rounded-md border border-slate-200 bg-white p-4 text-sm">
+                <p className="font-semibold text-slate-800">
+                  {locale === "zh" ? "当前自动判断：" : "Current automatic mode: "}
+                  {adaptivePacingLabel(
+                    adaptiveScheduleControl.latestAutomatic.pacing,
+                    locale,
+                  )}
+                </p>
+                {adaptiveScheduleControl.latestAutomatic.reason ? (
+                  <p className="mt-2 leading-6 text-slate-700">
+                    {adaptiveScheduleControl.latestAutomatic.reason}
+                  </p>
+                ) : null}
+                {adaptiveScheduleControl.evidence &&
+                adaptiveScheduleControl.evidence.length > 0 ? (
+                  <div className="mt-3">
+                    <div className="font-medium text-slate-500">
+                      {locale === "zh" ? "判断依据" : "Evidence"}
+                    </div>
+                    <ul className="mt-2 space-y-1 text-slate-700">
+                      {adaptiveScheduleControl.evidence.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {adaptiveScheduleControl.activeOverride?.pacing ? (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm">
+                <p className="font-semibold text-amber-900">
+                  {locale === "zh" ? "当前手动覆盖：" : "Current manual override: "}
+                  {adaptivePacingLabel(
+                    adaptiveScheduleControl.activeOverride.pacing,
+                    locale,
+                  )}
+                </p>
+                {adaptiveScheduleControl.activeOverride.reason ? (
+                  <p className="mt-2 leading-6 text-amber-800">
+                    {adaptiveScheduleControl.activeOverride.reason}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {(
+                [
+                  ["lighter", locale === "zh" ? "手动减负" : "Lighten"],
+                  ["steady", locale === "zh" ? "保持当前" : "Keep steady"],
+                  ["stronger", locale === "zh" ? "手动加压" : "Intensify"],
+                ] as const
+              ).map(([pacing, label]) => (
+                <button
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+                  disabled={isOverriding}
+                  key={pacing}
+                  onClick={() => overrideAdaptiveSchedule(pacing)}
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-md border border-slate-200 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -396,6 +533,68 @@ export function ProgressSubmitForm({
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
+                  </div>
+                ) : null}
+                {latestReview.adaptiveSchedule?.pacing ? (
+                  <div className="mt-4 rounded-md border border-slate-200 bg-white p-4 text-sm">
+                    <div className="flex items-center gap-2 font-medium text-slate-500">
+                      <Activity aria-hidden="true" className="size-4" />
+                      {locale === "zh"
+                        ? "自适应调度"
+                        : "Adaptive scheduling"}
+                    </div>
+                    <p className="mt-2 font-semibold text-slate-800">
+                      {adaptivePacingLabel(
+                        latestReview.adaptiveSchedule.pacing,
+                        locale,
+                      )}
+                    </p>
+                    {latestReview.adaptiveSchedule.reason ? (
+                      <p className="mt-2 leading-6 text-slate-700">
+                        {latestReview.adaptiveSchedule.reason}
+                      </p>
+                    ) : null}
+                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                      <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                        <div className="font-medium text-slate-500">
+                          {locale === "zh" ? "近期完成率" : "Recent completion"}
+                        </div>
+                        <p className="mt-1 text-slate-700">
+                          {Math.round(
+                            (latestReview.adaptiveSchedule
+                              .recentCompletionRate ?? 0) * 100,
+                          )}
+                          %
+                        </p>
+                      </div>
+                      <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                        <div className="font-medium text-slate-500">
+                          {locale === "zh" ? "平均阻塞" : "Average blockers"}
+                        </div>
+                        <p className="mt-1 text-slate-700">
+                          {latestReview.adaptiveSchedule.recentBlockerAverage ?? 0}
+                        </p>
+                      </div>
+                      <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                        <div className="font-medium text-slate-500">
+                          {locale === "zh" ? "分钟调整" : "Minute change"}
+                        </div>
+                        <p className="mt-1 text-slate-700">
+                          {latestReview.adaptiveSchedule.minuteAdjustmentPercent ??
+                            0}
+                          %
+                        </p>
+                      </div>
+                    </div>
+                    {latestReview.adaptiveSchedule.affectedDayIndexes &&
+                    latestReview.adaptiveSchedule.affectedDayIndexes.length > 0 ? (
+                      <p className="mt-3 text-slate-600">
+                        {locale === "zh" ? "影响天数：" : "Affected days: "}
+                        {latestReview.adaptiveSchedule.affectedDayIndexes.join(
+                          ", ",
+                        )}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 {latestReview.blockers && latestReview.blockers.length > 0 ? (

@@ -14,6 +14,11 @@ import { fetchBackendPlan } from "@/lib/backend-plans";
 import { formatGoalDate, formatMinutes, getPriorityClasses } from "@/lib/goals";
 import { dictionaries } from "@/lib/i18n";
 import { getCurrentLocale } from "@/lib/i18n-server";
+import {
+  knowledgeScopeLabel,
+  knowledgeSourceCategoryLabel,
+} from "@/lib/knowledge";
+import { PlanVersionPanel } from "./plan-version-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -233,6 +238,97 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
           </section>
 
           <aside className="flex flex-col gap-6">
+            <PlanVersionPanel
+              locale={locale}
+              planId={plan.id}
+              versions={plan.versions}
+            />
+
+            <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold text-slate-950">
+                {locale === "zh" ? "知识依据" : "Knowledge Basis"}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {plan.knowledgeBasis.summary}
+              </p>
+
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-500">
+                    {locale === "zh" ? "优先文档数" : "Preferred docs"}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-950">
+                    {plan.knowledgeBasis.preference.preferredDocumentIds.length}
+                  </p>
+                </div>
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-500">
+                    {locale === "zh" ? "固定作用域" : "Fixed scope"}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-950">
+                    {plan.knowledgeBasis.preference.preferredScope
+                      ? knowledgeScopeLabel(
+                          plan.knowledgeBasis.preference.preferredScope,
+                          locale,
+                        )
+                      : locale === "zh"
+                        ? "未固定"
+                        : "Not fixed"}
+                  </p>
+                </div>
+              </div>
+
+              {plan.knowledgeBasis.documents.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {plan.knowledgeBasis.documents.map((document) => (
+                    <article
+                      className="rounded-md border border-slate-200 bg-slate-50 p-4"
+                      key={`${document.documentId ?? document.title}`}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex h-7 items-center rounded-md bg-white px-2 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                          {knowledgeScopeLabel(document.scope, locale)}
+                        </span>
+                        <span className="inline-flex h-7 items-center rounded-md bg-white px-2 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                          {knowledgeSourceCategoryLabel(
+                            document.sourceCategory as
+                              | "NOTE"
+                              | "RESUME"
+                              | "PROJECT"
+                              | "COURSE"
+                              | "REFERENCE"
+                              | "OTHER",
+                            locale,
+                          )}
+                        </span>
+                      </div>
+                      <h3 className="mt-3 text-sm font-semibold text-slate-950">
+                        {document.title}
+                      </h3>
+                      <ul className="mt-3 space-y-1 text-sm leading-6 text-slate-600">
+                        {document.reasons.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+
+              {plan.knowledgeBasis.knowledgeEvidence.length > 0 ? (
+                <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-500">
+                    {locale === "zh" ? "知识证据片段" : "Knowledge evidence"}
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                    {plan.knowledgeBasis.knowledgeEvidence.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </section>
+
             <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold text-slate-950">
                 {locale === "zh" ? "后端记录" : "Backend Record"}

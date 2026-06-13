@@ -12,6 +12,7 @@ import com.aidevplanner.backend.learningplan.DailyTaskRepository;
 import com.aidevplanner.backend.learningplan.DailyTaskStatus;
 import com.aidevplanner.backend.learningplan.LearningPlan;
 import com.aidevplanner.backend.learningplan.LearningPlanRepository;
+import com.aidevplanner.backend.learningplan.LearningPlanVersionManager;
 import com.aidevplanner.backend.learningplan.PlanAdjustAgentRequest;
 import com.aidevplanner.backend.learningplan.PlanAdjustAgentResponse;
 import com.aidevplanner.backend.learningplan.PlanAdjustDayPayload;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,6 +53,7 @@ public class ProgressLogService {
     private final ProgressLogRepository progressLogRepository;
     private final ProgressReviewerClient progressReviewerClient;
     private final UserProfileService userProfileService;
+    private final LearningPlanVersionManager learningPlanVersionManager;
 
     public ProgressLogService(
             AgentRunRepository agentRunRepository,
@@ -61,7 +64,8 @@ public class ProgressLogService {
             PlanAdjusterClient planAdjusterClient,
             ProgressLogRepository progressLogRepository,
             ProgressReviewerClient progressReviewerClient,
-            UserProfileService userProfileService
+            UserProfileService userProfileService,
+            LearningPlanVersionManager learningPlanVersionManager
     ) {
         this.agentRunRepository = agentRunRepository;
         this.authenticatedUserService = authenticatedUserService;
@@ -72,6 +76,7 @@ public class ProgressLogService {
         this.progressLogRepository = progressLogRepository;
         this.progressReviewerClient = progressReviewerClient;
         this.userProfileService = userProfileService;
+        this.learningPlanVersionManager = learningPlanVersionManager;
     }
 
     @Transactional(noRollbackFor = AgentServiceException.class)
@@ -206,6 +211,23 @@ public class ProgressLogService {
 
         Map<String, Object> reviewResultJson = toReviewResultJson(reviewResponse);
         reviewResultJson.put("planAdjustment", toPlanAdjustmentJson(adjustResponse));
+        AdaptiveScheduleResult adaptiveSchedule = applyAdaptiveScheduling(
+                plan,
+                request.dayIndex(),
+                completedTaskIds,
+                unfinishedTaskIds,
+                blockers,
+                reviewResponse
+        );
+        reviewResultJson.put("adaptiveSchedule", toAdaptiveScheduleJson(adaptiveSchedule));
+        List<DailyTask> updatedTasks = dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(plan.getId());
+        learningPlanVersionManager.captureSnapshot(
+                plan,
+                updatedTasks,
+                "progress_adjustment",
+                firstPresent(adjustResponse.reason(), adaptiveSchedule.reason()),
+                adaptiveSchedule.affectedDayIndexes()
+        );
         userProfileService.applyProgressFeedback(plan, reviewResponse, request);
         ProgressLog savedLog = progressLogRepository.save(new ProgressLog(
                 plan,
@@ -246,6 +268,60 @@ public class ProgressLogService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public AdaptiveScheduleControlResponse getAdaptiveScheduleControl(Long planId) {
+        LearningPlan plan = learningPlanRepository.findById(planId)
+                .orElseThrow(() -> new ResourceNotFoundException("Learning plan", planId));
+        ensureCurrentUserOwns(plan);
+        List<ProgressLog> logs = progressLogRepository.findByPlanIdOrderByCreatedAtDesc(planId);
+        return buildAdaptiveScheduleControl(plan, logs == null ? List.of() : logs);
+    }
+
+    @Transactional
+    public AdaptiveScheduleControlResponse overrideAdaptiveSchedule(
+            Long planId,
+            AdaptiveScheduleOverrideRequest request
+    ) {
+        LearningPlan plan = learningPlanRepository.findById(planId)
+                .orElseThrow(() -> new ResourceNotFoundException("Learning plan", planId));
+        ensureCurrentUserOwns(plan);
+        List<ProgressLog> logs = progressLogRepository.findByPlanIdOrderByCreatedAtDesc(planId);
+        List<ProgressLog> safeLogs = logs == null ? List.of() : logs;
+        Integer anchorDayIndex = safeLogs.stream()
+                .findFirst()
+                .map(ProgressLog::getDayIndex)
+                .orElse(1);
+        List<DailyTask> allTasks = dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(planId);
+        List<DailyTask> tasksToAdjust = allTasks.stream()
+                .filter(task -> task.getDayIndex() > anchorDayIndex)
+                .filter(task -> task.getDayIndex() <= anchorDayIndex + 2)
+                .filter(task -> task.getStatus() == DailyTaskStatus.PENDING)
+                .sorted(Comparator.comparing(DailyTask::getDayIndex).thenComparing(DailyTask::getTaskOrder))
+                .toList();
+        applyPacingToTasks(tasksToAdjust, request.pacing());
+        AdaptiveScheduleOverrideSummary override = new AdaptiveScheduleOverrideSummary(
+                request.pacing(),
+                firstPresent(request.reason(), defaultOverrideReason(plan, request.pacing())),
+                tasksToAdjust.stream().map(DailyTask::getDayIndex).distinct().toList(),
+                anchorDayIndex,
+                LocalDateTime.now()
+        );
+        saveAdaptiveScheduleOverride(plan, override);
+        List<DailyTask> refreshedTasks = dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(planId);
+        learningPlanVersionManager.captureSnapshot(
+                plan,
+                refreshedTasks,
+                "manual_override",
+                override.reason(),
+                override.affectedDayIndexes()
+        );
+        return new AdaptiveScheduleControlResponse(
+                latestAutomaticResult(plan, safeLogs),
+                override,
+                adaptiveEvidence(plan, safeLogs)
+        );
+    }
+
     private void ensureCanReadPlan(Long planId) {
         Long currentUserId = authenticatedUserService.currentUserId().orElse(null);
         boolean exists = currentUserId == null
@@ -254,6 +330,17 @@ public class ProgressLogService {
         if (!exists) {
             throw new ResourceNotFoundException("Learning plan", planId);
         }
+    }
+
+    private AdaptiveScheduleControlResponse buildAdaptiveScheduleControl(
+            LearningPlan plan,
+            List<ProgressLog> logs
+    ) {
+        return new AdaptiveScheduleControlResponse(
+                latestAutomaticResult(plan, logs),
+                activeOverride(plan),
+                adaptiveEvidence(plan, logs)
+        );
     }
 
     private void ensureCurrentUserOwns(LearningPlan plan) {
@@ -579,6 +666,11 @@ public class ProgressLogService {
         }));
     }
 
+    private Map<String, Object> toAdaptiveScheduleJson(AdaptiveScheduleResult result) {
+        return new LinkedHashMap<>(objectMapper.convertValue(result, new TypeReference<Map<String, Object>>() {
+        }));
+    }
+
     @SuppressWarnings("unchecked")
     private void appendAdjustmentHistory(
             LearningPlan plan,
@@ -630,6 +722,145 @@ public class ProgressLogService {
                 log.getCreatedAt(),
                 log.getUpdatedAt()
         );
+    }
+
+    private AdaptiveScheduleResult applyAdaptiveScheduling(
+            LearningPlan plan,
+            Integer currentDayIndex,
+            List<Long> completedTaskIds,
+            List<Long> unfinishedTaskIds,
+            List<String> blockers,
+            ProgressReviewAgentResponse reviewResponse
+    ) {
+        List<ProgressSignal> signals = new ArrayList<>();
+        signals.add(new ProgressSignal(
+                completionRate(completedTaskIds.size(), unfinishedTaskIds.size()),
+                blockers.size(),
+                normalizePaceAdjustment(reviewResponse.paceAdjustment()),
+                normalizeImpact(reviewResponse.impact())
+        ));
+        List<ProgressLog> existingLogs = progressLogRepository.findByPlanIdOrderByCreatedAtDesc(plan.getId());
+        if (existingLogs != null) {
+            existingLogs.stream()
+                    .limit(2)
+                    .map(this::toProgressSignal)
+                    .forEach(signals::add);
+        }
+
+        double averageCompletion = roundTwoDecimals(signals.stream()
+                .mapToDouble(ProgressSignal::completionRate)
+                .average()
+                .orElse(0.0));
+        double averageBlockers = roundTwoDecimals(signals.stream()
+                .mapToInt(ProgressSignal::blockerCount)
+                .average()
+                .orElse(0.0));
+        long slowerSignals = signals.stream()
+                .filter(signal -> signal.paceAdjustment().equals("slower")
+                        || signal.impact().equals("major")
+                        || signal.impact().equals("medium"))
+                .count();
+        long fasterSignals = signals.stream()
+                .filter(signal -> signal.paceAdjustment().equals("faster")
+                        || signal.impact().equals("none"))
+                .count();
+
+        String pacing = "steady";
+        int minuteAdjustmentPercent = 0;
+        if (averageCompletion < 0.55 || averageBlockers >= 1.5 || slowerSignals >= 2) {
+            pacing = "lighter";
+            minuteAdjustmentPercent = -20;
+        } else if (averageCompletion >= 0.85 && averageBlockers == 0.0 && fasterSignals >= 2) {
+            pacing = "stronger";
+            minuteAdjustmentPercent = 10;
+        }
+
+        List<DailyTask> tasksToAdjust = dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(plan.getId()).stream()
+                .filter(task -> task.getDayIndex() > currentDayIndex)
+                .filter(task -> task.getDayIndex() <= currentDayIndex + 2)
+                .filter(task -> task.getStatus() == DailyTaskStatus.PENDING)
+                .sorted(Comparator.comparing(DailyTask::getDayIndex).thenComparing(DailyTask::getTaskOrder))
+                .toList();
+        LinkedHashSet<Integer> affectedDayIndexes = tasksToAdjust.stream()
+                .map(DailyTask::getDayIndex)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
+        if (pacing.equals("lighter")) {
+            applyPacingToTasks(tasksToAdjust, pacing);
+        } else if (pacing.equals("stronger")) {
+            applyPacingToTasks(tasksToAdjust, pacing);
+        }
+
+        return new AdaptiveScheduleResult(
+                pacing,
+                adaptiveReason(plan, pacing, averageCompletion, averageBlockers),
+                averageCompletion,
+                averageBlockers,
+                minuteAdjustmentPercent,
+                List.copyOf(affectedDayIndexes)
+        );
+    }
+
+    private ProgressSignal toProgressSignal(ProgressLog log) {
+        Object paceAdjustment = log.getReviewResultJson().get("paceAdjustment");
+        Object impact = log.getReviewResultJson().get("impact");
+        int completedCount = log.getCompletedTaskIds() == null ? 0 : log.getCompletedTaskIds().size();
+        int unfinishedCount = log.getUnfinishedTaskIds() == null ? 0 : log.getUnfinishedTaskIds().size();
+        int blockerCount = log.getBlockers() == null ? 0 : log.getBlockers().size();
+        return new ProgressSignal(
+                completionRate(completedCount, unfinishedCount),
+                blockerCount,
+                normalizePaceAdjustment(paceAdjustment == null ? null : String.valueOf(paceAdjustment)),
+                normalizeImpact(impact == null ? null : String.valueOf(impact))
+        );
+    }
+
+    private double completionRate(int completedCount, int unfinishedCount) {
+        int total = completedCount + unfinishedCount;
+        if (total <= 0) {
+            return 0.0;
+        }
+        return (double) completedCount / total;
+    }
+
+    private double roundTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private String adaptiveReason(
+            LearningPlan plan,
+            String pacing,
+            double averageCompletion,
+            double averageBlockers
+    ) {
+        if (isZh(plan)) {
+            return switch (pacing) {
+                case "lighter" -> "最近几次反馈显示完成率偏低或阻塞偏多，后续两天任务已自动减负。";
+                case "stronger" -> "最近几次反馈显示完成率稳定且阻塞较少，后续两天任务已适度加压。";
+                default -> "最近几次反馈整体稳定，后续两天继续保持当前任务密度。";
+            };
+        }
+        return switch (pacing) {
+            case "lighter" -> "Recent feedback shows lower completion or more blockers, so the next two days were lightened.";
+            case "stronger" -> "Recent feedback shows stable completion with few blockers, so the next two days were slightly intensified.";
+            default -> "Recent feedback looks stable, so the next two days keep the current task density.";
+        };
+    }
+
+    private String lowerPriority(String value) {
+        return switch (normalizePriority(value)) {
+            case "high" -> "medium";
+            case "medium" -> "low";
+            default -> "low";
+        };
+    }
+
+    private String raisePriority(String value) {
+        return switch (normalizePriority(value)) {
+            case "low" -> "medium";
+            case "medium" -> "high";
+            default -> "high";
+        };
     }
 
     private List<String> cleanList(List<String> values) {
@@ -756,5 +987,121 @@ public class ProgressLogService {
 
     private long elapsedMs(long startedAt) {
         return Math.max(1, (System.nanoTime() - startedAt) / 1_000_000);
+    }
+
+    private void applyPacingToTasks(List<DailyTask> tasksToAdjust, String pacing) {
+        if ("lighter".equals(pacing)) {
+            for (DailyTask task : tasksToAdjust) {
+                task.setEstimatedMinutes(Math.max(15, (int) Math.round(task.getEstimatedMinutes() * 0.8)));
+                if (task.getTaskOrder() != null && task.getTaskOrder() >= 3) {
+                    task.setPriority(lowerPriority(task.getPriority()));
+                }
+            }
+            return;
+        }
+        if ("stronger".equals(pacing)) {
+            for (DailyTask task : tasksToAdjust) {
+                if (task.getTaskOrder() != null && task.getTaskOrder() == 1) {
+                    task.setEstimatedMinutes(Math.max(15, (int) Math.round(task.getEstimatedMinutes() * 1.1)));
+                    task.setPriority(raisePriority(task.getPriority()));
+                }
+            }
+        }
+    }
+
+    private AdaptiveScheduleResult latestAutomaticResult(LearningPlan plan, List<ProgressLog> logs) {
+        if (logs.isEmpty()) {
+            return new AdaptiveScheduleResult(
+                    "steady",
+                    isZh(plan)
+                            ? "还没有足够的进度反馈，系统暂时保持当前任务密度。"
+                            : "There is not enough progress feedback yet, so the system keeps the current task density.",
+                    0.0,
+                    0.0,
+                    0,
+                    List.of()
+            );
+        }
+        Object value = logs.get(0).getReviewResultJson().get("adaptiveSchedule");
+        if (value instanceof Map<?, ?> map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> typedMap = (Map<String, Object>) map;
+            return objectMapper.convertValue(typedMap, AdaptiveScheduleResult.class);
+        }
+        return new AdaptiveScheduleResult(
+                "steady",
+                isZh(plan)
+                        ? "最近一次反馈还未生成自动调度结果。"
+                        : "The latest feedback did not produce an automatic schedule result.",
+                0.0,
+                0.0,
+                0,
+                List.of()
+        );
+    }
+
+    private AdaptiveScheduleOverrideSummary activeOverride(LearningPlan plan) {
+        if (plan.getPlanJson() == null) {
+            return null;
+        }
+        Object value = plan.getPlanJson().get("adaptiveScheduleOverride");
+        if (!(value instanceof Map<?, ?> map)) {
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> typedMap = (Map<String, Object>) map;
+        return objectMapper.convertValue(typedMap, AdaptiveScheduleOverrideSummary.class);
+    }
+
+    private List<String> adaptiveEvidence(LearningPlan plan, List<ProgressLog> logs) {
+        List<String> values = new ArrayList<>();
+        logs.stream().limit(3).forEach(log -> {
+            if (log.getUserFeedback() != null && !log.getUserFeedback().isBlank()) {
+                values.add((isZh(plan) ? "用户反馈：" : "User feedback: ") + log.getUserFeedback().trim());
+            }
+            if (log.getBlockers() != null && !log.getBlockers().isEmpty()) {
+                values.add((isZh(plan) ? "阻塞项：" : "Blockers: ") + String.join("；", log.getBlockers()));
+            }
+            Object suggestion = log.getReviewResultJson().get("suggestion");
+            if (suggestion instanceof String suggestionText && !suggestionText.isBlank()) {
+                values.add((isZh(plan) ? "复盘建议：" : "Review suggestion: ") + suggestionText.trim());
+            }
+        });
+        return values.stream().distinct().limit(6).toList();
+    }
+
+    private void saveAdaptiveScheduleOverride(LearningPlan plan, AdaptiveScheduleOverrideSummary override) {
+        Map<String, Object> planJson = plan.getPlanJson() == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(plan.getPlanJson());
+        planJson.put("adaptiveScheduleOverride", objectMapper.convertValue(
+                override,
+                new TypeReference<Map<String, Object>>() {
+                }
+        ));
+        plan.setPlanJson(planJson);
+    }
+
+    private String defaultOverrideReason(LearningPlan plan, String pacing) {
+        if (isZh(plan)) {
+            return switch (pacing) {
+                case "lighter" -> "用户手动要求后续两天降低任务密度。";
+                case "stronger" -> "用户手动要求后续两天提升任务密度。";
+                default -> "用户手动要求后续两天保持当前任务密度。";
+            };
+        }
+        return switch (pacing) {
+            case "lighter" -> "The user manually requested a lighter load for the next two days.";
+            case "stronger" -> "The user manually requested a stronger load for the next two days.";
+            default -> "The user manually requested the current load to stay steady for the next two days.";
+        };
+    }
+
+    private record ProgressSignal(
+            double completionRate,
+            int blockerCount,
+            String paceAdjustment,
+            String impact
+    ) {
     }
 }

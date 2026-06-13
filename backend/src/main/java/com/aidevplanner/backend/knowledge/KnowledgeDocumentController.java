@@ -41,6 +41,27 @@ public class KnowledgeDocumentController {
         return knowledgeDocumentService.listDocuments();
     }
 
+    @GetMapping("/retrieval-preview/{goalId}")
+    public KnowledgeRetrievalPreviewResponse previewRetrieval(
+            @Positive(message = "Goal id must be positive.")
+            @PathVariable
+            Long goalId
+    ) {
+        return knowledgeDocumentService.previewRetrieval(goalId);
+    }
+
+    @GetMapping("/strategy-compare")
+    public KnowledgeStrategyComparisonResponse compareStrategies(
+            @Positive(message = "Base goal id must be positive.")
+            @RequestParam
+            Long baseGoalId,
+            @Positive(message = "Compare goal id must be positive.")
+            @RequestParam
+            Long compareGoalId
+    ) {
+        return knowledgeDocumentService.compareStrategies(baseGoalId, compareGoalId);
+    }
+
     @GetMapping("/{documentId}")
     public KnowledgeDocumentDetailResponse getDocument(
             @Positive(message = "Knowledge document id must be positive.")
@@ -75,5 +96,32 @@ public class KnowledgeDocumentController {
             @Valid @RequestBody KnowledgeDocumentEnabledUpdateRequest request
     ) {
         return knowledgeDocumentService.updateEnabled(documentId, request);
+    }
+
+    @PatchMapping("/{documentId}/settings")
+    public KnowledgeDocumentResponse updateSettings(
+            @Positive(message = "Knowledge document id must be positive.")
+            @PathVariable
+            Long documentId,
+            @Valid @RequestBody KnowledgeDocumentSettingsUpdateRequest request
+    ) {
+        return knowledgeDocumentService.updateSettings(documentId, request);
+    }
+
+    @PatchMapping("/{documentId}/metadata")
+    public KnowledgeDocumentResponse updateMetadata(
+            @Positive(message = "Knowledge document id must be positive.")
+            @PathVariable
+            Long documentId,
+            @Valid @RequestBody KnowledgeDocumentMetadataUpdateRequest request
+    ) {
+        return knowledgeDocumentService.updateMetadata(documentId, request);
+    }
+
+    @PatchMapping("/batch")
+    public List<KnowledgeDocumentResponse> batchUpdate(
+            @Valid @RequestBody KnowledgeDocumentBatchUpdateRequest request
+    ) {
+        return knowledgeDocumentService.batchUpdate(request);
     }
 }

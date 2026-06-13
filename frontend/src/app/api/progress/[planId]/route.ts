@@ -56,3 +56,26 @@ export async function GET(request: Request) {
     return backendUnavailableResponse(error);
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const planId = getPlanId(request);
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/progress/${planId}/adaptive-schedule`,
+      {
+        body: await request.text(),
+        cache: "no-store",
+        headers: {
+          ...authHeadersFromRequest(request),
+          "content-type":
+            request.headers.get("content-type") ?? "application/json",
+        },
+        method: "PATCH",
+      },
+    );
+
+    return proxyJsonResponse(response);
+  } catch (error) {
+    return backendUnavailableResponse(error);
+  }
+}

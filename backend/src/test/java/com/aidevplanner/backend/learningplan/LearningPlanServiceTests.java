@@ -59,6 +59,9 @@ class LearningPlanServiceTests {
     private LearningPlanRepository learningPlanRepository;
 
     @Mock
+    private LearningPlanVersionManager learningPlanVersionManager;
+
+    @Mock
     private KnowledgeContextService knowledgeContextService;
 
     @Mock
@@ -87,6 +90,7 @@ class LearningPlanServiceTests {
                 goalRepository,
                 knowledgeContextService,
                 learningPlanRepository,
+                learningPlanVersionManager,
                 new ObjectMapper(),
                 planGeneratorClient,
                 pathRecommendationRepository,
@@ -151,6 +155,7 @@ class LearningPlanServiceTests {
                     }
                     return tasks;
                 });
+        when(learningPlanVersionManager.versions(any(LearningPlan.class))).thenReturn(List.of());
 
         LearningPlanResponse response = learningPlanService.generatePlan(10L);
 
@@ -203,6 +208,7 @@ class LearningPlanServiceTests {
         when(userProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(learningPlanRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L)).thenReturn(Optional.empty());
         when(pathRecommendationRepository.findFirstByGoalIdOrderByCreatedAtDesc(10L)).thenReturn(Optional.empty());
+        when(learningPlanVersionManager.versions(any(LearningPlan.class))).thenReturn(List.of());
         when(agentRunRepository.findFirstByGoalIdAndAgentNameAndStatusOrderByCreatedAtDesc(
                 10L,
                 "Project Recommender",
@@ -239,6 +245,36 @@ class LearningPlanServiceTests {
         when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
         when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
                 .thenReturn(tasks(plan, goal));
+        when(learningPlanVersionManager.versions(plan)).thenReturn(List.of(
+                new LearningPlanVersionSummaryResponse(
+                        2,
+                        "progress_adjustment",
+                        "Adjusted after feedback.",
+                        2,
+                        3,
+                        180,
+                        15,
+                        0,
+                        List.of(2),
+                        new LearningPlanVersionDiffResponse(
+                                1,
+                                0,
+                                1,
+                                List.of(2),
+                                List.of(
+                                        new LearningPlanVersionTaskChangeResponse(
+                                                2,
+                                                "Record a speaking sample",
+                                                "updated",
+                                                75,
+                                                90
+                                        )
+                                )
+                        ),
+                        true,
+                        LocalDateTime.of(2026, 6, 10, 9, 0)
+                )
+        ));
 
         LearningPlanResponse response = learningPlanService.getPlan(30L);
 
@@ -246,6 +282,7 @@ class LearningPlanServiceTests {
         assertThat(response.days()).hasSize(2);
         assertThat(response.days().get(0).totalEstimatedMinutes()).isEqualTo(90);
         assertThat(response.days().get(1).tasks()).hasSize(1);
+        assertThat(response.versions()).hasSize(1);
     }
 
     @Test
@@ -339,6 +376,7 @@ class LearningPlanServiceTests {
         when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
         when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
                 .thenReturn(tasks(plan, goal));
+        when(learningPlanVersionManager.versions(plan)).thenReturn(List.of());
 
         LearningPlanResponse response =
                 learningPlanService.updatePlanStatus(
@@ -357,6 +395,51 @@ class LearningPlanServiceTests {
         learningPlanService.deletePlan(30L);
 
         verify(learningPlanRepository).deleteById(30L);
+    }
+
+    @Test
+    void restoresPlanVersion() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
+        when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
+                .thenReturn(tasks(plan, goal));
+        when(learningPlanVersionManager.versions(plan)).thenReturn(List.of(
+                new LearningPlanVersionSummaryResponse(
+                        3,
+                        "restore",
+                        "Restored from version 1.",
+                        2,
+                        3,
+                        180,
+                        0,
+                        0,
+                        List.of(1, 2),
+                        new LearningPlanVersionDiffResponse(
+                                0,
+                                0,
+                                1,
+                                List.of(1, 2),
+                                List.of(
+                                        new LearningPlanVersionTaskChangeResponse(
+                                                1,
+                                                "Review speaking goals",
+                                                "updated",
+                                                45,
+                                                30
+                                        )
+                                )
+                        ),
+                        true,
+                        LocalDateTime.of(2026, 6, 10, 10, 0)
+                )
+        ));
+
+        LearningPlanResponse response = learningPlanService.restoreVersion(30L, 1);
+
+        verify(learningPlanVersionManager).restoreVersion(plan, 1);
+        assertThat(response.versions()).hasSize(1);
+        assertThat(response.versions().get(0).trigger()).isEqualTo("restore");
     }
 
     private AgentRun goalDecompositionRun(Goal goal) {

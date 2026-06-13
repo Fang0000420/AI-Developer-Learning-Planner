@@ -4,6 +4,9 @@ import { fetchBackendKnowledgeDocument } from "@/lib/backend-knowledge";
 import { formatGoalDate } from "@/lib/goals";
 import {
   formatFileSize,
+  knowledgePriorityLabel,
+  knowledgeSourceCategoryLabel,
+  knowledgeScopeLabel,
   knowledgeStatusLabel,
 } from "@/lib/knowledge";
 import { dictionaries } from "@/lib/i18n";
@@ -112,10 +115,37 @@ export default async function KnowledgeDetailPage({
             </div>
             <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-medium text-slate-500">
+                {locale === "zh" ? "作用域" : "Scope"}
+              </p>
+              <p className="mt-2 text-sm font-semibold text-slate-950">
+                {knowledgeScopeLabel(document.scope, locale)}
+              </p>
+            </div>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-medium text-slate-500">
+                {locale === "zh" ? "来源分类" : "Source Category"}
+              </p>
+              <p className="mt-2 text-sm font-semibold text-slate-950">
+                {knowledgeSourceCategoryLabel(document.sourceCategory, locale)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-medium text-slate-500">
                 {locale === "zh" ? "知识块" : "Chunks"}
               </p>
               <p className="mt-2 text-sm font-semibold text-slate-950">
                 {document.chunkCount}
+              </p>
+            </div>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-medium text-slate-500">
+                {locale === "zh" ? "检索优先级" : "Retrieval Priority"}
+              </p>
+              <p className="mt-2 text-sm font-semibold text-slate-950">
+                {knowledgePriorityLabel(document.retrievalPriority, locale)}
               </p>
             </div>
             <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
@@ -127,6 +157,32 @@ export default async function KnowledgeDetailPage({
               </p>
             </div>
           </div>
+
+          {(document.groupName || document.tags.length > 0) && (
+            <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-medium text-slate-500">
+                {locale === "zh" ? "治理信息" : "Governance"}
+              </p>
+              {document.groupName ? (
+                <p className="mt-2 text-sm text-slate-700">
+                  {locale === "zh" ? "分组：" : "Group: "}
+                  {document.groupName}
+                </p>
+              ) : null}
+              {document.tags.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {document.tags.map((tag) => (
+                    <span
+                      className="inline-flex h-6 items-center rounded-md bg-white px-2 text-xs font-medium text-slate-600 ring-1 ring-slate-200"
+                      key={tag}
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
         </section>
 
         <section className="mt-6 rounded-md border border-slate-200 bg-white p-6 shadow-sm">

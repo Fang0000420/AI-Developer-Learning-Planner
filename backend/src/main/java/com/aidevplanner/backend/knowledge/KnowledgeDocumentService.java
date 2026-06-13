@@ -2,6 +2,8 @@ package com.aidevplanner.backend.knowledge;
 
 import com.aidevplanner.backend.auth.AuthenticatedUserService;
 import com.aidevplanner.backend.common.ResourceNotFoundException;
+import com.aidevplanner.backend.goal.Goal;
+import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.user.User;
 import com.aidevplanner.backend.user.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,20 +29,26 @@ public class KnowledgeDocumentService {
     private static final int PREVIEW_SUMMARY_LENGTH = 220;
 
     private final AuthenticatedUserService authenticatedUserService;
+    private final GoalRepository goalRepository;
     private final KnowledgeChunkRepository knowledgeChunkRepository;
+    private final KnowledgeContextService knowledgeContextService;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final Path knowledgeStorageRoot;
     private final UserRepository userRepository;
 
     public KnowledgeDocumentService(
             AuthenticatedUserService authenticatedUserService,
+            GoalRepository goalRepository,
             KnowledgeChunkRepository knowledgeChunkRepository,
+            KnowledgeContextService knowledgeContextService,
             KnowledgeDocumentRepository knowledgeDocumentRepository,
             @Value("${app.storage.knowledge-root:${user.dir}/storage/knowledge}") String knowledgeStorageRoot,
             UserRepository userRepository
     ) {
         this.authenticatedUserService = authenticatedUserService;
+        this.goalRepository = goalRepository;
         this.knowledgeChunkRepository = knowledgeChunkRepository;
+        this.knowledgeContextService = knowledgeContextService;
         this.knowledgeDocumentRepository = knowledgeDocumentRepository;
         this.knowledgeStorageRoot = Path.of(knowledgeStorageRoot);
         this.userRepository = userRepository;
@@ -108,6 +116,66 @@ public class KnowledgeDocumentService {
     }
 
     @Transactional
+    public KnowledgeDocumentResponse updateSettings(Long documentId, KnowledgeDocumentSettingsUpdateRequest request) {
+        KnowledgeDocument document = findOwnedDocument(documentId);
+        document.setScope(request.scope());
+        document.setRetrievalPriority(request.retrievalPriority());
+        KnowledgeDocument saved = knowledgeDocumentRepository.save(document);
+        return KnowledgeDocumentResponse.from(saved, knowledgeChunkRepository.countByDocumentId(saved.getId()));
+    }
+
+    @Transactional
+    public KnowledgeDocumentResponse updateMetadata(Long documentId, KnowledgeDocumentMetadataUpdateRequest request) {
+        KnowledgeDocument document = findOwnedDocument(documentId);
+        applyMetadata(document, request.scope(), request.retrievalPriority(), request.sourceCategory(), request.groupName(), request.tags());
+        KnowledgeDocument saved = knowledgeDocumentRepository.save(document);
+        return KnowledgeDocumentResponse.from(saved, knowledgeChunkRepository.countByDocumentId(saved.getId()));
+    }
+
+    @Transactional
+    public List<KnowledgeDocumentResponse> batchUpdate(KnowledgeDocumentBatchUpdateRequest request) {
+        User user = currentUser();
+        List<KnowledgeDocumentResponse> responses = new ArrayList<>();
+        for (Long documentId : request.documentIds()) {
+            if (documentId == null) {
+                continue;
+            }
+            KnowledgeDocument document = knowledgeDocumentRepository.findByIdAndUserId(documentId, user.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Knowledge document", documentId));
+            if (request.enabled() != null) {
+                document.setEnabled(request.enabled());
+            }
+            if (request.scope() != null || request.retrievalPriority() != null
+                    || request.sourceCategory() != null || request.groupName() != null || request.tags() != null) {
+                applyMetadata(
+                        document,
+                        request.scope() == null ? document.getScope() : request.scope(),
+                        request.retrievalPriority() == null ? document.getRetrievalPriority() : request.retrievalPriority(),
+                        request.sourceCategory() == null ? document.getSourceCategory() : request.sourceCategory(),
+                        request.groupName() == null ? document.getGroupName() : request.groupName(),
+                        request.tags() == null ? document.getTags() : request.tags()
+                );
+            }
+            KnowledgeDocument saved = knowledgeDocumentRepository.save(document);
+            responses.add(KnowledgeDocumentResponse.from(saved, knowledgeChunkRepository.countByDocumentId(saved.getId())));
+        }
+        return responses;
+    }
+
+    @Transactional(readOnly = true)
+    public KnowledgeRetrievalPreviewResponse previewRetrieval(Long goalId) {
+        Goal goal = findOwnedGoal(goalId);
+        return knowledgeContextService.previewForGoal(goal);
+    }
+
+    @Transactional(readOnly = true)
+    public KnowledgeStrategyComparisonResponse compareStrategies(Long baseGoalId, Long compareGoalId) {
+        Goal baseGoal = findOwnedGoal(baseGoalId);
+        Goal compareGoal = findOwnedGoal(compareGoalId);
+        return knowledgeContextService.compareGoals(baseGoal, compareGoal);
+    }
+
+    @Transactional
     public KnowledgeDocumentResponse ingestDocument(Long documentId) {
         KnowledgeDocument document = knowledgeDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Knowledge document", documentId));
@@ -148,6 +216,16 @@ public class KnowledgeDocumentService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "current"));
         return userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", currentUserId));
+    }
+
+    private Goal findOwnedGoal(Long goalId) {
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
+        User user = currentUser();
+        if (!goal.getUser().getId().equals(user.getId())) {
+            throw new ResourceNotFoundException("Goal", goalId);
+        }
+        return goal;
     }
 
     private String extractText(KnowledgeDocument document) throws IOException {
@@ -215,5 +293,20 @@ public class KnowledgeDocumentService {
             return value;
         }
         return value.substring(0, dotIndex);
+    }
+
+    private void applyMetadata(
+            KnowledgeDocument document,
+            KnowledgeDocumentScope scope,
+            Integer retrievalPriority,
+            KnowledgeSourceCategory sourceCategory,
+            String groupName,
+            List<String> tags
+    ) {
+        document.setScope(scope);
+        document.setRetrievalPriority(retrievalPriority);
+        document.setSourceCategory(sourceCategory);
+        document.setGroupName(groupName);
+        document.setTags(tags);
     }
 }

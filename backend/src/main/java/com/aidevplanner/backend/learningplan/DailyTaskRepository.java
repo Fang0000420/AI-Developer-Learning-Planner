@@ -9,4 +9,6 @@ public interface DailyTaskRepository extends JpaRepository<DailyTask, Long> {
     List<DailyTask> findByPlanIdOrderByDayIndexAscTaskOrderAsc(Long planId);
 
     List<DailyTask> findByPlanIdAndDayIndexOrderByTaskOrderAsc(Long planId, Integer dayIndex);
+
+    void deleteByPlanId(Long planId);
 }

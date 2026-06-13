@@ -4,6 +4,7 @@ import type {
   ApiErrorResponse,
   Goal,
   GoalDecomposition,
+  GoalKnowledgePreference,
   PathRecommendation,
   ProjectRecommendation,
   SkillGapAnalysis,
@@ -106,6 +107,43 @@ export async function fetchBackendGoal(
         ? error.message
         : "Backend goal detail request failed.";
 
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendGoalKnowledgePreference(
+  goalId: string,
+): Promise<BackendResult<GoalKnowledgePreference>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/goals/${goalId}/knowledge-preference`,
+      {
+        cache: "no-store",
+        headers: await authHeadersFromCookies(),
+      },
+    );
+    const payload = await parseJson(response);
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(
+          payload,
+          "Backend goal knowledge preference request failed.",
+        ),
+      };
+    }
+    return {
+      data: payload as GoalKnowledgePreference,
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Backend goal knowledge preference request failed.";
     return {
       data: null,
       error: buildError(message),

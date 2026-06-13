@@ -1,6 +1,9 @@
 package com.aidevplanner.backend.path;
 
 import com.aidevplanner.backend.agent.AgentServiceException;
+import com.aidevplanner.backend.goal.GoalKnowledgePreferenceResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeBasisDocumentResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeBasisResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -104,6 +107,22 @@ class PathRecommendationControllerTests {
                 List.of("完成基础能力搭建", "实现第一个小项目"),
                 List.of("节奏不稳定会影响进展"),
                 List.of("已有基础：Java", "优先补齐：Prompt 设计"),
+                new KnowledgeBasisResponse(
+                        "本次结果主要参考了《项目复盘》与《学习笔记》等知识资料。",
+                        new GoalKnowledgePreferenceResponse(10L, List.of(21L), "PERSONAL", List.of("PROJECT")),
+                        List.of("项目复盘", "学习笔记"),
+                        List.of("知识库证据《项目复盘》[个人资料]：记录了项目实践中的应用问题。"),
+                        List.of(
+                                new KnowledgeBasisDocumentResponse(
+                                        21L,
+                                        "项目复盘",
+                                        "PERSONAL",
+                                        "PROJECT",
+                                        true,
+                                        List.of("该文档被当前目标固定为优先资料")
+                                )
+                        )
+                ),
                 List.of("阶段性项目成果", "复盘记录"),
                 TIMESTAMP,
                 TIMESTAMP

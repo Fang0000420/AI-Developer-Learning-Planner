@@ -50,6 +50,80 @@ class KnowledgeDocumentControllerTests {
     }
 
     @Test
+    void previewsKnowledgeRetrieval() throws Exception {
+        when(knowledgeDocumentService.previewRetrieval(31L)).thenReturn(
+                new KnowledgeRetrievalPreviewResponse(
+                        31L,
+                        "Build AI agent apps",
+                        4,
+                        2,
+                        2,
+                        List.of("个人资料优先。"),
+                        List.of(
+                                new KnowledgeRetrievalPreviewMatchResponse(
+                                        21L,
+                                        "学习笔记",
+                                        "PERSONAL",
+                                        "NOTE",
+                                        3,
+                                        "求职资料",
+                                        List.of("agent"),
+                                        18,
+                                        true,
+                                        List.of("标题命中目标关键词"),
+                                        List.of("Built AI agent apps with Spring Boot.")
+                                )
+                        )
+                )
+        );
+
+        mockMvc.perform(get("/api/knowledge/documents/retrieval-preview/{goalId}", 31L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.goalId").value(31))
+                .andExpect(jsonPath("$.matches[0].title").value("学习笔记"))
+                .andExpect(jsonPath("$.matches[0].selectedForContext").value(true));
+    }
+
+    @Test
+    void comparesKnowledgeStrategiesBetweenGoals() throws Exception {
+        when(knowledgeDocumentService.compareStrategies(31L, 32L)).thenReturn(
+                new KnowledgeStrategyComparisonResponse(
+                        31L,
+                        "Build AI agent apps",
+                        32L,
+                        "Improve business English",
+                        new com.aidevplanner.backend.goal.GoalKnowledgePreferenceResponse(31L, List.of(21L), "PERSONAL", List.of("PROJECT")),
+                        new com.aidevplanner.backend.goal.GoalKnowledgePreferenceResponse(32L, List.of(22L), "PLATFORM", List.of("COURSE")),
+                        List.of("两个目标固定的作用域不同。"),
+                        List.of(
+                                new KnowledgeStrategyComparisonDocumentResponse(
+                                        21L,
+                                        "学习笔记",
+                                        "PERSONAL",
+                                        "NOTE",
+                                        18,
+                                        null,
+                                        null,
+                                        true,
+                                        false,
+                                        List.of("agent")
+                                )
+                        ),
+                        List.of(),
+                        List.of()
+                )
+        );
+
+        mockMvc.perform(get("/api/knowledge/documents/strategy-compare")
+                        .param("baseGoalId", "31")
+                        .param("compareGoalId", "32"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.baseGoalId").value(31))
+                .andExpect(jsonPath("$.compareGoalId").value(32))
+                .andExpect(jsonPath("$.onlyInBase[0].title").value("学习笔记"));
+    }
+
+    @Test
     void uploadsPersonalDocument() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -94,11 +168,68 @@ class KnowledgeDocumentControllerTests {
                 .andExpect(jsonPath("$.enabled").value(true));
     }
 
+    @Test
+    void updatesKnowledgeSettings() throws Exception {
+        when(knowledgeDocumentService.updateSettings(eq(21L), any()))
+                .thenReturn(documentResponse());
+
+        mockMvc.perform(patch("/api/knowledge/documents/{documentId}/settings", 21L)
+                        .contentType("application/json")
+                        .content("{\"scope\":\"PERSONAL\",\"retrievalPriority\":5}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scope").value("PERSONAL"))
+                .andExpect(jsonPath("$.retrievalPriority").value(3));
+    }
+
+    @Test
+    void updatesKnowledgeMetadata() throws Exception {
+        when(knowledgeDocumentService.updateMetadata(eq(21L), any()))
+                .thenReturn(documentResponse());
+
+        mockMvc.perform(patch("/api/knowledge/documents/{documentId}/metadata", 21L)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "scope":"PERSONAL",
+                                  "retrievalPriority":4,
+                                  "sourceCategory":"PROJECT",
+                                  "groupName":"作品集",
+                                  "tags":["agent","planner"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceCategory").value("NOTE"))
+                .andExpect(jsonPath("$.groupName").value("求职资料"))
+                .andExpect(jsonPath("$.tags[0]").value("agent"));
+    }
+
+    @Test
+    void batchUpdatesKnowledgeDocuments() throws Exception {
+        when(knowledgeDocumentService.batchUpdate(any()))
+                .thenReturn(List.of(documentResponse()));
+
+        mockMvc.perform(patch("/api/knowledge/documents/batch")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "documentIds":[21,22],
+                                  "enabled":true,
+                                  "sourceCategory":"PROJECT"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(21))
+                .andExpect(jsonPath("$[0].sourceCategory").value("NOTE"));
+    }
+
     private KnowledgeDocumentResponse documentResponse() {
         return new KnowledgeDocumentResponse(
                 21L,
                 7L,
                 "PERSONAL",
+                "NOTE",
+                "求职资料",
+                List.of("agent", "planner"),
                 "学习笔记",
                 "personal_upload",
                 "notes.md",
@@ -106,6 +237,7 @@ class KnowledgeDocumentControllerTests {
                 1024L,
                 "READY",
                 true,
+                3,
                 "一份关于模型调用和项目实践的笔记。",
                 3L,
                 LocalDateTime.of(2026, 6, 13, 12, 0),

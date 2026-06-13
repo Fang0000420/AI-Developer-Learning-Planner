@@ -14,7 +14,10 @@ import {
   fetchBackendPlan,
   fetchBackendPlanDayTasks,
 } from "@/lib/backend-plans";
-import { fetchBackendProgressLogs } from "@/lib/backend-progress";
+import {
+  fetchBackendAdaptiveScheduleControl,
+  fetchBackendProgressLogs,
+} from "@/lib/backend-progress";
 import {
   formatMinutes,
   getDailyTaskStatusClasses,
@@ -55,10 +58,12 @@ export default async function TodayTasksPage({
     { data: plan, error: planError },
     { data: day, error: dayError },
     { data: progressLogs, error: progressError },
+    { data: adaptiveScheduleControl },
   ] = await Promise.all([
     fetchBackendPlan(planId),
     fetchBackendPlanDayTasks(planId, dayIndex),
     fetchBackendProgressLogs(planId, dayIndex),
+    fetchBackendAdaptiveScheduleControl(planId),
   ]);
 
   const error = planError || dayError;
@@ -219,6 +224,7 @@ export default async function TodayTasksPage({
         ) : null}
 
         <ProgressSubmitForm
+          adaptiveScheduleControl={adaptiveScheduleControl ?? null}
           dayIndex={day.dayIndex}
           latestLog={latestLog}
           locale={locale}

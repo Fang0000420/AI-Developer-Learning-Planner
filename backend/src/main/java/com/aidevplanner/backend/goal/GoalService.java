@@ -20,15 +20,18 @@ public class GoalService {
 
     private final GoalRepository goalRepository;
     private final AuthenticatedUserService authenticatedUserService;
+    private final GoalKnowledgePreferenceService goalKnowledgePreferenceService;
     private final UserRepository userRepository;
 
     public GoalService(
             GoalRepository goalRepository,
             AuthenticatedUserService authenticatedUserService,
+            GoalKnowledgePreferenceService goalKnowledgePreferenceService,
             UserRepository userRepository
     ) {
         this.goalRepository = goalRepository;
         this.authenticatedUserService = authenticatedUserService;
+        this.goalKnowledgePreferenceService = goalKnowledgePreferenceService;
         this.userRepository = userRepository;
     }
 
@@ -94,6 +97,21 @@ public class GoalService {
             throw new ResourceNotFoundException("Goal", goalId);
         }
         goalRepository.deleteById(goalId);
+    }
+
+    @Transactional(readOnly = true)
+    public GoalKnowledgePreferenceResponse getKnowledgePreference(Long goalId) {
+        return goalKnowledgePreferenceService.response(findGoal(goalId));
+    }
+
+    @Transactional
+    public GoalKnowledgePreferenceResponse updateKnowledgePreference(
+            Long goalId,
+            GoalKnowledgePreferenceRequest request
+    ) {
+        Goal goal = findGoal(goalId);
+        goalKnowledgePreferenceService.write(goal, request);
+        return goalKnowledgePreferenceService.response(goal);
     }
 
     private Goal findGoal(Long goalId) {

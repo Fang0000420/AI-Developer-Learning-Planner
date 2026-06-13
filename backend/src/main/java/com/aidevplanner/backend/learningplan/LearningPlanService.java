@@ -11,6 +11,7 @@ import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.GoalDecomposeResponse;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeBasisResponse;
 import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
 import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.path.PathRecommendation;
@@ -50,6 +51,7 @@ public class LearningPlanService {
     private final GoalRepository goalRepository;
     private final KnowledgeContextService knowledgeContextService;
     private final LearningPlanRepository learningPlanRepository;
+    private final LearningPlanVersionManager learningPlanVersionManager;
     private final ObjectMapper objectMapper;
     private final PlanGeneratorClient planGeneratorClient;
     private final PathRecommendationRepository pathRecommendationRepository;
@@ -64,6 +66,7 @@ public class LearningPlanService {
             GoalRepository goalRepository,
             KnowledgeContextService knowledgeContextService,
             LearningPlanRepository learningPlanRepository,
+            LearningPlanVersionManager learningPlanVersionManager,
             ObjectMapper objectMapper,
             PlanGeneratorClient planGeneratorClient,
             PathRecommendationRepository pathRecommendationRepository,
@@ -77,6 +80,7 @@ public class LearningPlanService {
         this.goalRepository = goalRepository;
         this.knowledgeContextService = knowledgeContextService;
         this.learningPlanRepository = learningPlanRepository;
+        this.learningPlanVersionManager = learningPlanVersionManager;
         this.objectMapper = objectMapper;
         this.planGeneratorClient = planGeneratorClient;
         this.pathRecommendationRepository = pathRecommendationRepository;
@@ -160,6 +164,14 @@ public class LearningPlanService {
         learningPlanRepository.deleteById(planId);
     }
 
+    @Transactional
+    public LearningPlanResponse restoreVersion(Long planId, Integer version) {
+        LearningPlan plan = findPlan(planId);
+        learningPlanVersionManager.restoreVersion(plan, version);
+        List<DailyTask> tasks = dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(planId);
+        return toResponse(plan, tasks);
+    }
+
     private void ensurePlanExists(Long planId) {
         Long currentUserId = authenticatedUserService.currentUserId().orElse(null);
         boolean exists = currentUserId == null
@@ -211,10 +223,17 @@ public class LearningPlanService {
                     savedRun,
                     agentResponse.planTitle(),
                     agentResponse.durationDays(),
-                    toPlanJson(agentResponse)
+                    toPlanJson(agentResponse, knowledgeContextService.basisForGoal(goal, knowledgeContext.evidence()))
             ));
             savedRun.setPlan(savedPlan);
             List<DailyTask> savedTasks = dailyTaskRepository.saveAll(toDailyTasks(savedPlan, goal, agentResponse));
+            learningPlanVersionManager.captureSnapshot(
+                    savedPlan,
+                    savedTasks,
+                    "generated",
+                    "Initial generated plan.",
+                    savedTasks.stream().map(DailyTask::getDayIndex).distinct().toList()
+            );
 
             return toResponse(savedPlan, savedTasks);
         } catch (AgentServiceException exception) {
@@ -613,6 +632,7 @@ public class LearningPlanService {
                 .toList();
 
         Long sourceAgentRunId = plan.getSourceAgentRun() == null ? null : plan.getSourceAgentRun().getId();
+        KnowledgeBasisResponse knowledgeBasis = readKnowledgeBasis(plan);
         return new LearningPlanResponse(
                 plan.getId(),
                 plan.getGoal().getId(),
@@ -622,6 +642,8 @@ public class LearningPlanService {
                 plan.getDurationDays(),
                 plan.getStatus(),
                 days,
+                learningPlanVersionManager.versions(plan),
+                knowledgeBasis,
                 plan.getCreatedAt(),
                 plan.getUpdatedAt()
         );
@@ -680,9 +702,23 @@ public class LearningPlanService {
         );
     }
 
-    private Map<String, Object> toPlanJson(PlanGenerateAgentResponse response) {
-        return objectMapper.convertValue(response, new TypeReference<>() {
+    private Map<String, Object> toPlanJson(
+            PlanGenerateAgentResponse response,
+            KnowledgeBasisResponse knowledgeBasis
+    ) {
+        Map<String, Object> value = objectMapper.convertValue(response, new TypeReference<>() {
         });
+        value.put("knowledgeBasis", objectMapper.convertValue(knowledgeBasis, new TypeReference<Map<String, Object>>() {
+        }));
+        return value;
+    }
+
+    private KnowledgeBasisResponse readKnowledgeBasis(LearningPlan plan) {
+        Object value = plan.getPlanJson().get("knowledgeBasis");
+        if (value != null) {
+            return objectMapper.convertValue(value, KnowledgeBasisResponse.class);
+        }
+        return knowledgeContextService.basisForGoal(plan.getGoal(), List.of());
     }
 
     private List<String> cleanList(List<String> values) {

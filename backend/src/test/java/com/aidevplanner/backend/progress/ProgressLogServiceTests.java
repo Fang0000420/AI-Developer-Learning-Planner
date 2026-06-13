@@ -13,6 +13,7 @@ import com.aidevplanner.backend.learningplan.DailyTaskRepository;
 import com.aidevplanner.backend.learningplan.DailyTaskStatus;
 import com.aidevplanner.backend.learningplan.LearningPlan;
 import com.aidevplanner.backend.learningplan.LearningPlanRepository;
+import com.aidevplanner.backend.learningplan.LearningPlanVersionManager;
 import com.aidevplanner.backend.learningplan.PlanAdjustAgentRequest;
 import com.aidevplanner.backend.learningplan.PlanAdjustAgentResponse;
 import com.aidevplanner.backend.learningplan.PlanAdjustTaskPayload;
@@ -69,6 +70,9 @@ class ProgressLogServiceTests {
     @Mock
     private UserProfileService userProfileService;
 
+    @Mock
+    private LearningPlanVersionManager learningPlanVersionManager;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private ProgressLogService progressLogService;
@@ -84,7 +88,8 @@ class ProgressLogServiceTests {
                 planAdjusterClient,
                 progressLogRepository,
                 progressReviewerClient,
-                userProfileService
+                userProfileService,
+                learningPlanVersionManager
         );
     }
 
@@ -92,12 +97,15 @@ class ProgressLogServiceTests {
     void submitsProgressAndSyncsTaskStatuses() {
         Goal goal = goal();
         LearningPlan plan = learningPlan(goal);
-        List<DailyTask> tasks = tasks(plan, goal);
+        List<DailyTask> tasks = todayTasks(plan, goal);
+        List<DailyTask> allTasks = allTasks(plan, goal);
         when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
         when(dailyTaskRepository.findByPlanIdAndDayIndexOrderByTaskOrderAsc(30L, 1))
                 .thenReturn(tasks);
         when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L))
-                .thenReturn(tasks);
+                .thenReturn(allTasks);
+        when(progressLogRepository.findByPlanIdOrderByCreatedAtDesc(30L))
+                .thenReturn(List.of(progressLog(plan, goal)));
         when(progressReviewerClient.review(any(ProgressReviewAgentRequest.class)))
                 .thenReturn(AgentClientResponse.model(new ProgressReviewAgentResponse(
                         List.of("Create progress table"),
@@ -164,8 +172,13 @@ class ProgressLogServiceTests {
                 .containsEntry("paceAdjustment", "keep")
                 .containsEntry("confidence", "medium");
         assertThat(response.reviewResultJson()).containsKey("planAdjustment");
+        assertThat(response.reviewResultJson()).containsKey("adaptiveSchedule");
         assertThat(tasks.get(0).getStatus()).isEqualTo(DailyTaskStatus.DONE);
         assertThat(tasks.get(1).getStatus()).isEqualTo(DailyTaskStatus.SKIPPED);
+        assertThat(allTasks.stream()
+                .filter(task -> task.getDayIndex() == 2)
+                .map(DailyTask::getEstimatedMinutes))
+                .contains(72);
 
         ArgumentCaptor<ProgressLog> logCaptor = ArgumentCaptor.forClass(ProgressLog.class);
         verify(progressLogRepository).save(logCaptor.capture());
@@ -195,7 +208,7 @@ class ProgressLogServiceTests {
         LearningPlan plan = learningPlan(goal);
         when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
         when(dailyTaskRepository.findByPlanIdAndDayIndexOrderByTaskOrderAsc(30L, 1))
-                .thenReturn(tasks(plan, goal));
+                .thenReturn(todayTasks(plan, goal));
 
         assertThatThrownBy(() -> progressLogService.submitProgress(new ProgressSubmitRequest(
                 30L,
@@ -223,6 +236,55 @@ class ProgressLogServiceTests {
         assertThat(response).hasSize(1);
         assertThat(response.get(0).dayIndex()).isEqualTo(1);
         assertThat(response.get(0).completedTaskIds()).containsExactly(1L);
+    }
+
+    @Test
+    void returnsAdaptiveScheduleControl() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        ProgressLog log = progressLog(plan, goal);
+        ReflectionTestUtils.setField(plan, "planJson", Map.of(
+                "adaptiveScheduleOverride", Map.of(
+                        "pacing", "lighter",
+                        "reason", "User requested a lighter load.",
+                        "affectedDayIndexes", List.of(2, 3),
+                        "anchorDayIndex", 1,
+                        "appliedAt", "2026-06-13T10:00:00"
+                )
+        ));
+        when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
+        when(progressLogRepository.findByPlanIdOrderByCreatedAtDesc(30L)).thenReturn(List.of(log));
+
+        AdaptiveScheduleControlResponse response = progressLogService.getAdaptiveScheduleControl(30L);
+
+        assertThat(response.latestAutomatic()).isNotNull();
+        assertThat(response.latestAutomatic().pacing()).isEqualTo("steady");
+        assertThat(response.activeOverride()).isNotNull();
+        assertThat(response.activeOverride().pacing()).isEqualTo("lighter");
+        assertThat(response.evidence()).isNotEmpty();
+    }
+
+    @Test
+    void appliesManualAdaptiveScheduleOverride() {
+        Goal goal = goal();
+        LearningPlan plan = learningPlan(goal);
+        List<DailyTask> allTasks = allTasks(plan, goal);
+        when(learningPlanRepository.findById(30L)).thenReturn(Optional.of(plan));
+        when(progressLogRepository.findByPlanIdOrderByCreatedAtDesc(30L)).thenReturn(List.of(progressLog(plan, goal)));
+        when(dailyTaskRepository.findByPlanIdOrderByDayIndexAscTaskOrderAsc(30L)).thenReturn(allTasks);
+
+        AdaptiveScheduleControlResponse response = progressLogService.overrideAdaptiveSchedule(
+                30L,
+                new AdaptiveScheduleOverrideRequest("lighter", "Need lighter workload this week.")
+        );
+
+        assertThat(response.activeOverride()).isNotNull();
+        assertThat(response.activeOverride().pacing()).isEqualTo("lighter");
+        assertThat(response.activeOverride().affectedDayIndexes()).contains(2, 3);
+        assertThat(allTasks.stream()
+                .filter(task -> task.getDayIndex() == 2)
+                .map(DailyTask::getEstimatedMinutes))
+                .contains(72);
     }
 
     private ProgressLog progressLog(LearningPlan plan, Goal goal) {
@@ -262,6 +324,12 @@ class ProgressLogServiceTests {
     }
 
     private List<DailyTask> tasks(LearningPlan plan, Goal goal) {
+        return allTasks(plan, goal).stream()
+                .filter(task -> task.getDayIndex() == 1)
+                .toList();
+    }
+
+    private List<DailyTask> todayTasks(LearningPlan plan, Goal goal) {
         DailyTask first = new DailyTask(
                 plan,
                 goal.getUser(),
@@ -294,6 +362,41 @@ class ProgressLogServiceTests {
         ReflectionTestUtils.setField(second, "id", 2L);
         second.setStatus(DailyTaskStatus.IN_PROGRESS);
         return List.of(first, second);
+    }
+
+    private List<DailyTask> allTasks(LearningPlan plan, Goal goal) {
+        List<DailyTask> dayOne = todayTasks(plan, goal);
+        DailyTask third = new DailyTask(
+                plan,
+                goal.getUser(),
+                goal,
+                2,
+                1,
+                "Progress module",
+                "Validate progress flow",
+                "Run integrated verification.",
+                90,
+                "verify",
+                "Verification notes",
+                "high"
+        );
+        DailyTask fourth = new DailyTask(
+                plan,
+                goal.getUser(),
+                goal,
+                3,
+                1,
+                "Progress module",
+                "Refine progress UX",
+                "Improve the feedback UI.",
+                60,
+                "improve",
+                "Updated UI",
+                "medium"
+        );
+        ReflectionTestUtils.setField(third, "id", 3L);
+        ReflectionTestUtils.setField(fourth, "id", 4L);
+        return List.of(dayOne.get(0), dayOne.get(1), third, fourth);
     }
 
     private Goal goal() {

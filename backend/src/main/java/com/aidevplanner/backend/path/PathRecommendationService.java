@@ -9,6 +9,7 @@ import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.GoalDecompositionResponse;
 import com.aidevplanner.backend.goaldecomposition.GoalDecompositionService;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeBasisResponse;
 import com.aidevplanner.backend.knowledge.KnowledgeContextBundle;
 import com.aidevplanner.backend.knowledge.KnowledgeContextService;
 import com.aidevplanner.backend.profile.ProfileAnalysisService;
@@ -68,7 +69,7 @@ public class PathRecommendationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Goal", goalId));
         ensureCurrentUserOwns(goal);
         return pathRecommendationRepository.findFirstByGoalIdOrderByCreatedAtDesc(goalId)
-                .map(PathRecommendationResponse::from)
+                .map(recommendation -> toResponse(goal, recommendation))
                 .orElse(null);
     }
 
@@ -118,7 +119,12 @@ public class PathRecommendationService {
                 )
         );
 
-        return PathRecommendationResponse.from(savedRecommendation);
+        return toResponse(goal, savedRecommendation);
+    }
+
+    private PathRecommendationResponse toResponse(Goal goal, PathRecommendation recommendation) {
+        KnowledgeBasisResponse knowledgeBasis = knowledgeContextService.basisForGoal(goal, recommendation.getEvidence());
+        return PathRecommendationResponse.from(recommendation, knowledgeBasis);
     }
 
     private int nextVersion(Long goalId) {

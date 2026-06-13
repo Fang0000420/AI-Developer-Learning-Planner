@@ -1,6 +1,9 @@
 package com.aidevplanner.backend.learningplan;
 
 import com.aidevplanner.backend.agent.AgentServiceException;
+import com.aidevplanner.backend.goal.GoalKnowledgePreferenceResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeBasisDocumentResponse;
+import com.aidevplanner.backend.knowledge.KnowledgeBasisResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -247,6 +250,8 @@ class LearningPlanControllerTests {
                                 )
                         )
                 ),
+                List.of(),
+                knowledgeBasis(),
                 TIMESTAMP,
                 TIMESTAMP
         );
@@ -262,8 +267,29 @@ class LearningPlanControllerTests {
                 21,
                 LearningPlanStatus.PAUSED,
                 List.of(),
+                List.of(),
+                knowledgeBasis(),
                 TIMESTAMP,
                 TIMESTAMP
+        );
+    }
+
+    private KnowledgeBasisResponse knowledgeBasis() {
+        return new KnowledgeBasisResponse(
+                "本次计划主要参考了《Work notes》等知识资料。",
+                new GoalKnowledgePreferenceResponse(10L, List.of(21L), "PERSONAL", List.of("NOTE")),
+                List.of("Work notes"),
+                List.of("知识库证据《Work notes》[个人资料]：Needs short speaking drills for work."),
+                List.of(
+                        new KnowledgeBasisDocumentResponse(
+                                21L,
+                                "Work notes",
+                                "PERSONAL",
+                                "NOTE",
+                                true,
+                                List.of("片段内容直接命中目标或背景词")
+                        )
+                )
         );
     }
 

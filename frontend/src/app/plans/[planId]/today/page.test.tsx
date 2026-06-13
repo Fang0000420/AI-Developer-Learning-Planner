@@ -15,6 +15,7 @@ vi.mock("@/lib/backend-plans", () => ({
 }));
 
 vi.mock("@/lib/backend-progress", () => ({
+  fetchBackendAdaptiveScheduleControl: vi.fn(),
   fetchBackendProgressLogs: vi.fn(),
 }));
 
@@ -28,10 +29,16 @@ import {
   fetchBackendPlan,
   fetchBackendPlanDayTasks,
 } from "@/lib/backend-plans";
-import { fetchBackendProgressLogs } from "@/lib/backend-progress";
+import {
+  fetchBackendAdaptiveScheduleControl,
+  fetchBackendProgressLogs,
+} from "@/lib/backend-progress";
 
 const mockedFetchBackendPlan = vi.mocked(fetchBackendPlan);
 const mockedFetchBackendPlanDayTasks = vi.mocked(fetchBackendPlanDayTasks);
+const mockedFetchBackendAdaptiveScheduleControl = vi.mocked(
+  fetchBackendAdaptiveScheduleControl,
+);
 const mockedFetchBackendProgressLogs = vi.mocked(fetchBackendProgressLogs);
 
 const plan: LearningPlan = {
@@ -41,10 +48,23 @@ const plan: LearningPlan = {
   goalId: 10,
   id: 30,
   planTitle: "14-Day AI Planner MVP Plan",
+  knowledgeBasis: {
+    summary: "This plan references work notes and enabled knowledge snippets.",
+    preference: {
+      goalId: 10,
+      preferredDocumentIds: [],
+      preferredScope: null,
+      preferredCategories: [],
+    },
+    referencedDocumentTitles: [],
+    knowledgeEvidence: [],
+    documents: [],
+  },
   sourceAgentRunId: 90,
   status: "ACTIVE",
   updatedAt: "2026-06-10T10:00:00",
   userId: 1,
+  versions: [],
 };
 
 const day: PlanDay = {
@@ -94,6 +114,10 @@ describe("TodayTasksPage", () => {
     mockedFetchBackendPlan.mockResolvedValue({ data: plan, error: null });
     mockedFetchBackendPlanDayTasks.mockResolvedValue({
       data: day,
+      error: null,
+    });
+    mockedFetchBackendAdaptiveScheduleControl.mockResolvedValue({
+      data: {},
       error: null,
     });
     mockedFetchBackendProgressLogs.mockResolvedValue({ data: [], error: null });

@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Compass,
+  FileText,
   Layers3,
   LoaderCircle,
   Milestone,
@@ -23,6 +24,10 @@ import type {
 } from "@/lib/goals";
 import { formatDailyHours } from "@/lib/goals";
 import type { Locale } from "@/lib/i18n";
+import {
+  knowledgeScopeLabel,
+  knowledgeSourceCategoryLabel,
+} from "@/lib/knowledge";
 
 type PathRecommendationWorkspaceProps = {
   goalId: number;
@@ -341,6 +346,100 @@ export function PathRecommendationWorkspace({
               </ul>
             </section>
           </div>
+
+          <section className="rounded-md border border-slate-200 p-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+              <FileText aria-hidden="true" className="size-4 text-slate-500" />
+              {locale === "zh" ? "知识依据" : "Knowledge Basis"}
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              {recommendation.knowledgeBasis.summary}
+            </p>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-medium text-slate-500">
+                  {locale === "zh" ? "优先文档数" : "Preferred docs"}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-slate-950">
+                  {recommendation.knowledgeBasis.preference.preferredDocumentIds.length}
+                </p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-medium text-slate-500">
+                  {locale === "zh" ? "固定作用域" : "Fixed scope"}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-950">
+                  {recommendation.knowledgeBasis.preference.preferredScope
+                    ? knowledgeScopeLabel(
+                        recommendation.knowledgeBasis.preference.preferredScope,
+                        locale,
+                      )
+                    : locale === "zh"
+                      ? "未固定"
+                      : "Not fixed"}
+                </p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-medium text-slate-500">
+                  {locale === "zh" ? "引用资料" : "Referenced docs"}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-slate-950">
+                  {recommendation.knowledgeBasis.referencedDocumentTitles.length}
+                </p>
+              </div>
+            </div>
+
+            {recommendation.knowledgeBasis.documents.length > 0 ? (
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                {recommendation.knowledgeBasis.documents.map((document) => (
+                  <article
+                    className="rounded-md border border-slate-200 bg-slate-50 p-4"
+                    key={`${document.documentId ?? document.title}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex h-7 items-center rounded-md bg-white px-2 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                        {knowledgeScopeLabel(document.scope, locale)}
+                      </span>
+                      <span className="inline-flex h-7 items-center rounded-md bg-white px-2 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                        {knowledgeSourceCategoryLabel(
+                          document.sourceCategory as
+                            | "NOTE"
+                            | "RESUME"
+                            | "PROJECT"
+                            | "COURSE"
+                            | "REFERENCE"
+                            | "OTHER",
+                          locale,
+                        )}
+                      </span>
+                    </div>
+                    <h4 className="mt-3 text-sm font-semibold text-slate-950">
+                      {document.title}
+                    </h4>
+                    <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                      {document.reasons.map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+
+            {recommendation.knowledgeBasis.knowledgeEvidence.length > 0 ? (
+              <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-medium text-slate-500">
+                  {locale === "zh" ? "知识证据片段" : "Knowledge evidence"}
+                </div>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                  {recommendation.knowledgeBasis.knowledgeEvidence.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </section>
 
           <section className="rounded-md border border-slate-200 p-5">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">

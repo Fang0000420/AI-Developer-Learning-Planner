@@ -7,6 +7,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -73,5 +74,24 @@ public class GoalController {
     ) {
         goalService.deleteGoal(goalId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{goalId}/knowledge-preference")
+    public GoalKnowledgePreferenceResponse getKnowledgePreference(
+            @Positive(message = "Goal id must be positive.")
+            @PathVariable
+            Long goalId
+    ) {
+        return goalService.getKnowledgePreference(goalId);
+    }
+
+    @PatchMapping("/{goalId}/knowledge-preference")
+    public GoalKnowledgePreferenceResponse updateKnowledgePreference(
+            @Positive(message = "Goal id must be positive.")
+            @PathVariable
+            Long goalId,
+            @RequestBody GoalKnowledgePreferenceRequest request
+    ) {
+        return goalService.updateKnowledgePreference(goalId, request);
     }
 }

@@ -4,6 +4,8 @@ import type { ApiErrorResponse } from "./goals";
 import type {
   KnowledgeDocumentDetail,
   KnowledgeDocumentSummary,
+  KnowledgeRetrievalPreview,
+  KnowledgeStrategyComparison,
 } from "./knowledge";
 
 type BackendResult<T> = {
@@ -110,6 +112,69 @@ export async function fetchBackendKnowledgeDocument(
         error instanceof Error
           ? error.message
           : "Backend knowledge document request failed.",
+      ),
+    };
+  }
+}
+
+export async function fetchBackendKnowledgeRetrievalPreview(
+  goalId: string,
+): Promise<BackendResult<KnowledgeRetrievalPreview | null>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/knowledge/documents/retrieval-preview/${goalId}`,
+      {
+        cache: "no-store",
+        headers: await authHeadersFromCookies(),
+      },
+    );
+    const payload = await parseJson(response);
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(payload, "Backend knowledge retrieval preview request failed."),
+      };
+    }
+    return { data: payload as KnowledgeRetrievalPreview, error: null };
+  } catch (error) {
+    return {
+      data: null,
+      error: buildError(
+        error instanceof Error
+          ? error.message
+          : "Backend knowledge retrieval preview request failed.",
+      ),
+    };
+  }
+}
+
+export async function fetchBackendKnowledgeStrategyComparison(
+  baseGoalId: string,
+  compareGoalId: string,
+): Promise<BackendResult<KnowledgeStrategyComparison | null>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/knowledge/documents/strategy-compare?baseGoalId=${baseGoalId}&compareGoalId=${compareGoalId}`,
+      {
+        cache: "no-store",
+        headers: await authHeadersFromCookies(),
+      },
+    );
+    const payload = await parseJson(response);
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(payload, "Backend knowledge strategy comparison request failed."),
+      };
+    }
+    return { data: payload as KnowledgeStrategyComparison, error: null };
+  } catch (error) {
+    return {
+      data: null,
+      error: buildError(
+        error instanceof Error
+          ? error.message
+          : "Backend knowledge strategy comparison request failed.",
       ),
     };
   }

@@ -1,6 +1,10 @@
 import { authHeadersFromCookies } from "./backend-auth";
 import { getBackendBaseUrl } from "./backend-url";
-import type { ApiErrorResponse, ProgressLog } from "./goals";
+import type {
+  AdaptiveScheduleControl,
+  ApiErrorResponse,
+  ProgressLog,
+} from "./goals";
 
 type BackendResult<T> =
   | {
@@ -77,6 +81,46 @@ export async function fetchBackendProgressLogs(
       error instanceof Error
         ? error.message
         : "Backend progress request failed.";
+
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendAdaptiveScheduleControl(
+  planId: string,
+): Promise<BackendResult<AdaptiveScheduleControl>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/progress/${planId}/adaptive-schedule`,
+      {
+        cache: "no-store",
+        headers: await authHeadersFromCookies(),
+      },
+    );
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(
+          payload,
+          "Backend adaptive schedule request failed.",
+        ),
+      };
+    }
+
+    return {
+      data: (payload ?? {}) as AdaptiveScheduleControl,
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Backend adaptive schedule request failed.";
 
     return {
       data: null,

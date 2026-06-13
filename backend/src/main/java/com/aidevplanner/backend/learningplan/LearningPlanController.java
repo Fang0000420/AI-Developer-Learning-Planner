@@ -99,4 +99,16 @@ public class LearningPlanController {
         learningPlanService.deletePlan(planId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{planId}/versions/{version}/restore")
+    public LearningPlanResponse restoreVersion(
+            @Positive(message = "Plan id must be positive.")
+            @PathVariable
+            Long planId,
+            @Positive(message = "Version must be positive.")
+            @PathVariable
+            Integer version
+    ) {
+        return learningPlanService.restoreVersion(planId, version);
+    }
 }

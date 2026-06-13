@@ -173,6 +173,10 @@ public class DailyTask {
         return estimatedMinutes;
     }
 
+    public void setEstimatedMinutes(Integer estimatedMinutes) {
+        this.estimatedMinutes = estimatedMinutes;
+    }
+
     public String getType() {
         return type;
     }
@@ -183,6 +187,10 @@ public class DailyTask {
 
     public String getPriority() {
         return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
     }
 
     public DailyTaskStatus getStatus() {

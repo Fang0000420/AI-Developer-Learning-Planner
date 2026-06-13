@@ -15,6 +15,30 @@ export type Goal = {
   updatedAt: string | null;
 };
 
+export type GoalKnowledgePreference = {
+  goalId: number;
+  preferredDocumentIds: number[];
+  preferredScope: "PERSONAL" | "PLATFORM" | null;
+  preferredCategories: string[];
+};
+
+export type KnowledgeBasisDocument = {
+  documentId: number | null;
+  title: string;
+  scope: "PERSONAL" | "PLATFORM";
+  sourceCategory: string;
+  selectedForContext: boolean;
+  reasons: string[];
+};
+
+export type KnowledgeBasis = {
+  summary: string;
+  preference: GoalKnowledgePreference;
+  referencedDocumentTitles: string[];
+  knowledgeEvidence: string[];
+  documents: KnowledgeBasisDocument[];
+};
+
 export type SkillProfile = {
   id: number;
   userId: number;
@@ -129,6 +153,7 @@ export type PathRecommendation = {
   milestones: string[];
   riskSignals: string[];
   evidence: string[];
+  knowledgeBasis: KnowledgeBasis;
   finalDeliverables: string[];
   createdAt: string | null;
   updatedAt: string | null;
@@ -157,6 +182,37 @@ export type PlanDay = {
   tasks: PlanTask[];
 };
 
+export type LearningPlanVersionSummary = {
+  version: number;
+  trigger: string;
+  reason: string;
+  dayCount: number;
+  taskCount: number;
+  totalEstimatedMinutes: number;
+  minuteDelta: number;
+  taskDelta: number;
+  affectedDayIndexes: number[];
+  diff: LearningPlanVersionDiff;
+  current: boolean;
+  createdAt: string | null;
+};
+
+export type LearningPlanVersionTaskChange = {
+  dayIndex: number;
+  title: string;
+  changeType: "added" | "removed" | "updated";
+  previousEstimatedMinutes?: number | null;
+  currentEstimatedMinutes?: number | null;
+};
+
+export type LearningPlanVersionDiff = {
+  addedTaskCount: number;
+  removedTaskCount: number;
+  updatedTaskCount: number;
+  changedDayIndexes: number[];
+  taskChanges: LearningPlanVersionTaskChange[];
+};
+
 export type LearningPlan = {
   id: number;
   goalId: number;
@@ -166,6 +222,8 @@ export type LearningPlan = {
   durationDays: number;
   status: LearningPlanStatus;
   days: PlanDay[];
+  versions: LearningPlanVersionSummary[];
+  knowledgeBasis: KnowledgeBasis;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -195,6 +253,7 @@ export type ProgressReviewResult = {
   nextFocus?: string[];
   paceAdjustment?: "keep" | "slower" | "faster";
   confidence?: "low" | "medium" | "high";
+  adaptiveSchedule?: AdaptiveScheduleResult;
 };
 
 export type PlanAdjustmentTask = {
@@ -230,6 +289,29 @@ export type PlanAdjustmentResult = {
   movedTasks?: PlanMovedTask[];
   splitTasks?: PlanSplitTask[];
   reason?: string;
+};
+
+export type AdaptiveScheduleResult = {
+  pacing?: "lighter" | "steady" | "stronger";
+  reason?: string;
+  recentCompletionRate?: number;
+  recentBlockerAverage?: number;
+  minuteAdjustmentPercent?: number;
+  affectedDayIndexes?: number[];
+};
+
+export type AdaptiveScheduleOverrideSummary = {
+  pacing?: "lighter" | "steady" | "stronger";
+  reason?: string;
+  affectedDayIndexes?: number[];
+  anchorDayIndex?: number;
+  appliedAt?: string | null;
+};
+
+export type AdaptiveScheduleControl = {
+  latestAutomatic?: AdaptiveScheduleResult | null;
+  activeOverride?: AdaptiveScheduleOverrideSummary | null;
+  evidence?: string[];
 };
 
 export type ProgressLog = {

@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -121,6 +122,38 @@ class GoalControllerTests {
                 .andExpect(status().isNoContent());
 
         verify(goalService).deleteGoal(10L);
+    }
+
+    @Test
+    void returnsGoalKnowledgePreference() throws Exception {
+        when(goalService.getKnowledgePreference(10L)).thenReturn(
+                new GoalKnowledgePreferenceResponse(10L, List.of(21L, 22L), "PERSONAL", List.of("PROJECT"))
+        );
+
+        mockMvc.perform(get("/api/goals/{goalId}/knowledge-preference", 10L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.goalId").value(10))
+                .andExpect(jsonPath("$.preferredDocumentIds[0]").value(21))
+                .andExpect(jsonPath("$.preferredScope").value("PERSONAL"));
+    }
+
+    @Test
+    void updatesGoalKnowledgePreference() throws Exception {
+        when(goalService.updateKnowledgePreference(any(Long.class), any(GoalKnowledgePreferenceRequest.class)))
+                .thenReturn(new GoalKnowledgePreferenceResponse(10L, List.of(21L), "PERSONAL", List.of("PROJECT")));
+
+        mockMvc.perform(patch("/api/goals/{goalId}/knowledge-preference", 10L)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "preferredDocumentIds":[21],
+                                  "preferredScope":"PERSONAL",
+                                  "preferredCategories":["PROJECT"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preferredDocumentIds[0]").value(21))
+                .andExpect(jsonPath("$.preferredCategories[0]").value("PROJECT"));
     }
 
     @Test
