@@ -373,7 +373,7 @@ public class LearningPlanService {
     }
 
     private boolean isZh(Goal goal) {
-        return goal.getResponseLanguage() == ResponseLanguage.ZH;
+        return goal.getResponseLanguage() == ResponseLanguage.zh;
     }
 
     private ProjectRecommendResponse latestProjectRecommendation(Goal goal) {
