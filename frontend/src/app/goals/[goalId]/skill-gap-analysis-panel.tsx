@@ -98,7 +98,7 @@ export function SkillGapAnalysisPanel({
     <section className="rounded-md border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
             <Gauge aria-hidden="true" className="size-4" />
           </span>
           <div>
@@ -106,7 +106,7 @@ export function SkillGapAnalysisPanel({
               <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-50">
                 {locale === "zh" ? "技能差距分析" : "Skill Gap Analysis"}
               </h2>
-              <span className="inline-flex h-7 items-center gap-1 rounded-md bg-slate-100 px-2 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <span className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 {isGenerating ? (
                   <LoaderCircle
                     aria-hidden="true"
@@ -161,10 +161,10 @@ export function SkillGapAnalysisPanel({
       ) : null}
 
       {skillGapAnalysis ? (
-        <div className="mt-6 overflow-hidden rounded-md border border-slate-200 dark:border-slate-800">
+        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/30">
           <div className="overflow-x-auto">
             <table className="min-w-[760px] divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
-              <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+              <thead className="bg-slate-100/80 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                 <tr>
                   <th className="w-[190px] px-4 py-3">
                     {locale === "zh" ? "技能" : "Skill"}
@@ -188,12 +188,18 @@ export function SkillGapAnalysisPanel({
                   <tr
                     className={
                       skillGap.priority === "high"
-                        ? "bg-rose-50/40 dark:bg-rose-500/5"
-                        : ""
+                        ? "bg-rose-50/60 dark:bg-rose-500/5"
+                        : "bg-white dark:bg-slate-950"
                     }
                     key={`${skillGap.skill}-${index}`}
                   >
-                    <td className="px-4 py-4 align-top font-semibold text-slate-950 dark:text-slate-50">
+                    <td
+                      className={`px-4 py-4 align-top font-semibold text-slate-950 dark:text-slate-50 ${
+                        skillGap.priority === "high"
+                          ? "border-l-2 border-rose-300 dark:border-rose-500/40"
+                          : "border-l-2 border-transparent"
+                      }`}
+                    >
                       {skillGap.skill}
                     </td>
                     <td className="px-4 py-4 align-top text-slate-600 dark:text-slate-300">
