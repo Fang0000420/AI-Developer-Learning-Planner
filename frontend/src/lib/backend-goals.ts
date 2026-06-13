@@ -4,6 +4,7 @@ import type {
   ApiErrorResponse,
   Goal,
   GoalDecomposition,
+  PathRecommendation,
   ProjectRecommendation,
   SkillGapAnalysis,
   SkillProfile,
@@ -287,6 +288,51 @@ export async function fetchBackendProjectRecommendation(
       error instanceof Error
         ? error.message
         : "Backend project recommendation request failed.";
+
+    return {
+      data: null,
+      error: buildError(message),
+    };
+  }
+}
+
+export async function fetchBackendPathRecommendation(
+  goalId: string,
+): Promise<BackendResult<PathRecommendation | null>> {
+  try {
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/goals/${goalId}/path-recommendation`,
+      {
+        cache: "no-store",
+        headers: await authHeadersFromCookies(),
+      },
+    );
+
+    if (response.status === 204) {
+      return {
+        data: null,
+        error: null,
+      };
+    }
+
+    const payload = await parseJson(response);
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: normalizeError(payload, "Backend path recommendation request failed."),
+      };
+    }
+
+    return {
+      data: payload as PathRecommendation,
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Backend path recommendation request failed.";
 
     return {
       data: null,

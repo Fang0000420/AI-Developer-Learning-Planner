@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -14,21 +14,11 @@ import type { Locale } from "@/lib/i18n";
 
 type GoalDemoRunnerProps = {
   goalId: number;
-  hasDecomposition: boolean;
-  hasProfile: boolean;
-  hasProjectRecommendation: boolean;
-  hasSkillGapAnalysis: boolean;
+  hasPathRecommendation: boolean;
   locale: Locale;
 };
 
 type StepStatus = "pending" | "running" | "ready" | "failed";
-
-type DemoStep = {
-  endpoint: string;
-  key: string;
-  label: string;
-  ready: boolean;
-};
 
 function statusLabel(status: StepStatus, locale: Locale) {
   if (locale === "zh") {
@@ -45,53 +35,12 @@ function statusLabel(status: StepStatus, locale: Locale) {
 
 export function GoalDemoRunner({
   goalId,
-  hasDecomposition,
-  hasProfile,
-  hasProjectRecommendation,
-  hasSkillGapAnalysis,
+  hasPathRecommendation,
   locale,
 }: GoalDemoRunnerProps) {
   const router = useRouter();
-  const steps = useMemo<DemoStep[]>(
-    () => [
-      {
-        endpoint: `/api/goals/${goalId}/profile/analyze`,
-        key: "profile",
-        label: locale === "zh" ? "画像" : "Profile",
-        ready: hasProfile,
-      },
-      {
-        endpoint: `/api/goals/${goalId}/decomposition/decompose`,
-        key: "decomposition",
-        label: locale === "zh" ? "目标拆解" : "Decomposition",
-        ready: hasDecomposition,
-      },
-      {
-        endpoint: `/api/goals/${goalId}/skill-gap/analyze`,
-        key: "skill-gap",
-        label: locale === "zh" ? "技能差距" : "Skill gaps",
-        ready: hasSkillGapAnalysis,
-      },
-      {
-        endpoint: `/api/goals/${goalId}/project-recommendation/recommend`,
-        key: "project",
-        label: locale === "zh" ? "项目" : "Project",
-        ready: hasProjectRecommendation,
-      },
-    ],
-    [
-      goalId,
-      hasDecomposition,
-      hasProfile,
-      hasProjectRecommendation,
-      hasSkillGapAnalysis,
-      locale,
-    ],
-  );
-  const [statuses, setStatuses] = useState<Record<string, StepStatus>>(() =>
-    Object.fromEntries(
-      steps.map((step) => [step.key, step.ready ? "ready" : "pending"]),
-    ),
+  const [pathStatus, setPathStatus] = useState<StepStatus>(
+    hasPathRecommendation ? "ready" : "pending",
   );
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -103,16 +52,11 @@ export function GoalDemoRunner({
     setIsRunning(true);
 
     try {
-      for (const step of steps) {
-        if (step.ready) {
-          setStatuses((current) => ({ ...current, [step.key]: "ready" }));
-          continue;
-        }
-
-        setStatuses((current) => ({ ...current, [step.key]: "running" }));
-        await postJson(step.endpoint);
-        setStatuses((current) => ({ ...current, [step.key]: "ready" }));
-      }
+      setPathStatus("running");
+      await postJson<AsyncJob<unknown>>("/api/jobs/path-analysis", { goalId }).then((job) =>
+        pollJob(job.jobId),
+      );
+      setPathStatus("ready");
 
       setPlanStatus("running");
       const job = await postJson<AsyncJob<LearningPlan>>(
@@ -133,14 +77,7 @@ export function GoalDemoRunner({
             ? "演示链路失败。"
             : "Demo flow failed.",
       );
-      setStatuses((current) => {
-        const runningStep = Object.entries(current).find(
-          ([, status]) => status === "running",
-        );
-        return runningStep
-          ? { ...current, [runningStep[0]]: "failed" }
-          : current;
-      });
+      setPathStatus((current) => (current === "running" ? "failed" : current));
       setPlanStatus((current) => (current === "running" ? "failed" : current));
     } finally {
       setIsRunning(false);
@@ -159,46 +96,37 @@ export function GoalDemoRunner({
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {locale === "zh"
-              ? "运行缺失的 Agent 步骤，并为该目标创建学习计划。"
-              : "Run missing agent steps and create a learning plan for this goal."}
+              ? "先统一运行路径分析，再基于路径结果生成学习计划。"
+              : "Run the unified path analysis first, then generate a learning plan from that path."}
           </p>
         </div>
       </div>
 
       <div className="mt-5 space-y-3">
-        {steps.map((step) => {
-          const status = statuses[step.key] ?? "pending";
-
-          return (
-            <div
-              className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2"
-              key={step.key}
-            >
-              <span className="text-sm font-medium text-slate-700">
-                {step.label}
-              </span>
-              <span className="flex items-center gap-1 text-xs font-semibold capitalize text-slate-500">
-                {status === "running" ? (
-                  <LoaderCircle
-                    aria-hidden="true"
-                    className="size-3.5 animate-spin"
-                  />
-                ) : status === "ready" ? (
-                  <CheckCircle2
-                    aria-hidden="true"
-                    className="size-3.5 text-emerald-600"
-                  />
-                ) : status === "failed" ? (
-                  <AlertCircle
-                    aria-hidden="true"
-                    className="size-3.5 text-rose-600"
-                  />
-                ) : null}
-                {statusLabel(status, locale)}
-              </span>
-            </div>
-          );
-        })}
+        <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2">
+          <span className="text-sm font-medium text-slate-700">
+            {locale === "zh" ? "路径分析" : "Path analysis"}
+          </span>
+          <span className="flex items-center gap-1 text-xs font-semibold capitalize text-slate-500">
+            {pathStatus === "running" ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-3.5 animate-spin"
+              />
+            ) : pathStatus === "ready" ? (
+              <CheckCircle2
+                aria-hidden="true"
+                className="size-3.5 text-emerald-600"
+              />
+            ) : pathStatus === "failed" ? (
+              <AlertCircle
+                aria-hidden="true"
+                className="size-3.5 text-rose-600"
+              />
+            ) : null}
+            {statusLabel(pathStatus, locale)}
+          </span>
+        </div>
         <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2">
           <span className="text-sm font-medium text-slate-700">
             {locale === "zh" ? "计划生成" : "Plan generation"}

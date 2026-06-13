@@ -1,6 +1,7 @@
 package com.aidevplanner.backend.asyncjob;
 
 import com.aidevplanner.backend.learningplan.LearningPlanGenerateRequest;
+import com.aidevplanner.backend.path.PathAnalysisRequest;
 import com.aidevplanner.backend.progress.ProgressSubmitRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,23 @@ class AsyncJobControllerTests {
                 .andExpect(jsonPath("$.status").value("PENDING"));
 
         verify(asyncJobService).createPlanGenerationJob(request);
+    }
+
+    @Test
+    void createsPathAnalysisJob() throws Exception {
+        PathAnalysisRequest request = new PathAnalysisRequest(10L);
+        when(asyncJobService.createPathAnalysisJob(request)).thenReturn(pendingPathJob());
+
+        mockMvc.perform(post("/api/jobs/path-analysis")
+                        .contentType("application/json")
+                        .content("{\"goalId\":10}"))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/jobs/" + JOB_ID))
+                .andExpect(jsonPath("$.jobId").value(JOB_ID.toString()))
+                .andExpect(jsonPath("$.jobType").value("PATH_ANALYSIS"))
+                .andExpect(jsonPath("$.status").value("PENDING"));
+
+        verify(asyncJobService).createPathAnalysisJob(request);
     }
 
     @Test
@@ -114,6 +132,18 @@ class AsyncJobControllerTests {
         return new AsyncJobResponse(
                 JOB_ID,
                 AsyncJobType.PLAN_GENERATION,
+                AsyncJobStatus.PENDING,
+                null,
+                null,
+                TIMESTAMP,
+                TIMESTAMP
+        );
+    }
+
+    private AsyncJobResponse pendingPathJob() {
+        return new AsyncJobResponse(
+                JOB_ID,
+                AsyncJobType.PATH_ANALYSIS,
                 AsyncJobStatus.PENDING,
                 null,
                 null,

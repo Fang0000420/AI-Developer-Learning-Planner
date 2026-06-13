@@ -4,6 +4,8 @@ import com.aidevplanner.backend.common.ResourceNotFoundException;
 import com.aidevplanner.backend.learningplan.LearningPlanResponse;
 import com.aidevplanner.backend.learningplan.LearningPlanService;
 import com.aidevplanner.backend.observability.ObservabilityContext;
+import com.aidevplanner.backend.path.PathRecommendationResponse;
+import com.aidevplanner.backend.path.PathRecommendationService;
 import com.aidevplanner.backend.progress.ProgressLogResponse;
 import com.aidevplanner.backend.progress.ProgressLogService;
 import com.aidevplanner.backend.progress.ProgressSubmitRequest;
@@ -20,18 +22,35 @@ public class AsyncJobRunner {
     private final AsyncJobRepository asyncJobRepository;
     private final LearningPlanService learningPlanService;
     private final ObjectMapper objectMapper;
+    private final PathRecommendationService pathRecommendationService;
     private final ProgressLogService progressLogService;
 
     public AsyncJobRunner(
             AsyncJobRepository asyncJobRepository,
             LearningPlanService learningPlanService,
             ObjectMapper objectMapper,
+            PathRecommendationService pathRecommendationService,
             ProgressLogService progressLogService
     ) {
         this.asyncJobRepository = asyncJobRepository;
         this.learningPlanService = learningPlanService;
         this.objectMapper = objectMapper;
+        this.pathRecommendationService = pathRecommendationService;
         this.progressLogService = progressLogService;
+    }
+
+    @Async
+    public void runPathAnalysis(UUID jobId, Long goalId, String requestId) {
+        ObservabilityContext.setRequestId(requestId);
+        try {
+            markRunning(jobId);
+            PathRecommendationResponse response = pathRecommendationService.analyzeGoal(goalId);
+            markSucceeded(jobId, writeJson(response));
+        } catch (Exception exception) {
+            markFailed(jobId, exception);
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     @Async

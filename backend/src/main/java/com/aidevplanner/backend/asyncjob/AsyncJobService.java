@@ -8,6 +8,7 @@ import com.aidevplanner.backend.learningplan.LearningPlanGenerateRequest;
 import com.aidevplanner.backend.learningplan.LearningPlan;
 import com.aidevplanner.backend.learningplan.LearningPlanRepository;
 import com.aidevplanner.backend.observability.ObservabilityContext;
+import com.aidevplanner.backend.path.PathAnalysisRequest;
 import com.aidevplanner.backend.progress.ProgressSubmitRequest;
 import com.aidevplanner.backend.user.User;
 import com.aidevplanner.backend.user.UserRepository;
@@ -59,6 +60,21 @@ public class AsyncJobService {
                 user
         ));
         asyncJobRunner.runPlanGeneration(job.getId(), request.goalId(), ObservabilityContext.getRequestId());
+        return toResponse(job);
+    }
+
+    public AsyncJobResponse createPathAnalysisJob(PathAnalysisRequest request) {
+        User user = currentUser();
+        Goal goal = goalRepository.findById(request.goalId())
+                .orElseThrow(() -> new ResourceNotFoundException("Goal", request.goalId()));
+        ensureUserOwns(goal.getUser().getId(), request.goalId(), "Goal");
+        AsyncJob job = asyncJobRepository.save(new AsyncJob(
+                UUID.randomUUID(),
+                AsyncJobType.PATH_ANALYSIS,
+                writeJson(request),
+                user
+        ));
+        asyncJobRunner.runPathAnalysis(job.getId(), request.goalId(), ObservabilityContext.getRequestId());
         return toResponse(job);
     }
 

@@ -11,6 +11,7 @@ import {
   fetchBackendGoal,
   fetchBackendGoalDecomposition,
   fetchBackendGoalProfile,
+  fetchBackendPathRecommendation,
   fetchBackendProjectRecommendation,
   fetchBackendSkillGapAnalysis,
 } from "@/lib/backend-goals";
@@ -24,6 +25,7 @@ import { dictionaries, responseLanguageLabel } from "@/lib/i18n";
 import { getCurrentLocale } from "@/lib/i18n-server";
 import { GoalDecompositionPanel } from "./goal-decomposition-panel";
 import { GoalDemoRunner } from "./goal-demo-runner";
+import { PathRecommendationWorkspace } from "./path-recommendation-workspace";
 import { ProfileAnalysisPanel } from "./profile-analysis-panel";
 import { ProjectRecommendationPanel } from "./project-recommendation-panel";
 import { SkillGapAnalysisPanel } from "./skill-gap-analysis-panel";
@@ -54,6 +56,9 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
     goal
       ? await fetchBackendProjectRecommendation(goalId)
       : { data: null, error: null };
+  const { data: pathRecommendation, error: pathRecommendationError } = goal
+    ? await fetchBackendPathRecommendation(goalId)
+    : { data: null, error: null };
 
   if (error || !goal) {
     return (
@@ -181,6 +186,13 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
             </p>
           </section>
 
+          <PathRecommendationWorkspace
+            goalId={goal.id}
+            initialError={pathRecommendationError?.message ?? null}
+            initialRecommendation={pathRecommendation}
+            locale={locale}
+          />
+
           <ProfileAnalysisPanel
             goalId={goal.id}
             initialError={profileError?.message ?? null}
@@ -213,10 +225,7 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
         <aside className="flex flex-col gap-6">
           <GoalDemoRunner
             goalId={goal.id}
-            hasDecomposition={decomposition !== null}
-            hasProfile={profile !== null}
-            hasProjectRecommendation={projectRecommendation !== null}
-            hasSkillGapAnalysis={skillGapAnalysis !== null}
+            hasPathRecommendation={pathRecommendation !== null}
             locale={locale}
           />
 

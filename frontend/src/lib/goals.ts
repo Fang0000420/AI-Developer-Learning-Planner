@@ -70,6 +70,28 @@ export type ProjectRecommendation = {
   createdAt: string | null;
 };
 
+export type PathRecommendation = {
+  id: number;
+  goalId: number;
+  userId: number;
+  sourceAgentRunId: number | null;
+  version: number;
+  recommendedPath: string;
+  summary: string;
+  currentPosition: string;
+  nextStep: string;
+  difficulty: string;
+  durationDays: number;
+  dailyTimeHours: number;
+  focusAreas: string[];
+  milestones: string[];
+  riskSignals: string[];
+  evidence: string[];
+  finalDeliverables: string[];
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type DailyTaskStatus = "PENDING" | "IN_PROGRESS" | "DONE" | "SKIPPED";
 export type ProgressImpact = "none" | "minor" | "medium" | "major";
 
@@ -180,7 +202,10 @@ export type ProgressLog = {
 };
 
 export type AsyncJobStatus = "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
-export type AsyncJobType = "PLAN_GENERATION" | "PROGRESS_SUBMISSION";
+export type AsyncJobType =
+  | "PATH_ANALYSIS"
+  | "PLAN_GENERATION"
+  | "PROGRESS_SUBMISSION";
 
 export type AsyncJob<T> = {
   jobId: string;

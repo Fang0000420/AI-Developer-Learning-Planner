@@ -11,6 +11,8 @@ import com.aidevplanner.backend.goal.Goal;
 import com.aidevplanner.backend.goal.GoalRepository;
 import com.aidevplanner.backend.goaldecomposition.GoalDecomposeResponse;
 import com.aidevplanner.backend.goaldecomposition.SubGoalResponse;
+import com.aidevplanner.backend.path.PathRecommendation;
+import com.aidevplanner.backend.path.PathRecommendationRepository;
 import com.aidevplanner.backend.profile.SkillProfile;
 import com.aidevplanner.backend.profile.SkillProfileRepository;
 import com.aidevplanner.backend.projectrecommendation.ProjectRecommendResponse;
@@ -43,6 +45,7 @@ public class LearningPlanService {
     private final LearningPlanRepository learningPlanRepository;
     private final ObjectMapper objectMapper;
     private final PlanGeneratorClient planGeneratorClient;
+    private final PathRecommendationRepository pathRecommendationRepository;
     private final SkillProfileRepository skillProfileRepository;
 
     public LearningPlanService(
@@ -53,6 +56,7 @@ public class LearningPlanService {
             LearningPlanRepository learningPlanRepository,
             ObjectMapper objectMapper,
             PlanGeneratorClient planGeneratorClient,
+            PathRecommendationRepository pathRecommendationRepository,
             SkillProfileRepository skillProfileRepository
     ) {
         this.agentRunRepository = agentRunRepository;
@@ -62,6 +66,7 @@ public class LearningPlanService {
         this.learningPlanRepository = learningPlanRepository;
         this.objectMapper = objectMapper;
         this.planGeneratorClient = planGeneratorClient;
+        this.pathRecommendationRepository = pathRecommendationRepository;
         this.skillProfileRepository = skillProfileRepository;
     }
 
@@ -233,6 +238,9 @@ public class LearningPlanService {
                 .findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
                 .orElse(null);
         ProjectRecommendResponse projectRecommendation = latestProjectRecommendation(goal);
+        PathRecommendation pathRecommendation = pathRecommendationRepository
+                .findFirstByGoalIdOrderByCreatedAtDesc(goal.getId())
+                .orElse(null);
 
         return new PlanGenerateAgentRequest(
                 firstPresent(goal.getTitle(), "Untitled learning goal"),
@@ -241,11 +249,21 @@ public class LearningPlanService {
                 profile == null ? List.of() : copyList(profile.getWeaknesses()),
                 latestSubGoals(goal.getId()),
                 latestSkillGaps(goal.getId()),
-                firstPresent(projectRecommendation.recommendedProject(), fallbackTrackTitle(goal)),
-                projectRecommendation.reason(),
-                projectRecommendation.difficulty(),
-                cleanList(projectRecommendation.coreTechStack()),
-                cleanList(projectRecommendation.finalDeliverables()),
+                pathRecommendation == null
+                        ? firstPresent(projectRecommendation.recommendedProject(), fallbackTrackTitle(goal))
+                        : firstPresent(pathRecommendation.getPathTitle(), projectRecommendation.recommendedProject(), fallbackTrackTitle(goal)),
+                pathRecommendation == null
+                        ? projectRecommendation.reason()
+                        : firstPresent(pathRecommendation.getSummary(), projectRecommendation.reason()),
+                pathRecommendation == null
+                        ? projectRecommendation.difficulty()
+                        : firstPresent(pathRecommendation.getDifficulty(), projectRecommendation.difficulty()),
+                pathRecommendation == null
+                        ? cleanList(projectRecommendation.coreTechStack())
+                        : cleanList(pathRecommendation.getFocusAreas()),
+                pathRecommendation == null
+                        ? cleanList(projectRecommendation.finalDeliverables())
+                        : cleanList(pathRecommendation.getFinalDeliverables()),
                 goal.getDurationDays(),
                 goal.getUser().getDailyAvailableHours(),
                 goal.getResponseLanguage().name()
