@@ -156,7 +156,9 @@ export function SkillGapAnalysisPanel({
               ? "无法分析技能差距。"
               : "Unable to analyze skill gaps."}
           </p>
-          <p className="mt-2 text-sm leading-6 text-rose-700 dark:text-rose-300">{error}</p>
+          <p className="mt-2 text-sm leading-6 text-rose-700 dark:text-rose-300">
+            {error}
+          </p>
         </div>
       ) : null}
 

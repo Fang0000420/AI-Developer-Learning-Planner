@@ -53,9 +53,9 @@ export function GoalDemoRunner({
 
     try {
       setPathStatus("running");
-      await postJson<AsyncJob<unknown>>("/api/jobs/path-analysis", { goalId }).then((job) =>
-        pollJob(job.jobId),
-      );
+      await postJson<AsyncJob<unknown>>("/api/jobs/path-analysis", {
+        goalId,
+      }).then((job) => pollJob(job.jobId));
       setPathStatus("ready");
 
       setPlanStatus("running");

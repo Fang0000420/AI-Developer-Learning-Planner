@@ -33,15 +33,19 @@ async function proxyJsonResponse(response: Response) {
 
 export async function POST(request: Request) {
   try {
-    const response = await fetch(`${getBackendBaseUrl()}/api/jobs/path-analysis`, {
-      body: await request.text(),
-      cache: "no-store",
-      headers: {
-        ...authHeadersFromRequest(request),
-        "content-type": request.headers.get("content-type") ?? "application/json",
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/jobs/path-analysis`,
+      {
+        body: await request.text(),
+        cache: "no-store",
+        headers: {
+          ...authHeadersFromRequest(request),
+          "content-type":
+            request.headers.get("content-type") ?? "application/json",
+        },
+        method: "POST",
       },
-      method: "POST",
-    });
+    );
 
     return proxyJsonResponse(response);
   } catch (error) {

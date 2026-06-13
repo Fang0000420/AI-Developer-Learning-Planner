@@ -26,7 +26,8 @@ export default async function KnowledgeDetailPage({
   const { documentId } = await params;
   const locale = await getCurrentLocale();
   const t = dictionaries[locale];
-  const { data: document, error } = await fetchBackendKnowledgeDocument(documentId);
+  const { data: document, error } =
+    await fetchBackendKnowledgeDocument(documentId);
 
   if (error || !document) {
     return (

@@ -358,7 +358,10 @@ export async function fetchBackendPathRecommendation(
     if (!response.ok) {
       return {
         data: null,
-        error: normalizeError(payload, "Backend path recommendation request failed."),
+        error: normalizeError(
+          payload,
+          "Backend path recommendation request failed.",
+        ),
       };
     }
 

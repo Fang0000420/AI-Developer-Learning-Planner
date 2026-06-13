@@ -62,15 +62,21 @@ export async function fetchBackendKnowledgeDocuments(): Promise<
   BackendResult<KnowledgeDocumentSummary[]>
 > {
   try {
-    const response = await fetch(`${getBackendBaseUrl()}/api/knowledge/documents`, {
-      cache: "no-store",
-      headers: await authHeadersFromCookies(),
-    });
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/knowledge/documents`,
+      {
+        cache: "no-store",
+        headers: await authHeadersFromCookies(),
+      },
+    );
     const payload = await parseJson(response);
     if (!response.ok) {
       return {
         data: [],
-        error: normalizeError(payload, "Backend knowledge documents request failed."),
+        error: normalizeError(
+          payload,
+          "Backend knowledge documents request failed.",
+        ),
       };
     }
     return { data: payload as KnowledgeDocumentSummary[], error: null };
@@ -101,7 +107,10 @@ export async function fetchBackendKnowledgeDocument(
     if (!response.ok) {
       return {
         data: null,
-        error: normalizeError(payload, "Backend knowledge document request failed."),
+        error: normalizeError(
+          payload,
+          "Backend knowledge document request failed.",
+        ),
       };
     }
     return { data: payload as KnowledgeDocumentDetail, error: null };
@@ -132,7 +141,10 @@ export async function fetchBackendKnowledgeRetrievalPreview(
     if (!response.ok) {
       return {
         data: null,
-        error: normalizeError(payload, "Backend knowledge retrieval preview request failed."),
+        error: normalizeError(
+          payload,
+          "Backend knowledge retrieval preview request failed.",
+        ),
       };
     }
     return { data: payload as KnowledgeRetrievalPreview, error: null };
@@ -164,7 +176,10 @@ export async function fetchBackendKnowledgeStrategyComparison(
     if (!response.ok) {
       return {
         data: null,
-        error: normalizeError(payload, "Backend knowledge strategy comparison request failed."),
+        error: normalizeError(
+          payload,
+          "Backend knowledge strategy comparison request failed.",
+        ),
       };
     }
     return { data: payload as KnowledgeStrategyComparison, error: null };

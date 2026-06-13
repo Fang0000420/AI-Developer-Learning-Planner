@@ -346,8 +346,14 @@ export function ProfileWorkspace({
             </label>
             <input
               className="h-11 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
-              onChange={(event) => setPreferredLearningStyle(event.target.value)}
-              placeholder={locale === "zh" ? "例如：项目驱动" : "For example: project-driven"}
+              onChange={(event) =>
+                setPreferredLearningStyle(event.target.value)
+              }
+              placeholder={
+                locale === "zh"
+                  ? "例如：项目驱动"
+                  : "For example: project-driven"
+              }
               value={preferredLearningStyle}
             />
           </div>
@@ -359,7 +365,9 @@ export function ProfileWorkspace({
             <input
               className="h-11 w-full rounded-md border border-slate-300 px-3 text-sm text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
               onChange={(event) => setPacePreference(event.target.value)}
-              placeholder={locale === "zh" ? "例如：稳步推进" : "For example: steady pace"}
+              placeholder={
+                locale === "zh" ? "例如：稳步推进" : "For example: steady pace"
+              }
               value={pacePreference}
             />
           </div>
@@ -408,7 +416,10 @@ export function ProfileWorkspace({
             type="submit"
           >
             {isSaving ? (
-              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
             ) : (
               <PencilLine aria-hidden="true" className="size-4" />
             )}

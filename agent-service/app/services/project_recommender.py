@@ -238,7 +238,8 @@ def recommend_project_with_mock(
         )
 
     reason_suffix = (
-        " The recommendation also incorporates personal notes and evidence from the learner's knowledge base."
+        " The recommendation also incorporates personal notes and evidence "
+        "from the learner's knowledge base."
         if request.knowledgeContext
         else ""
     )

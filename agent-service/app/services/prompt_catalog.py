@@ -6,7 +6,8 @@ PROMPT_CATALOG = {
                 "分析学习者的能力背景、已有基础与学习目标。只返回 JSON，不要输出 markdown 或解释。"
                 "字段名必须是 currentSkills、strengths、weaknesses、recommendedDirection。"
                 "所有自然语言字段必须使用简体中文，除非目标明确属于技术领域，否则优先使用领域中立的能力描述。"
-                "如果输入中提供 knowledgeContext，应把它视为学习者自己的资料和笔记，优先作为个性化证据。"
+                "如果输入中提供 knowledgeContext，应把它视为学习者自己的资料和笔记，"
+                "优先作为个性化证据。"
             ),
             "en": (
                 "You are the Profile Analyzer for AI Developer Learning Planner. "
@@ -49,7 +50,8 @@ PROMPT_CATALOG = {
                 "你会分多轮生成学习计划。只返回 JSON，不要输出 markdown 或解释。"
                 "每轮只生成当前要求的天数，不得重复已完成天数。"
                 "任务必须具体、可执行，并逐步推进目标能力、核心聚焦领域和可验证成果。"
-                "如果输入中包含 userProfileSummary、planningConstraints、recentFeedback、knowledgeContext，"
+                "如果输入中包含 "
+                "userProfileSummary、planningConstraints、recentFeedback、knowledgeContext，"
                 "必须把它们视为高优先级个性化约束，而不是可忽略背景。"
             ),
             "en": (
@@ -83,13 +85,15 @@ PROMPT_CATALOG = {
             "zh": (
                 "如提供 previousMemory，请延续既定主题、约束、交付物和下一阶段重点。"
                 "如提供 previousChunk，请只把它当作最近一轮的事实记录。"
-                "如果 global context 中存在 planningConstraints 或 recentFeedback，后续天数必须继续遵守。"
+                "如果 global context 中存在 planningConstraints 或 recentFeedback，"
+                "后续天数必须继续遵守。"
             ),
             "en": (
                 "If previousMemory is provided, continue the established themes, constraints, "
                 "expected outcomes, and next-step focus. If previousChunk is provided, treat it as "
                 "the factual result from the most recent round. If planningConstraints or "
-                "recentFeedback exist in the global context, later days must continue to respect them."
+                "recentFeedback exist in the global context, later days must continue to respect "
+                "them."
             ),
         },
         "round_instruction": {
@@ -123,7 +127,8 @@ PROMPT_CATALOG = {
             "zh": (
                 "你是 AI Developer Learning Planner 的进度复盘器。"
                 "复盘某一天的学习进度。只返回 JSON，不要输出 markdown 或解释。"
-                "字段名必须是 completedTasks、unfinishedTasks、blockers、impact、suggestion、wins、nextFocus、paceAdjustment、confidence。"
+                "字段名必须是 completedTasks、unfinishedTasks、blockers、impact、suggestion、"
+                "wins、nextFocus、paceAdjustment、confidence。"
                 "建议必须适用于通用学习场景，不要默认假设是软件开发任务。"
             ),
             "en": (
@@ -141,7 +146,8 @@ PROMPT_CATALOG = {
                 "你是 AI Developer Learning Planner 的项目推荐器。"
                 "你会分多轮形成最终推荐，但最终只推荐一个聚焦的学习主线或实践方向。"
                 "始终只返回 JSON。"
-                "如果输入中提供 knowledgeContext，应结合学习者自己的资料、笔记和经验片段来收敛推荐。"
+                "如果输入中提供 knowledgeContext，应结合学习者自己的资料、"
+                "笔记和经验片段来收敛推荐。"
             ),
             "en": (
                 "You are the Project Recommender for AI Developer Learning Planner. "

@@ -284,7 +284,9 @@ export function ProgressSubmitForm({
             {adaptiveScheduleControl.latestAutomatic?.pacing ? (
               <div className="mt-3 rounded-md border border-slate-200 bg-white p-4 text-sm">
                 <p className="font-semibold text-slate-800">
-                  {locale === "zh" ? "当前自动判断：" : "Current automatic mode: "}
+                  {locale === "zh"
+                    ? "当前自动判断："
+                    : "Current automatic mode: "}
                   {adaptivePacingLabel(
                     adaptiveScheduleControl.latestAutomatic.pacing,
                     locale,
@@ -313,7 +315,9 @@ export function ProgressSubmitForm({
             {adaptiveScheduleControl.activeOverride?.pacing ? (
               <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm">
                 <p className="font-semibold text-amber-900">
-                  {locale === "zh" ? "当前手动覆盖：" : "Current manual override: "}
+                  {locale === "zh"
+                    ? "当前手动覆盖："
+                    : "Current manual override: "}
                   {adaptivePacingLabel(
                     adaptiveScheduleControl.activeOverride.pacing,
                     locale,
@@ -539,9 +543,7 @@ export function ProgressSubmitForm({
                   <div className="mt-4 rounded-md border border-slate-200 bg-white p-4 text-sm">
                     <div className="flex items-center gap-2 font-medium text-slate-500">
                       <Activity aria-hidden="true" className="size-4" />
-                      {locale === "zh"
-                        ? "自适应调度"
-                        : "Adaptive scheduling"}
+                      {locale === "zh" ? "自适应调度" : "Adaptive scheduling"}
                     </div>
                     <p className="mt-2 font-semibold text-slate-800">
                       {adaptivePacingLabel(
@@ -572,7 +574,8 @@ export function ProgressSubmitForm({
                           {locale === "zh" ? "平均阻塞" : "Average blockers"}
                         </div>
                         <p className="mt-1 text-slate-700">
-                          {latestReview.adaptiveSchedule.recentBlockerAverage ?? 0}
+                          {latestReview.adaptiveSchedule.recentBlockerAverage ??
+                            0}
                         </p>
                       </div>
                       <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
@@ -580,14 +583,15 @@ export function ProgressSubmitForm({
                           {locale === "zh" ? "分钟调整" : "Minute change"}
                         </div>
                         <p className="mt-1 text-slate-700">
-                          {latestReview.adaptiveSchedule.minuteAdjustmentPercent ??
-                            0}
+                          {latestReview.adaptiveSchedule
+                            .minuteAdjustmentPercent ?? 0}
                           %
                         </p>
                       </div>
                     </div>
                     {latestReview.adaptiveSchedule.affectedDayIndexes &&
-                    latestReview.adaptiveSchedule.affectedDayIndexes.length > 0 ? (
+                    latestReview.adaptiveSchedule.affectedDayIndexes.length >
+                      0 ? (
                       <p className="mt-3 text-slate-600">
                         {locale === "zh" ? "影响天数：" : "Affected days: "}
                         {latestReview.adaptiveSchedule.affectedDayIndexes.join(

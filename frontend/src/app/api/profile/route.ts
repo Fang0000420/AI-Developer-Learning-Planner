@@ -6,7 +6,9 @@ export const dynamic = "force-dynamic";
 
 function backendUnavailableResponse(error: unknown) {
   const message =
-    error instanceof Error ? error.message : "Backend profile API is unavailable.";
+    error instanceof Error
+      ? error.message
+      : "Backend profile API is unavailable.";
 
   return NextResponse.json(
     {
@@ -52,7 +54,8 @@ export async function PATCH(request: Request) {
       cache: "no-store",
       headers: {
         ...authHeadersFromRequest(request),
-        "content-type": request.headers.get("content-type") ?? "application/json",
+        "content-type":
+          request.headers.get("content-type") ?? "application/json",
       },
       method: "PATCH",
     });

@@ -718,4 +718,7 @@ def _evidence_hint(request: PlanGenerateRequest) -> str:
         return ""
     if is_zh(request.responseLanguage):
         return " 优先结合用户知识库和画像证据中已出现的真实场景。"
-    return " Prefer real scenarios already present in the learner's knowledge base and profile evidence."
+    return (
+        " Prefer real scenarios already present in the learner's "
+        "knowledge base and profile evidence."
+    )

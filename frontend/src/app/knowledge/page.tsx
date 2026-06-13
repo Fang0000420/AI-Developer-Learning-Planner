@@ -12,7 +12,9 @@ type KnowledgePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function KnowledgePage({ searchParams }: KnowledgePageProps) {
+export default async function KnowledgePage({
+  searchParams,
+}: KnowledgePageProps) {
   const locale = await getCurrentLocale();
   const t = dictionaries[locale];
   const resolvedSearchParams = searchParams ? await searchParams : {};

@@ -35,10 +35,13 @@ async function proxyJsonResponse(response: Response) {
 
 export async function GET(request: Request) {
   try {
-    const response = await fetch(`${getBackendBaseUrl()}/api/knowledge/documents`, {
-      cache: "no-store",
-      headers: authHeadersFromRequest(request),
-    });
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/knowledge/documents`,
+      {
+        cache: "no-store",
+        headers: authHeadersFromRequest(request),
+      },
+    );
     return proxyJsonResponse(response);
   } catch (error) {
     return backendUnavailableResponse(error);
@@ -48,12 +51,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const response = await fetch(`${getBackendBaseUrl()}/api/knowledge/documents`, {
-      body: formData,
-      cache: "no-store",
-      headers: authHeadersFromRequest(request),
-      method: "POST",
-    });
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/knowledge/documents`,
+      {
+        body: formData,
+        cache: "no-store",
+        headers: authHeadersFromRequest(request),
+        method: "POST",
+      },
+    );
     return proxyJsonResponse(response);
   } catch (error) {
     return backendUnavailableResponse(error);

@@ -87,7 +87,9 @@ export function PathRecommendationWorkspace({
           method: "POST",
         },
       );
-      const payload = (await response.json()) as PathRecommendation | ApiErrorResponse;
+      const payload = (await response.json()) as
+        | PathRecommendation
+        | ApiErrorResponse;
 
       if (!response.ok) {
         setError(
@@ -180,7 +182,10 @@ export function PathRecommendationWorkspace({
             type="button"
           >
             {isAnalyzing ? (
-              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
             ) : (
               <Sparkles aria-hidden="true" className="size-4" />
             )}
@@ -200,7 +205,10 @@ export function PathRecommendationWorkspace({
             type="button"
           >
             {isGeneratingPlan ? (
-              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
             ) : (
               <Rocket aria-hidden="true" className="size-4" />
             )}
@@ -218,7 +226,9 @@ export function PathRecommendationWorkspace({
       {error ? (
         <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 p-4">
           <p className="text-sm font-semibold text-rose-950">
-            {locale === "zh" ? "无法生成成长路径。" : "Unable to generate the growth path."}
+            {locale === "zh"
+              ? "无法生成成长路径。"
+              : "Unable to generate the growth path."}
           </p>
           <p className="mt-2 text-sm leading-6 text-rose-700">{error}</p>
         </div>
@@ -247,7 +257,8 @@ export function PathRecommendationWorkspace({
                   {locale === "zh" ? "周期" : "Duration"}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-slate-950">
-                  {recommendation.durationDays} {locale === "zh" ? "天" : "days"}
+                  {recommendation.durationDays}{" "}
+                  {locale === "zh" ? "天" : "days"}
                 </p>
               </div>
               <div className="rounded-md border border-slate-200 bg-white p-4">
@@ -272,7 +283,10 @@ export function PathRecommendationWorkspace({
           <div className="grid gap-5 lg:grid-cols-2">
             <section className="rounded-md border border-slate-200 p-5">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                <ArrowRight aria-hidden="true" className="size-4 text-slate-500" />
+                <ArrowRight
+                  aria-hidden="true"
+                  className="size-4 text-slate-500"
+                />
                 {locale === "zh" ? "当前定位" : "Current Position"}
               </div>
               <p className="mt-4 text-sm leading-7 text-slate-600">
@@ -292,7 +306,10 @@ export function PathRecommendationWorkspace({
 
             <section className="rounded-md border border-slate-200 p-5">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                <Milestone aria-hidden="true" className="size-4 text-slate-500" />
+                <Milestone
+                  aria-hidden="true"
+                  className="size-4 text-slate-500"
+                />
                 {locale === "zh" ? "近期里程碑" : "Near-term Milestones"}
               </div>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
@@ -312,7 +329,10 @@ export function PathRecommendationWorkspace({
           <div className="grid gap-5 lg:grid-cols-2">
             <section className="rounded-md border border-slate-200 p-5">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                <ShieldAlert aria-hidden="true" className="size-4 text-slate-500" />
+                <ShieldAlert
+                  aria-hidden="true"
+                  className="size-4 text-slate-500"
+                />
                 {locale === "zh" ? "风险提醒" : "Risk Signals"}
               </div>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
@@ -362,7 +382,10 @@ export function PathRecommendationWorkspace({
                   {locale === "zh" ? "优先文档数" : "Preferred docs"}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-slate-950">
-                  {recommendation.knowledgeBasis.preference.preferredDocumentIds.length}
+                  {
+                    recommendation.knowledgeBasis.preference
+                      .preferredDocumentIds.length
+                  }
                 </p>
               </div>
               <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
@@ -385,7 +408,10 @@ export function PathRecommendationWorkspace({
                   {locale === "zh" ? "引用资料" : "Referenced docs"}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-slate-950">
-                  {recommendation.knowledgeBasis.referencedDocumentTitles.length}
+                  {
+                    recommendation.knowledgeBasis.referencedDocumentTitles
+                      .length
+                  }
                 </p>
               </div>
             </div>
@@ -433,9 +459,11 @@ export function PathRecommendationWorkspace({
                   {locale === "zh" ? "知识证据片段" : "Knowledge evidence"}
                 </div>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-                  {recommendation.knowledgeBasis.knowledgeEvidence.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
+                  {recommendation.knowledgeBasis.knowledgeEvidence.map(
+                    (item) => (
+                      <li key={item}>{item}</li>
+                    ),
+                  )}
                 </ul>
               </div>
             ) : null}
@@ -456,11 +484,11 @@ export function PathRecommendationWorkspace({
                 </span>
               ))}
             </div>
-              <p className="mt-4 text-sm leading-6 text-slate-600">
-                {locale === "zh"
-                  ? "基于当前路径生成计划时，系统还会继续参考长期画像、最近反馈和已启用知识库文档。"
-                  : "When generating a plan from this path, the system also uses the long-term profile, recent feedback, and enabled knowledge-base documents."}
-              </p>
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              {locale === "zh"
+                ? "基于当前路径生成计划时，系统还会继续参考长期画像、最近反馈和已启用知识库文档。"
+                : "When generating a plan from this path, the system also uses the long-term profile, recent feedback, and enabled knowledge-base documents."}
+            </p>
           </section>
 
           {planError ? (
@@ -470,7 +498,9 @@ export function PathRecommendationWorkspace({
                   ? "无法基于当前路径生成学习计划。"
                   : "Unable to generate a learning plan from the current path."}
               </p>
-              <p className="mt-2 text-sm leading-6 text-rose-700">{planError}</p>
+              <p className="mt-2 text-sm leading-6 text-rose-700">
+                {planError}
+              </p>
             </div>
           ) : null}
         </div>

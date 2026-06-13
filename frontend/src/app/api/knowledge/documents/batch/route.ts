@@ -35,15 +35,19 @@ async function proxyJsonResponse(response: Response) {
 
 export async function PATCH(request: Request) {
   try {
-    const response = await fetch(`${getBackendBaseUrl()}/api/knowledge/documents/batch`, {
-      body: await request.text(),
-      cache: "no-store",
-      headers: {
-        ...authHeadersFromRequest(request),
-        "content-type": request.headers.get("content-type") ?? "application/json",
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/knowledge/documents/batch`,
+      {
+        body: await request.text(),
+        cache: "no-store",
+        headers: {
+          ...authHeadersFromRequest(request),
+          "content-type":
+            request.headers.get("content-type") ?? "application/json",
+        },
+        method: "PATCH",
       },
-      method: "PATCH",
-    });
+    );
     return proxyJsonResponse(response);
   } catch (error) {
     return backendUnavailableResponse(error);

@@ -3,7 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Clock3, History, RotateCcw } from "lucide-react";
-import { formatGoalDate, formatMinutes, type LearningPlanVersionSummary } from "@/lib/goals";
+import {
+  formatGoalDate,
+  formatMinutes,
+  type LearningPlanVersionSummary,
+} from "@/lib/goals";
 import type { Locale } from "@/lib/i18n";
 
 type PlanVersionPanelProps = {
@@ -14,20 +18,24 @@ type PlanVersionPanelProps = {
 
 function triggerLabel(trigger: string, locale: Locale) {
   if (locale === "zh") {
-    return {
-      generated: "初始生成",
-      manual_override: "手动覆盖",
-      progress_adjustment: "进度调整",
-      restore: "版本回滚",
-    }[trigger as keyof Record<string, string>] ?? trigger;
+    return (
+      {
+        generated: "初始生成",
+        manual_override: "手动覆盖",
+        progress_adjustment: "进度调整",
+        restore: "版本回滚",
+      }[trigger as keyof Record<string, string>] ?? trigger
+    );
   }
 
-  return {
-    generated: "Generated",
-    manual_override: "Manual override",
-    progress_adjustment: "Progress adjustment",
-    restore: "Rollback",
-  }[trigger as keyof Record<string, string>] ?? trigger;
+  return (
+    {
+      generated: "Generated",
+      manual_override: "Manual override",
+      progress_adjustment: "Progress adjustment",
+      restore: "Rollback",
+    }[trigger as keyof Record<string, string>] ?? trigger
+  );
 }
 
 function changeTypeLabel(
@@ -125,7 +133,9 @@ export function PlanVersionPanel({
                 ) : null}
               </div>
 
-              <p className="text-sm leading-6 text-slate-700">{version.reason}</p>
+              <p className="text-sm leading-6 text-slate-700">
+                {version.reason}
+              </p>
 
               <div className="grid gap-3 text-sm md:grid-cols-3">
                 <div className="rounded-md border border-slate-200 bg-white p-3">

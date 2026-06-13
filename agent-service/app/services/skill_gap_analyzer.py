@@ -49,7 +49,8 @@ Rules:
 - priority must be exactly one of: high, medium, low.
 - Use weaknesses and high-priority sub-goals to decide urgency.
 - Prefer domain-neutral language unless the goal is clearly technical.
-- If knowledgeContext is present, treat it as the learner's own materials and use it as personalized evidence.
+- If knowledgeContext is present, treat it as the learner's own materials
+  and use it as personalized evidence.
 """.strip()
 
 SKILL_GAP_ANALYZER_PROMPT_ZH = """
@@ -182,7 +183,10 @@ def analyze_skill_gap_with_mock(
                     currentLevel="基础",
                     targetLevel="熟练",
                     priority="high",
-                    reason="当前基础还不足以稳定支撑目标推进，需要先补齐核心认知和基本方法。" + extra_reason,
+                    reason=(
+                        "当前基础还不足以稳定支撑目标推进，需要先补齐核心认知和基本方法。"
+                        + extra_reason
+                    ),
                 ),
                 SkillGap(
                     skill="稳定练习机制",

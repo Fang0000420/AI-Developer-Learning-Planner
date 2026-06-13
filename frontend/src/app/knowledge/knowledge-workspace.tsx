@@ -61,21 +61,28 @@ export function KnowledgeWorkspace({
   const [batchCategory, setBatchCategory] =
     useState<KnowledgeSourceCategory>("NOTE");
   const [searchText, setSearchText] = useState("");
-  const [filterScope, setFilterScope] = useState<"ALL" | "PERSONAL" | "PLATFORM">(
-    "ALL",
-  );
-  const [filterCategory, setFilterCategory] =
-    useState<"ALL" | KnowledgeSourceCategory>("ALL");
-  const [filterEnabled, setFilterEnabled] = useState<"ALL" | "ENABLED" | "DISABLED">(
-    "ALL",
-  );
+  const [filterScope, setFilterScope] = useState<
+    "ALL" | "PERSONAL" | "PLATFORM"
+  >("ALL");
+  const [filterCategory, setFilterCategory] = useState<
+    "ALL" | KnowledgeSourceCategory
+  >("ALL");
+  const [filterEnabled, setFilterEnabled] = useState<
+    "ALL" | "ENABLED" | "DISABLED"
+  >("ALL");
   const [filterGroup, setFilterGroup] = useState("ALL");
   const [filterTag, setFilterTag] = useState("ALL");
   const [previewGoalId, setPreviewGoalId] = useState(
-    initialSelectedGoalId || (initialGoals[0] ? String(initialGoals[0].id) : ""),
+    initialSelectedGoalId ||
+      (initialGoals[0] ? String(initialGoals[0].id) : ""),
   );
   const [compareGoalId, setCompareGoalId] = useState(
-    initialGoals.find((goal) => String(goal.id) !== (initialSelectedGoalId || (initialGoals[0] ? String(initialGoals[0].id) : "")))
+    initialGoals.find(
+      (goal) =>
+        String(goal.id) !==
+        (initialSelectedGoalId ||
+          (initialGoals[0] ? String(initialGoals[0].id) : "")),
+    )
       ? String(
           initialGoals.find(
             (goal) =>
@@ -119,7 +126,10 @@ export function KnowledgeWorkspace({
   );
 
   const availableTags = useMemo(
-    () => Array.from(new Set(documents.flatMap((document) => document.tags))).sort(),
+    () =>
+      Array.from(
+        new Set(documents.flatMap((document) => document.tags)),
+      ).sort(),
     [documents],
   );
 
@@ -144,7 +154,10 @@ export function KnowledgeWorkspace({
       if (filterScope !== "ALL" && document.scope !== filterScope) {
         return false;
       }
-      if (filterCategory !== "ALL" && document.sourceCategory !== filterCategory) {
+      if (
+        filterCategory !== "ALL" &&
+        document.sourceCategory !== filterCategory
+      ) {
         return false;
       }
       if (filterEnabled === "ENABLED" && !document.enabled) {
@@ -172,7 +185,9 @@ export function KnowledgeWorkspace({
   ]);
 
   async function refreshDocuments() {
-    const response = await fetch("/api/knowledge/documents", { cache: "no-store" });
+    const response = await fetch("/api/knowledge/documents", {
+      cache: "no-store",
+    });
     if (!response.ok) {
       return;
     }
@@ -208,7 +223,9 @@ export function KnowledgeWorkspace({
         setError(
           getApiErrorMessage(
             payload as ApiErrorResponse,
-            locale === "zh" ? "知识库文档上传失败。" : "Knowledge upload failed.",
+            locale === "zh"
+              ? "知识库文档上传失败。"
+              : "Knowledge upload failed.",
           ),
         );
         return;
@@ -247,11 +264,14 @@ export function KnowledgeWorkspace({
     setPendingDocumentIds((current) => [...current, document.id]);
 
     try {
-      const response = await fetch(`/api/knowledge/documents/${document.id}/enabled`, {
-        body: JSON.stringify({ enabled: !document.enabled }),
-        headers: { "Content-Type": "application/json" },
-        method: "PATCH",
-      });
+      const response = await fetch(
+        `/api/knowledge/documents/${document.id}/enabled`,
+        {
+          body: JSON.stringify({ enabled: !document.enabled }),
+          headers: { "Content-Type": "application/json" },
+          method: "PATCH",
+        },
+      );
       const payload = (await response.json()) as
         | KnowledgeDocumentSummary
         | ApiErrorResponse;
@@ -259,7 +279,9 @@ export function KnowledgeWorkspace({
         setError(
           getApiErrorMessage(
             payload as ApiErrorResponse,
-            locale === "zh" ? "知识库状态更新失败。" : "Knowledge update failed.",
+            locale === "zh"
+              ? "知识库状态更新失败。"
+              : "Knowledge update failed.",
           ),
         );
         return;
@@ -285,7 +307,9 @@ export function KnowledgeWorkspace({
 
   async function handleSettingsChange(
     document: KnowledgeDocumentSummary,
-    updates: Partial<Pick<KnowledgeDocumentSummary, "scope" | "retrievalPriority">>,
+    updates: Partial<
+      Pick<KnowledgeDocumentSummary, "scope" | "retrievalPriority">
+    >,
   ) {
     setError(null);
     setPendingDocumentIds((current) => [...current, document.id]);
@@ -309,7 +333,9 @@ export function KnowledgeWorkspace({
         setError(
           getApiErrorMessage(
             payload as ApiErrorResponse,
-            locale === "zh" ? "知识库设置更新失败。" : "Knowledge settings update failed.",
+            locale === "zh"
+              ? "知识库设置更新失败。"
+              : "Knowledge settings update failed.",
           ),
         );
         return;
@@ -367,7 +393,9 @@ export function KnowledgeWorkspace({
         setError(
           getApiErrorMessage(
             payload as ApiErrorResponse,
-            locale === "zh" ? "知识库元数据更新失败。" : "Knowledge metadata update failed.",
+            locale === "zh"
+              ? "知识库元数据更新失败。"
+              : "Knowledge metadata update failed.",
           ),
         );
         return;
@@ -391,14 +419,12 @@ export function KnowledgeWorkspace({
     }
   }
 
-  async function handleBatchUpdate(
-    updates: {
-      enabled?: boolean;
-      sourceCategory?: KnowledgeSourceCategory;
-      groupName?: string;
-      tags?: string[];
-    },
-  ) {
+  async function handleBatchUpdate(updates: {
+    enabled?: boolean;
+    sourceCategory?: KnowledgeSourceCategory;
+    groupName?: string;
+    tags?: string[];
+  }) {
     if (selectedDocumentIds.length === 0) {
       setError(
         locale === "zh"
@@ -436,7 +462,9 @@ export function KnowledgeWorkspace({
       const updatedDocuments = payload as KnowledgeDocumentSummary[];
       setDocuments((current) =>
         current.map((item) => {
-          const updated = updatedDocuments.find((candidate) => candidate.id === item.id);
+          const updated = updatedDocuments.find(
+            (candidate) => candidate.id === item.id,
+          );
           return updated ?? item;
         }),
       );
@@ -467,15 +495,15 @@ export function KnowledgeWorkspace({
   function allSelected() {
     return (
       filteredDocuments.length > 0 &&
-      filteredDocuments.every((document) => selectedDocumentIds.includes(document.id))
+      filteredDocuments.every((document) =>
+        selectedDocumentIds.includes(document.id),
+      )
     );
   }
 
   async function loadRetrievalPreview() {
     if (!previewGoalId) {
-      setError(
-        locale === "zh" ? "请先选择一个目标。" : "Select a goal first.",
-      );
+      setError(locale === "zh" ? "请先选择一个目标。" : "Select a goal first.");
       return;
     }
     setError(null);
@@ -522,9 +550,12 @@ export function KnowledgeWorkspace({
     }
     setGoalPreferenceLoading(true);
     try {
-      const response = await fetch(`/api/goals/${goalId}/knowledge-preference`, {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        `/api/goals/${goalId}/knowledge-preference`,
+        {
+          cache: "no-store",
+        },
+      );
       const payload = (await response.json()) as
         | GoalKnowledgePreference
         | ApiErrorResponse;
@@ -623,16 +654,19 @@ export function KnowledgeWorkspace({
     setError(null);
     setGoalPreferenceLoading(true);
     try {
-      const response = await fetch(`/api/goals/${previewGoalId}/knowledge-preference`, {
-        body: JSON.stringify({
-          preferredDocumentIds: selectedDocumentIds,
-          preferredScope: filterScope === "ALL" ? null : filterScope,
-          preferredCategories:
-            filterCategory === "ALL" ? [] : [filterCategory],
-        }),
-        headers: { "Content-Type": "application/json" },
-        method: "PATCH",
-      });
+      const response = await fetch(
+        `/api/goals/${previewGoalId}/knowledge-preference`,
+        {
+          body: JSON.stringify({
+            preferredDocumentIds: selectedDocumentIds,
+            preferredScope: filterScope === "ALL" ? null : filterScope,
+            preferredCategories:
+              filterCategory === "ALL" ? [] : [filterCategory],
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "PATCH",
+        },
+      );
       const payload = (await response.json()) as
         | GoalKnowledgePreference
         | ApiErrorResponse;
@@ -706,7 +740,9 @@ export function KnowledgeWorkspace({
               id="knowledge-title"
               onChange={(event) => setTitle(event.target.value)}
               placeholder={
-                locale === "zh" ? "可选，默认使用文件名" : "Optional, defaults to file name"
+                locale === "zh"
+                  ? "可选，默认使用文件名"
+                  : "Optional, defaults to file name"
               }
               value={title}
             />
@@ -734,7 +770,10 @@ export function KnowledgeWorkspace({
             type="submit"
           >
             {isUploading ? (
-              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
             ) : (
               <Upload aria-hidden="true" className="size-4" />
             )}
@@ -821,13 +860,13 @@ export function KnowledgeWorkspace({
                     <select
                       className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700"
                       onChange={(event) =>
-                        setFilterScope(
-                          event.target.value as typeof filterScope,
-                        )
+                        setFilterScope(event.target.value as typeof filterScope)
                       }
                       value={filterScope}
                     >
-                      <option value="ALL">{locale === "zh" ? "全部" : "All"}</option>
+                      <option value="ALL">
+                        {locale === "zh" ? "全部" : "All"}
+                      </option>
                       <option value="PERSONAL">
                         {locale === "zh" ? "个人资料" : "Personal"}
                       </option>
@@ -849,7 +888,9 @@ export function KnowledgeWorkspace({
                       }
                       value={filterCategory}
                     >
-                      <option value="ALL">{locale === "zh" ? "全部" : "All"}</option>
+                      <option value="ALL">
+                        {locale === "zh" ? "全部" : "All"}
+                      </option>
                       {(
                         [
                           "NOTE",
@@ -879,7 +920,9 @@ export function KnowledgeWorkspace({
                       }
                       value={filterEnabled}
                     >
-                      <option value="ALL">{locale === "zh" ? "全部" : "All"}</option>
+                      <option value="ALL">
+                        {locale === "zh" ? "全部" : "All"}
+                      </option>
                       <option value="ENABLED">
                         {locale === "zh" ? "已启用" : "Enabled"}
                       </option>
@@ -897,7 +940,9 @@ export function KnowledgeWorkspace({
                       onChange={(event) => setFilterGroup(event.target.value)}
                       value={filterGroup}
                     >
-                      <option value="ALL">{locale === "zh" ? "全部" : "All"}</option>
+                      <option value="ALL">
+                        {locale === "zh" ? "全部" : "All"}
+                      </option>
                       {availableGroups.map((group) => (
                         <option key={group} value={group}>
                           {group}
@@ -914,7 +959,9 @@ export function KnowledgeWorkspace({
                       onChange={(event) => setFilterTag(event.target.value)}
                       value={filterTag}
                     >
-                      <option value="ALL">{locale === "zh" ? "全部" : "All"}</option>
+                      <option value="ALL">
+                        {locale === "zh" ? "全部" : "All"}
+                      </option>
                       {availableTags.map((tag) => (
                         <option key={tag} value={tag}>
                           #{tag}
@@ -1014,7 +1061,9 @@ export function KnowledgeWorkspace({
               {goalPreference ? (
                 <div className="mt-4 rounded-md border border-slate-200 bg-white p-4 text-sm">
                   <div className="font-medium text-slate-500">
-                    {locale === "zh" ? "当前目标偏好" : "Current goal preference"}
+                    {locale === "zh"
+                      ? "当前目标偏好"
+                      : "Current goal preference"}
                   </div>
                   <div className="mt-2 space-y-2 text-slate-700">
                     <p>
@@ -1024,7 +1073,10 @@ export function KnowledgeWorkspace({
                     <p>
                       {locale === "zh" ? "固定作用域：" : "Fixed scope: "}
                       {goalPreference.preferredScope
-                        ? knowledgeScopeLabel(goalPreference.preferredScope, locale)
+                        ? knowledgeScopeLabel(
+                            goalPreference.preferredScope,
+                            locale,
+                          )
                         : locale === "zh"
                           ? "未固定"
                           : "Not fixed"}
@@ -1124,7 +1176,9 @@ export function KnowledgeWorkspace({
                               {match.title}
                             </h4>
                             <p className="mt-2 text-sm text-slate-500">
-                              {locale === "zh" ? "相关性得分：" : "Relevance score: "}
+                              {locale === "zh"
+                                ? "相关性得分："
+                                : "Relevance score: "}
                               {match.score}
                             </p>
                             <ul className="mt-3 space-y-1 text-sm text-slate-700">
@@ -1158,7 +1212,9 @@ export function KnowledgeWorkspace({
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-950">
-                    {locale === "zh" ? "目标间知识策略对比" : "Goal Strategy Comparison"}
+                    {locale === "zh"
+                      ? "目标间知识策略对比"
+                      : "Goal Strategy Comparison"}
                   </h3>
                   <p className="mt-1 text-sm text-slate-600">
                     {locale === "zh"
@@ -1205,7 +1261,9 @@ export function KnowledgeWorkspace({
                   </select>
                   <button
                     className="inline-flex h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-                    disabled={comparisonLoading || !previewGoalId || !compareGoalId}
+                    disabled={
+                      comparisonLoading || !previewGoalId || !compareGoalId
+                    }
                     onClick={loadStrategyComparison}
                     type="button"
                   >
@@ -1229,14 +1287,20 @@ export function KnowledgeWorkspace({
                       </div>
                       <div className="mt-2 space-y-1 text-sm text-slate-600">
                         <p>
-                          {locale === "zh" ? "优先文档数：" : "Preferred docs: "}
-                          {strategyComparison.basePreference.preferredDocumentIds.length}
+                          {locale === "zh"
+                            ? "优先文档数："
+                            : "Preferred docs: "}
+                          {
+                            strategyComparison.basePreference
+                              .preferredDocumentIds.length
+                          }
                         </p>
                         <p>
                           {locale === "zh" ? "固定作用域：" : "Fixed scope: "}
                           {strategyComparison.basePreference.preferredScope
                             ? knowledgeScopeLabel(
-                                strategyComparison.basePreference.preferredScope,
+                                strategyComparison.basePreference
+                                  .preferredScope,
                                 locale,
                               )
                             : locale === "zh"
@@ -1251,14 +1315,20 @@ export function KnowledgeWorkspace({
                       </div>
                       <div className="mt-2 space-y-1 text-sm text-slate-600">
                         <p>
-                          {locale === "zh" ? "优先文档数：" : "Preferred docs: "}
-                          {strategyComparison.comparePreference.preferredDocumentIds.length}
+                          {locale === "zh"
+                            ? "优先文档数："
+                            : "Preferred docs: "}
+                          {
+                            strategyComparison.comparePreference
+                              .preferredDocumentIds.length
+                          }
                         </p>
                         <p>
                           {locale === "zh" ? "固定作用域：" : "Fixed scope: "}
                           {strategyComparison.comparePreference.preferredScope
                             ? knowledgeScopeLabel(
-                                strategyComparison.comparePreference.preferredScope,
+                                strategyComparison.comparePreference
+                                  .preferredScope,
                                 locale,
                               )
                             : locale === "zh"
@@ -1313,12 +1383,16 @@ export function KnowledgeWorkspace({
 
                     <div className="rounded-md border border-slate-200 bg-white p-4 xl:col-span-1">
                       <div className="text-sm font-medium text-slate-500">
-                        {locale === "zh" ? "共享文档差异" : "Shared document deltas"}
+                        {locale === "zh"
+                          ? "共享文档差异"
+                          : "Shared document deltas"}
                       </div>
                       <div className="mt-3 space-y-2">
                         {strategyComparison.sharedDocuments.length === 0 ? (
                           <p className="text-sm text-slate-500">
-                            {locale === "zh" ? "无共享命中" : "No shared matches"}
+                            {locale === "zh"
+                              ? "无共享命中"
+                              : "No shared matches"}
                           </p>
                         ) : (
                           strategyComparison.sharedDocuments.map((item) => (
@@ -1416,12 +1490,21 @@ export function KnowledgeWorkspace({
                   <select
                     className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700"
                     onChange={(event) =>
-                      setBatchCategory(event.target.value as KnowledgeSourceCategory)
+                      setBatchCategory(
+                        event.target.value as KnowledgeSourceCategory,
+                      )
                     }
                     value={batchCategory}
                   >
                     {(
-                      ["NOTE", "RESUME", "PROJECT", "COURSE", "REFERENCE", "OTHER"] as const
+                      [
+                        "NOTE",
+                        "RESUME",
+                        "PROJECT",
+                        "COURSE",
+                        "REFERENCE",
+                        "OTHER",
+                      ] as const
                     ).map((category) => (
                       <option key={category} value={category}>
                         {knowledgeSourceCategoryLabel(category, locale)}
@@ -1436,7 +1519,9 @@ export function KnowledgeWorkspace({
                   <input
                     className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700"
                     onChange={(event) => setBatchGroupName(event.target.value)}
-                    placeholder={locale === "zh" ? "如：求职资料" : "e.g. Job search"}
+                    placeholder={
+                      locale === "zh" ? "如：求职资料" : "e.g. Job search"
+                    }
                     value={batchGroupName}
                   />
                 </div>
@@ -1447,7 +1532,9 @@ export function KnowledgeWorkspace({
                   <input
                     className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700"
                     onChange={(event) => setBatchTags(event.target.value)}
-                    placeholder={locale === "zh" ? "逗号分隔" : "Comma separated"}
+                    placeholder={
+                      locale === "zh" ? "逗号分隔" : "Comma separated"
+                    }
                     value={batchTags}
                   />
                 </div>
@@ -1512,7 +1599,10 @@ export function KnowledgeWorkspace({
                           {knowledgeScopeLabel(document.scope, locale)}
                         </span>
                         <span className="inline-flex h-7 items-center rounded-md bg-violet-50 px-2 text-xs font-semibold text-violet-700">
-                          {knowledgeSourceCategoryLabel(document.sourceCategory, locale)}
+                          {knowledgeSourceCategoryLabel(
+                            document.sourceCategory,
+                            locale,
+                          )}
                         </span>
                         <span className="text-xs text-slate-500">
                           {formatFileSize(document.fileSizeBytes, locale)}
@@ -1568,14 +1658,21 @@ export function KnowledgeWorkspace({
                           disabled={isPending}
                           onChange={(event) =>
                             handleMetadataChange(document, {
-                              sourceCategory:
-                                event.target.value as KnowledgeSourceCategory,
+                              sourceCategory: event.target
+                                .value as KnowledgeSourceCategory,
                             })
                           }
                           value={document.sourceCategory}
                         >
                           {(
-                            ["NOTE", "RESUME", "PROJECT", "COURSE", "REFERENCE", "OTHER"] as const
+                            [
+                              "NOTE",
+                              "RESUME",
+                              "PROJECT",
+                              "COURSE",
+                              "REFERENCE",
+                              "OTHER",
+                            ] as const
                           ).map((category) => (
                             <option key={category} value={category}>
                               {knowledgeSourceCategoryLabel(category, locale)}
@@ -1610,7 +1707,9 @@ export function KnowledgeWorkspace({
 
                       <div className="grid gap-2">
                         <label className="text-xs font-medium text-slate-500">
-                          {locale === "zh" ? "检索优先级" : "Retrieval Priority"}
+                          {locale === "zh"
+                            ? "检索优先级"
+                            : "Retrieval Priority"}
                         </label>
                         <select
                           className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700"
@@ -1662,7 +1761,9 @@ export function KnowledgeWorkspace({
                                 .filter(Boolean),
                             })
                           }
-                          placeholder={locale === "zh" ? "逗号分隔" : "Comma separated"}
+                          placeholder={
+                            locale === "zh" ? "逗号分隔" : "Comma separated"
+                          }
                         />
                       </div>
 

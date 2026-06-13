@@ -245,11 +245,13 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
               </p>
               <p>
                 {locale === "zh" ? "固定作用域：" : "Fixed scope: "}
-                {knowledgePreference?.preferredScope ?? (locale === "zh" ? "未固定" : "Not fixed")}
+                {knowledgePreference?.preferredScope ??
+                  (locale === "zh" ? "未固定" : "Not fixed")}
               </p>
               <p>
                 {locale === "zh" ? "固定分类：" : "Fixed categories: "}
-                {knowledgePreference && knowledgePreference.preferredCategories.length > 0
+                {knowledgePreference &&
+                knowledgePreference.preferredCategories.length > 0
                   ? knowledgePreference.preferredCategories.join(", ")
                   : locale === "zh"
                     ? "未固定"
@@ -259,7 +261,9 @@ export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
                 className="inline-flex h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white"
                 href={`/knowledge?goalId=${goal.id}`}
               >
-                {locale === "zh" ? "打开知识库并配置当前目标" : "Open Knowledge for This Goal"}
+                {locale === "zh"
+                  ? "打开知识库并配置当前目标"
+                  : "Open Knowledge for This Goal"}
               </Link>
             </div>
           </section>

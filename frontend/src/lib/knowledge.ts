@@ -154,10 +154,7 @@ export function knowledgeScopeLabel(
   }[scope];
 }
 
-export function knowledgePriorityLabel(
-  priority: number,
-  locale: "zh" | "en",
-) {
+export function knowledgePriorityLabel(priority: number, locale: "zh" | "en") {
   if (locale === "zh") {
     return `优先级 ${priority}`;
   }
