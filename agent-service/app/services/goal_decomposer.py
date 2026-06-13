@@ -291,11 +291,9 @@ def _normalize_sub_goal_item(
     )
     if not description:
         description = _first_different_string(string_values, title) or (
-            (
-                f"围绕目标「{request.mainGoal}」建立足够的实践能力。"
-                if is_zh(request.responseLanguage)
-                else f"Build enough practical capability to support the goal: {request.mainGoal}."
-            )
+            f"围绕目标「{request.mainGoal}」建立足够的实践能力。"
+            if is_zh(request.responseLanguage)
+            else f"Build enough practical capability to support the goal: {request.mainGoal}."
         )
 
     priority = _normalize_priority(

@@ -188,7 +188,9 @@ class PlanAdjustResponse(BaseModel):
     @model_validator(mode="after")
     def validate_next_day_alignment(self) -> "PlanAdjustResponse":
         if self.nextDayTasks:
-            target_day_indexes = {task.dayIndex for task in self.nextDayTasks if task.dayIndex is not None}
+            target_day_indexes = {
+                task.dayIndex for task in self.nextDayTasks if task.dayIndex is not None
+            }
             if len(target_day_indexes) > 1:
                 raise ValueError("nextDayTasks must point to a single day.")
         return self

@@ -78,4 +78,7 @@ def test_profile_model_output_is_normalized() -> None:
     assert normalized["currentSkills"] == ["Reading comprehension", "Basic vocabulary"]
     assert normalized["strengths"] == ["Consistent study habit"]
     assert normalized["weaknesses"] == ["Speaking fluency"]
-    assert normalized["recommendedDirection"] == "Build a steady speaking routine with weekly review."
+    assert (
+        normalized["recommendedDirection"]
+        == "Build a steady speaking routine with weekly review."
+    )

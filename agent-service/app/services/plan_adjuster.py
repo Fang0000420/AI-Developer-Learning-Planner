@@ -400,7 +400,11 @@ def _dedupe_tasks(
     deduped: list[dict[str, object]] = []
     seen: set[tuple[str, str]] = set()
     for item in tasks:
-        normalized = item.model_dump() if isinstance(item, PlanAdjustTask) else _normalize_task(item, request)
+        normalized = (
+            item.model_dump()
+            if isinstance(item, PlanAdjustTask)
+            else _normalize_task(item, request)
+        )
         key = (
             str(normalized.get("title", "")).strip().lower(),
             str(normalized.get("deliverable", "")).strip().lower(),
